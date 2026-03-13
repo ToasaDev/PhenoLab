@@ -10,19 +10,18 @@ class StatisticsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_can_get_global_statistics(): void
+    public function test_guest_cannot_access_statistics(): void
     {
         $response = $this->getJson('/api/v1/statistics');
-        $response->assertOk()
-            ->assertJsonStructure(['total_sites', 'total_plants', 'total_observations']);
+        $response->assertUnauthorized();
     }
 
-    public function test_authenticated_gets_user_stats(): void
+    public function test_authenticated_gets_global_and_user_stats(): void
     {
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)->getJson('/api/v1/statistics');
         $response->assertOk()
-            ->assertJsonStructure(['total_sites', 'total_plants', 'total_observations', 'user']);
+            ->assertJsonStructure(['global', 'user']);
     }
 }

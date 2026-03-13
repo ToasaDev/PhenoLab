@@ -32,12 +32,12 @@ Route::prefix('v1')->group(function () {
     // ── Categories ───────────────────────────────────────
     Route::get('categories/by-type', [CategoryController::class, 'byType']);
     Route::apiResource('categories', CategoryController::class)->only(['index', 'show']);
-    Route::apiResource('categories', CategoryController::class)->only(['store', 'update', 'destroy'])->middleware('auth:sanctum');
+    Route::apiResource('categories', CategoryController::class)->only(['store', 'update', 'destroy'])->middleware(['auth:sanctum', 'staff']);
 
     // ── Phenological Stages ──────────────────────────────
     Route::get('phenological-stages/by-event', [PhenologicalStageController::class, 'byEvent']);
     Route::apiResource('phenological-stages', PhenologicalStageController::class)->only(['index', 'show']);
-    Route::apiResource('phenological-stages', PhenologicalStageController::class)->only(['store', 'update', 'destroy'])->middleware('auth:sanctum');
+    Route::apiResource('phenological-stages', PhenologicalStageController::class)->only(['store', 'update', 'destroy'])->middleware(['auth:sanctum', 'staff']);
 
     // ── Sites ────────────────────────────────────────────
     Route::get('sites/geojson', [SiteController::class, 'geojson']);
@@ -54,12 +54,12 @@ Route::prefix('v1')->group(function () {
     Route::apiResource('sites', SiteController::class)->only(['store', 'update', 'destroy'])->middleware('auth:sanctum');
 
     // ── Taxons ───────────────────────────────────────────
-    Route::post('taxons/sync-gbif', [TaxonController::class, 'syncGbif'])->middleware('auth:sanctum');
-    Route::post('taxons/import-family', [TaxonController::class, 'importFamily'])->middleware('auth:sanctum');
-    Route::post('taxons/bulk-sync-gbif', [TaxonController::class, 'bulkSyncGbif'])->middleware('auth:sanctum');
-    Route::post('taxons/{taxon}/sync-from-gbif', [TaxonController::class, 'syncSingleFromGbif'])->middleware('auth:sanctum');
+    Route::post('taxons/sync-gbif', [TaxonController::class, 'syncGbif'])->middleware(['auth:sanctum', 'staff']);
+    Route::post('taxons/import-family', [TaxonController::class, 'importFamily'])->middleware(['auth:sanctum', 'staff']);
+    Route::post('taxons/bulk-sync-gbif', [TaxonController::class, 'bulkSyncGbif'])->middleware(['auth:sanctum', 'staff']);
+    Route::post('taxons/{taxon}/sync-from-gbif', [TaxonController::class, 'syncSingleFromGbif'])->middleware(['auth:sanctum', 'staff']);
     Route::apiResource('taxons', TaxonController::class)->only(['index', 'show']);
-    Route::apiResource('taxons', TaxonController::class)->only(['store', 'update', 'destroy'])->middleware('auth:sanctum');
+    Route::apiResource('taxons', TaxonController::class)->only(['store', 'update', 'destroy'])->middleware(['auth:sanctum', 'staff']);
 
     // ── Plant Positions ──────────────────────────────────
     Route::get('plant-positions/{position}/succession', [PlantPositionController::class, 'succession']);
@@ -89,9 +89,9 @@ Route::prefix('v1')->group(function () {
     Route::get('observations/by-stage', [ObservationController::class, 'byStage']);
     Route::get('observations/years-available', [ObservationController::class, 'yearsAvailable']);
     Route::get('observations/monthly-counts', [ObservationController::class, 'monthlyCounts']);
-    Route::post('observations/{observation}/validate', [ObservationController::class, 'validateObservation'])->middleware('auth:sanctum');
-    Route::post('observations/bulk-validate', [ObservationController::class, 'bulkValidate'])->middleware('auth:sanctum');
-    Route::post('observations/bulk-visibility', [ObservationController::class, 'bulkVisibility'])->middleware('auth:sanctum');
+    Route::post('observations/{observation}/validate', [ObservationController::class, 'validateObservation'])->middleware(['auth:sanctum', 'staff']);
+    Route::post('observations/bulk-validate', [ObservationController::class, 'bulkValidate'])->middleware(['auth:sanctum', 'staff']);
+    Route::post('observations/bulk-visibility', [ObservationController::class, 'bulkVisibility'])->middleware(['auth:sanctum', 'staff']);
     Route::apiResource('observations', ObservationController::class)->only(['index', 'show']);
     Route::apiResource('observations', ObservationController::class)->only(['store', 'update', 'destroy'])->middleware('auth:sanctum');
 
@@ -100,9 +100,9 @@ Route::prefix('v1')->group(function () {
     Route::get('tela-observations/statistics', [TelaObservationController::class, 'statistics']);
     Route::apiResource('tela-observations', TelaObservationController::class)->only(['index', 'show']);
 
-    // ── Comparison & Statistics ──────────────────────────
-    Route::get('comparison', [ComparisonController::class, 'compare']);
-    Route::get('statistics', [StatisticsController::class, 'index']);
+    // ── Comparison & Statistics (authenticated users only) ─
+    Route::get('comparison', [ComparisonController::class, 'compare'])->middleware('auth:sanctum');
+    Route::get('statistics', [StatisticsController::class, 'index'])->middleware('auth:sanctum');
 
     // ── ODS ──────────────────────────────────────────────
     Route::get('ods-search', [ODSController::class, 'search']);
@@ -127,7 +127,7 @@ Route::prefix('v1')->group(function () {
     Route::apiResource('observation-photos', ObservationPhotoController::class)->only(['store', 'update', 'destroy'])->middleware('auth:sanctum');
 
     // ── Admin (staff only) ────────────────────────────────
-    Route::prefix('admin')->middleware('auth:sanctum')->group(function () {
+    Route::prefix('admin')->middleware(['auth:sanctum', 'staff'])->group(function () {
         Route::get('dashboard', [AdminController::class, 'dashboard']);
         Route::post('import-ods', [AdminController::class, 'importOdsCsv']);
         Route::post('import-tela', [AdminController::class, 'importTelaCsv']);
@@ -135,6 +135,6 @@ Route::prefix('v1')->group(function () {
         Route::post('seed-categories', [AdminController::class, 'seedCategories']);
     });
 
-    // ── Activity Log ─────────────────────────────────────
-    Route::get('activity', [ActivityLogController::class, 'index']);
+    // ── Activity Log (authenticated users only) ──────────
+    Route::get('activity', [ActivityLogController::class, 'index'])->middleware('auth:sanctum');
 });
