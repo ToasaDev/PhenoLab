@@ -9,12 +9,8 @@ const apiClient = axios.create({
     withCredentials: true,
 });
 
-// CSRF token interceptor
+// Let Sanctum / Axios use the XSRF-TOKEN cookie instead of a stale meta token.
 apiClient.interceptors.request.use(config => {
-    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    if (token) {
-        config.headers['X-CSRF-TOKEN'] = token;
-    }
     return config;
 });
 

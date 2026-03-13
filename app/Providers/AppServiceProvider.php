@@ -8,7 +8,9 @@ use App\Models\Site;
 use App\Observers\ObservationObserver;
 use App\Observers\PlantObserver;
 use App\Observers\SiteObserver;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -29,6 +31,14 @@ class AppServiceProvider extends ServiceProvider
         Observation::observe(ObservationObserver::class);
         Plant::observe(PlantObserver::class);
         Site::observe(SiteObserver::class);
+
+        // ── Rate Limiters ─────────────────────────────────────
+        RateLimiter::for('login', fn ($request) => Limit::perMinute(5)->by($request->ip()));
+
+        RateLimiter::for('api', fn ($request) => $request->user()
+            ? Limit::perMinute(120)->by($request->user()->id)
+            : Limit::perMinute(30)->by($request->ip())
+        );
 
         // ── Access Control Gates ─────────────────────────────
         Gate::define('staff', fn ($user) => $user->is_staff || $user->is_superuser);

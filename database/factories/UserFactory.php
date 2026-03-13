@@ -47,9 +47,7 @@ class UserFactory extends Factory
      */
     public function staff(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'is_staff' => true,
-        ]);
+        return $this->afterCreating(fn ($user) => $user->forceFill(['is_staff' => true])->save());
     }
 
     /**
@@ -57,8 +55,6 @@ class UserFactory extends Factory
      */
     public function superuser(): static
     {
-        return $this->state(fn (array $attributes) => [
-            'is_superuser' => true,
-        ]);
+        return $this->afterCreating(fn ($user) => $user->forceFill(['is_superuser' => true])->save());
     }
 }

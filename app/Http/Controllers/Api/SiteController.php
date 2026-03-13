@@ -7,6 +7,7 @@ use App\Models\Observation;
 use App\Models\Plant;
 use App\Models\Site;
 use App\Models\SitePlanLayer;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,12 +15,39 @@ use Illuminate\Support\Facades\DB;
 
 class SiteController extends Controller
 {
+    use Concerns\SanitizesOrdering;
+    private function canManageSite(Site $site): bool
+    {
+        $user = Auth::user();
+
+        return $user !== null && ($user->is_staff || $site->owner_id === $user->id);
+    }
+
+    private function visibleSitesQuery(): Builder
+    {
+        $query = Site::query();
+        $user = Auth::user();
+
+        if ($user?->is_staff) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $visible) use ($user) {
+            $visible->where('is_private', false);
+
+            if ($user !== null) {
+                $visible->orWhere('owner_id', $user->id);
+            }
+        });
+    }
+
     /**
      * Paginated list of sites with filters and annotations.
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Site::with('owner:id,name,email')
+        $query = $this->visibleSitesQuery()
+            ->with('owner:id,name')
             ->withCount('plants');
 
         // Count observations via plants relationship
@@ -30,7 +58,8 @@ class SiteController extends Controller
         }]);
 
         // Actually we need a subquery for observations_count
-        $query = Site::with('owner:id,name,email')
+        $query = $this->visibleSitesQuery()
+            ->with('owner:id,name')
             ->withCount('plants')
             ->addSelect([
                 'observations_count' => Observation::selectRaw('count(*)')
@@ -47,6 +76,7 @@ class SiteController extends Controller
         }
 
         if ($search = $request->query('search')) {
+            $search = $this->escapeLike($search);
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%")
@@ -55,9 +85,11 @@ class SiteController extends Controller
             });
         }
 
-        $orderBy = $request->query('ordering', 'name');
-        $direction = str_starts_with($orderBy, '-') ? 'desc' : 'asc';
-        $column = ltrim($orderBy, '-');
+        [$column, $direction] = $this->parseOrdering(
+            $request->query('ordering', 'name'),
+            ['name', 'created_at', 'environment', 'altitude', 'id'],
+            'name'
+        );
         $query->orderBy($column, $direction);
 
         $perPage = min((int) $request->query('per_page', 20), 100);
@@ -70,7 +102,8 @@ class SiteController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $site = Site::with('owner:id,name,email', 'layers')
+        $site = $this->visibleSitesQuery()
+            ->with('owner:id,name', 'layers')
             ->withCount('plants')
             ->addSelect([
                 'observations_count' => Observation::selectRaw('count(*)')
@@ -109,7 +142,7 @@ class SiteController extends Controller
 
         $site = Site::create($data);
 
-        return response()->json($site->load('owner:id,name,email'), 201);
+        return response()->json($site->load('owner:id,name'), 201);
     }
 
     /**
@@ -143,7 +176,7 @@ class SiteController extends Controller
 
         $site->update($data);
 
-        return response()->json($site->load('owner:id,name,email'));
+        return response()->json($site->load('owner:id,name'));
     }
 
     /**
@@ -167,7 +200,8 @@ class SiteController extends Controller
      */
     public function geojson(): JsonResponse
     {
-        $sites = Site::select('id', 'name', 'latitude', 'longitude', 'environment', 'altitude', 'is_private', 'owner_id')
+        $sites = $this->visibleSitesQuery()
+            ->select('id', 'name', 'latitude', 'longitude', 'environment', 'altitude', 'is_private', 'owner_id')
             ->withCount('plants')
             ->get();
 
@@ -210,7 +244,8 @@ class SiteController extends Controller
         $lon = $request->query('lon');
         $radius = $request->query('radius_km', 10);
 
-        $sites = Site::nearby($lat, $lon, $radius)
+        $sites = $this->visibleSitesQuery()
+            ->nearby($lat, $lon, $radius)
             ->withCount('plants')
             ->get();
 
@@ -235,7 +270,8 @@ class SiteController extends Controller
      */
     public function plants(int $id, Request $request): JsonResponse
     {
-        $site = Site::findOrFail($id);
+        $site = $this->visibleSitesQuery()->findOrFail($id);
+        $user = Auth::user();
 
         $query = Plant::where('site_id', $site->id)
             ->with('taxon:id,binomial_name,common_name_fr,genus,species,family', 'category:id,name,category_type', 'position:id,label,site_id')
@@ -247,7 +283,18 @@ class SiteController extends Controller
                     ->limit(1),
             ]);
 
+        if (! $user?->is_staff) {
+            $query->where(function ($visible) use ($user) {
+                $visible->where('is_private', false);
+
+                if ($user !== null) {
+                    $visible->orWhere('owner_id', $user->id);
+                }
+            });
+        }
+
         if ($search = $request->query('search')) {
+            $search = $this->escapeLike($search);
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%")
@@ -284,32 +331,80 @@ class SiteController extends Controller
      */
     public function statistics(int $id): JsonResponse
     {
-        $site = Site::findOrFail($id);
+        $site = $this->visibleSitesQuery()->findOrFail($id);
+        $user = Auth::user();
 
-        $plantsByStatus = Plant::where('site_id', $id)
+        $visiblePlants = Plant::where('site_id', $id);
+
+        if (! $user?->is_staff) {
+            $visiblePlants->where(function ($visible) use ($user) {
+                $visible->where('is_private', false);
+
+                if ($user !== null) {
+                    $visible->orWhere('owner_id', $user->id);
+                }
+            });
+        }
+
+        $visibleObservations = Observation::whereHas('plant', function ($query) use ($id, $user) {
+            $query->where('site_id', $id);
+
+            if (! $user?->is_staff) {
+                $query->where(function ($visible) use ($user) {
+                    $visible->where('is_private', false);
+
+                    if ($user !== null) {
+                        $visible->orWhere('owner_id', $user->id);
+                    }
+                });
+            }
+        });
+
+        if (! $user?->is_staff) {
+            $visibleObservations->where(function ($visible) use ($user) {
+                $visible->where('is_public', true);
+
+                if ($user !== null) {
+                    $visible->orWhere('observer_id', $user->id);
+                }
+            });
+        }
+
+        $plantsByStatus = (clone $visiblePlants)
             ->selectRaw('status, count(*) as count')
             ->groupBy('status')
             ->pluck('count', 'status');
 
-        $plantsByHealth = Plant::where('site_id', $id)
+        $plantsByHealth = (clone $visiblePlants)
             ->selectRaw('health_status, count(*) as count')
             ->groupBy('health_status')
             ->pluck('count', 'health_status');
 
-        $plantsByCategory = Plant::where('site_id', $id)
+        $plantsByCategory = (clone $visiblePlants)
             ->join('categories', 'plants.category_id', '=', 'categories.id')
             ->selectRaw('categories.name as category_name, count(*) as count')
             ->groupBy('categories.name')
             ->pluck('count', 'category_name');
 
-        $observationsCount = Observation::whereHas('plant', fn ($q) => $q->where('site_id', $id))->count();
+        $observationsCount = (clone $visibleObservations)->count();
         $photosCount = DB::table('plant_photos')
             ->join('plants', 'plant_photos.plant_id', '=', 'plants.id')
             ->where('plants.site_id', $id)
+            ->when(! $user?->is_staff, function ($query) use ($user) {
+                $query->where(function ($visible) use ($user) {
+                    $visible->where('plant_photos.is_public', true)
+                        ->where('plants.is_private', false);
+
+                    if ($user !== null) {
+                        $visible->orWhere('plant_photos.photographer_id', $user->id)
+                            ->orWhere('plants.owner_id', $user->id);
+                    }
+                });
+            })
             ->count();
 
         return response()->json([
-            'plants_count'       => $site->plants()->count(),
+            'plants_count'       => (clone $visiblePlants)->count(),
             'plants_by_status'   => $plantsByStatus,
             'plants_by_health'   => $plantsByHealth,
             'plants_by_category' => $plantsByCategory,
@@ -343,7 +438,7 @@ class SiteController extends Controller
      */
     public function listLayers(int $id): JsonResponse
     {
-        $site = Site::findOrFail($id);
+        $site = $this->visibleSitesQuery()->findOrFail($id);
 
         return response()->json($site->layers()->orderByDesc('start_date')->get());
     }
@@ -354,6 +449,10 @@ class SiteController extends Controller
     public function createLayer(Request $request, int $id): JsonResponse
     {
         $site = Site::findOrFail($id);
+
+        if (! $this->canManageSite($site)) {
+            return response()->json(['detail' => 'Non autorise.'], 403);
+        }
 
         $data = $request->validate([
             'name'            => ['required', 'string', 'max:100'],
@@ -376,7 +475,12 @@ class SiteController extends Controller
      */
     public function updateLayer(Request $request, int $id, int $layerId): JsonResponse
     {
-        Site::findOrFail($id);
+        $site = Site::findOrFail($id);
+
+        if (! $this->canManageSite($site)) {
+            return response()->json(['detail' => 'Non autorise.'], 403);
+        }
+
         $layer = SitePlanLayer::where('site_id', $id)->findOrFail($layerId);
 
         $data = $request->validate([
@@ -398,7 +502,12 @@ class SiteController extends Controller
      */
     public function deleteLayer(int $id, int $layerId): JsonResponse
     {
-        Site::findOrFail($id);
+        $site = Site::findOrFail($id);
+
+        if (! $this->canManageSite($site)) {
+            return response()->json(['detail' => 'Non autorise.'], 403);
+        }
+
         $layer = SitePlanLayer::where('site_id', $id)->findOrFail($layerId);
 
         $layer->delete();

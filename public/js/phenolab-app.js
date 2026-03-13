@@ -1532,9 +1532,15 @@ createApp({
         highlightSearchText(text, query) {
             if (!text || !query) return text;
 
+            const escapedText = String(text)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
             const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const regex = new RegExp(`(${escapedQuery})`, 'gi');
-            return text.replace(regex, '<mark class="bg-warning">$1</mark>');
+            return escapedText.replace(regex, '<mark class="bg-warning">$1</mark>');
         },
 
         // Get entity label for display
@@ -2853,6 +2859,7 @@ createApp({
         
         async logout() {
             try {
+                await axios.get('/sanctum/csrf-cookie');
                 const response = await axios.post('/api/v1/auth/logout');
                 
                 if (response.data.success) {

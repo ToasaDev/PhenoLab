@@ -38,6 +38,7 @@ class TelaObservationController extends Controller
         }
 
         if ($search = $request->query('search')) {
+            $search = $this->escapeLike($search);
             $query->where(function ($q) use ($search) {
                 $q->where('binomial_name', 'like', "%{$search}%")
                   ->orWhere('genus', 'like', "%{$search}%")

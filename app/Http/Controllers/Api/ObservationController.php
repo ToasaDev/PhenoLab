@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Observation;
+use App\Models\Plant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,12 +13,38 @@ use Illuminate\Support\Facades\DB;
 
 class ObservationController extends Controller
 {
+    use Concerns\SanitizesOrdering;
+    private function visibleObservationsQuery(): Builder
+    {
+        $query = Observation::query();
+        $user = Auth::user();
+
+        if ($user?->is_staff) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $visible) use ($user) {
+            $visible->where(function (Builder $public) {
+                $public->where('is_public', true)
+                    ->whereHas('plant', function (Builder $plant) {
+                        $plant->where('is_private', false)
+                            ->whereHas('site', fn (Builder $site) => $site->where('is_private', false));
+                    });
+            });
+
+            if ($user !== null) {
+                $visible->orWhere('observer_id', $user->id)
+                    ->orWhereHas('plant', fn (Builder $plant) => $plant->where('owner_id', $user->id));
+            }
+        });
+    }
+
     /**
      * Paginated list of observations with extensive filtering.
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Observation::with(
+        $query = $this->visibleObservationsQuery()->with(
             'plant:id,name,taxon_id,category_id,site_id',
             'plant.taxon:id,binomial_name,common_name_fr',
             'plant.category:id,name',
@@ -26,6 +54,7 @@ class ObservationController extends Controller
         )->withCount('photos');
 
         if ($search = $request->query('search')) {
+            $search = $this->escapeLike($search);
             $query->where(function ($q) use ($search) {
                 $q->where('notes', 'like', "%{$search}%")
                   ->orWhereHas('plant', function ($pq) use ($search) {
@@ -75,9 +104,11 @@ class ObservationController extends Controller
                 : $query->doesntHave('photos');
         }
 
-        $orderBy = $request->query('ordering', '-observation_date');
-        $direction = str_starts_with($orderBy, '-') ? 'desc' : 'asc';
-        $column = ltrim($orderBy, '-');
+        [$column, $direction] = $this->parseOrdering(
+            $request->query('ordering', '-observation_date'),
+            ['observation_date', 'created_at', 'plant_id', 'intensity', 'confidence_level', 'id'],
+            'observation_date'
+        );
         $query->orderBy($column, $direction);
 
         $perPage = min((int) $request->query('per_page', 20), 100);
@@ -90,15 +121,27 @@ class ObservationController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $observation = Observation::with(
+        $user = Auth::user();
+
+        $observation = $this->visibleObservationsQuery()->with([
             'plant.taxon',
             'plant.category:id,name',
             'plant.site:id,name',
             'phenologicalStage',
-            'observer:id,name,email',
+            'observer:id,name',
             'validatedBy:id,name',
-            'photos'
-        )->findOrFail($id);
+            'photos' => function ($query) use ($user) {
+                $query->when(! $user?->is_staff, function ($visible) use ($user) {
+                    $visible->where(function ($scope) use ($user) {
+                        $scope->where('is_public', true);
+
+                        if ($user !== null) {
+                            $scope->orWhere('photographer_id', $user->id);
+                        }
+                    });
+                });
+            },
+        ])->findOrFail($id);
 
         return response()->json($observation);
     }
@@ -122,6 +165,12 @@ class ObservationController extends Controller
             'is_public'             => ['nullable', 'boolean'],
             'time_of_day'           => ['nullable', 'date_format:H:i'],
         ]);
+
+        $plant = Plant::with('site:id,owner_id')->findOrFail($data['plant_id']);
+
+        if (! Auth::user()?->is_staff && (int) $plant->owner_id !== (int) Auth::id()) {
+            return response()->json(['detail' => 'Non autorise.'], 403);
+        }
 
         $data['observer_id'] = Auth::id();
         $data['confidence_level'] = $data['confidence_level'] ?? 3;
@@ -171,7 +220,6 @@ class ObservationController extends Controller
             'notes'                 => ['nullable', 'string'],
             'confidence_level'      => ['nullable', 'integer', 'between:1,5'],
             'is_public'             => ['nullable', 'boolean'],
-            'is_validated'          => ['nullable', 'boolean'],
             'time_of_day'           => ['nullable', 'date_format:H:i'],
         ]);
 
@@ -233,7 +281,8 @@ class ObservationController extends Controller
             'plant_id' => ['required', 'exists:plants,id'],
         ]);
 
-        $observations = Observation::where('plant_id', $request->query('plant_id'))
+        $observations = $this->visibleObservationsQuery()
+            ->where('plant_id', $request->query('plant_id'))
             ->with('phenologicalStage:id,stage_code,stage_description', 'observer:id,name')
             ->withCount('photos')
             ->orderByDesc('observation_date')
@@ -247,7 +296,7 @@ class ObservationController extends Controller
      */
     public function byStage(): JsonResponse
     {
-        $observations = Observation::with(
+        $observations = $this->visibleObservationsQuery()->with(
             'plant:id,name',
             'phenologicalStage:id,stage_code,stage_description'
         )
@@ -265,7 +314,7 @@ class ObservationController extends Controller
     {
         $yearExpression = $this->yearExpression('observation_date');
 
-        $years = Observation::query()
+        $years = $this->visibleObservationsQuery()
             ->selectRaw("distinct {$yearExpression} as year")
             ->whereNotNull('observation_date')
             ->orderByDesc('year')
@@ -284,7 +333,7 @@ class ObservationController extends Controller
     public function monthlyCounts(Request $request): JsonResponse
     {
         $monthExpression = $this->monthExpression('observation_date');
-        $baseQuery = Observation::query();
+        $baseQuery = $this->visibleObservationsQuery();
 
         if ($year = $request->query('year')) {
             $baseQuery->whereYear('observation_date', $year);

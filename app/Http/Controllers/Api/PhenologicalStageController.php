@@ -25,6 +25,7 @@ class PhenologicalStageController extends Controller
         }
 
         if ($search = $request->query('search')) {
+            $search = $this->escapeLike($search);
             $query->where(function ($q) use ($search) {
                 $q->where('stage_code', 'like', "%{$search}%")
                   ->orWhere('stage_description', 'like', "%{$search}%")

@@ -35,26 +35,12 @@ class ApiClient {
             }
         );
 
-        // Add request interceptor for CSRF token (Laravel uses meta tag)
+        // Let Sanctum / Axios use the XSRF-TOKEN cookie instead of a stale meta token.
         this.client.interceptors.request.use(config => {
-            const csrfToken = this._getCsrfToken();
-            if (csrfToken) {
-                config.headers['X-CSRF-TOKEN'] = csrfToken;
-            }
             config.headers['X-Requested-With'] = 'XMLHttpRequest';
             config.withCredentials = true;
             return config;
         });
-    }
-
-    /**
-     * Get CSRF token from meta tag
-     * @returns {string|null}
-     * @private
-     */
-    _getCsrfToken() {
-        const meta = document.querySelector('meta[name="csrf-token"]');
-        return meta ? meta.getAttribute('content') : null;
     }
 
     /**

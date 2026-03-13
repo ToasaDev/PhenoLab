@@ -5,7 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Observation;
 use App\Models\Plant;
+use App\Models\PlantPosition;
 use App\Models\PlantPhoto;
+use App\Models\Site;
+use App\Models\SitePlanLayer;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,12 +17,126 @@ use Illuminate\Support\Facades\DB;
 
 class PlantController extends Controller
 {
+    use Concerns\SanitizesOrdering;
+
+    private function canManagePlant(Plant $plant): bool
+    {
+        $user = Auth::user();
+
+        return $user !== null && ($user->is_staff || $plant->owner_id === $user->id);
+    }
+
+    private function visiblePlantsQuery(): Builder
+    {
+        $query = Plant::query();
+        $user = Auth::user();
+
+        if ($user?->is_staff) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $visible) use ($user) {
+            $visible->where(function (Builder $public) {
+                $public->where('is_private', false)
+                    ->whereHas('site', fn (Builder $site) => $site->where('is_private', false));
+            });
+
+            if ($user !== null) {
+                $visible->orWhere('owner_id', $user->id);
+            }
+        });
+    }
+
+    private function visibleObservationsForPlant(Plant $plant): Builder|\Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        $query = $plant->observations()->with('phenologicalStage:id,stage_code,stage_description,main_event_code', 'observer:id,name');
+        $user = Auth::user();
+
+        if ($user?->is_staff || $plant->owner_id === $user?->id) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $visible) use ($user) {
+            $visible->where('is_public', true);
+
+            if ($user !== null) {
+                $visible->orWhere('observer_id', $user->id);
+            }
+        });
+    }
+
+    private function visiblePhotosForPlant(Plant $plant): Builder|\Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        $query = $plant->photos()->with('photographer:id,name');
+        $user = Auth::user();
+
+        if ($user?->is_staff || $plant->owner_id === $user?->id) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $visible) use ($user) {
+            $visible->where('is_public', true);
+
+            if ($user !== null) {
+                $visible->orWhere('photographer_id', $user->id);
+            }
+        });
+    }
+
+    private function authorizePlantRelations(array $data, ?Plant $existingPlant = null): ?JsonResponse
+    {
+        $user = Auth::user();
+        $targetSiteId = $data['site_id'] ?? $existingPlant?->site_id;
+
+        if ($targetSiteId === null) {
+            return null;
+        }
+
+        $site = Site::findOrFail($targetSiteId);
+
+        if (! $user?->is_staff && (int) $site->owner_id !== (int) $user?->id) {
+            return response()->json(['detail' => 'Non autorise.'], 403);
+        }
+
+        if (array_key_exists('position_id', $data) && $data['position_id'] !== null) {
+            $position = PlantPosition::findOrFail($data['position_id']);
+
+            if ((int) $position->site_id !== (int) $targetSiteId) {
+                return response()->json([
+                    'errors' => ['position_id' => ['La position doit appartenir au meme site que la plante.']],
+                ], 422);
+            }
+        }
+
+        if (array_key_exists('layer_id', $data) && $data['layer_id'] !== null) {
+            $layer = SitePlanLayer::findOrFail($data['layer_id']);
+
+            if ((int) $layer->site_id !== (int) $targetSiteId) {
+                return response()->json([
+                    'errors' => ['layer_id' => ['Le calque doit appartenir au meme site que la plante.']],
+                ], 422);
+            }
+        }
+
+        if (array_key_exists('replaces_id', $data) && $data['replaces_id'] !== null) {
+            $replacedPlant = Plant::findOrFail($data['replaces_id']);
+
+            if ((int) $replacedPlant->site_id !== (int) $targetSiteId) {
+                return response()->json([
+                    'errors' => ['replaces_id' => ['La plante remplacee doit appartenir au meme site.']],
+                ], 422);
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Paginated list of plants with extensive filtering.
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Plant::with(
+        $query = $this->visiblePlantsQuery()->with(
             'taxon:id,binomial_name,common_name_fr,genus,species,family',
             'category:id,name,category_type',
             'site:id,name',
@@ -34,6 +152,7 @@ class PlantController extends Controller
 
         // --- Text search ---
         if ($search = $request->query('search')) {
+            $search = $this->escapeLike($search);
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%")
@@ -107,9 +226,11 @@ class PlantController extends Controller
         }
 
         // --- Ordering ---
-        $orderBy = $request->query('ordering', 'name');
-        $direction = str_starts_with($orderBy, '-') ? 'desc' : 'asc';
-        $column = ltrim($orderBy, '-');
+        [$column, $direction] = $this->parseOrdering(
+            $request->query('ordering', 'name'),
+            ['name', 'created_at', 'planting_date', 'health_status', 'status', 'id'],
+            'name'
+        );
         $query->orderBy($column, $direction);
 
         $perPage = min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 1000);
@@ -137,7 +258,7 @@ class PlantController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $plant = Plant::with(
+        $plant = $this->visiblePlantsQuery()->with(
             'taxon',
             'category:id,name,category_type',
             'site:id,name,latitude,longitude',
@@ -150,7 +271,7 @@ class PlantController extends Controller
         $data = $plant->toArray();
 
         // Add last observation
-        $lastObs = $plant->observations()
+        $lastObs = $this->visibleObservationsForPlant($plant)
             ->with('phenologicalStage:id,stage_code,stage_description')
             ->orderByDesc('observation_date')
             ->first();
@@ -163,12 +284,12 @@ class PlantController extends Controller
         ];
 
         // Succession info (with taxon for display)
-        $data['replaced_by'] = Plant::where('replaces_id', $plant->id)
+        $data['replaced_by'] = $this->visiblePlantsQuery()->where('replaces_id', $plant->id)
             ->with('taxon:id,binomial_name,common_name_fr')
             ->select('id', 'name', 'status', 'taxon_id', 'planting_date', 'death_date', 'health_status')
             ->first();
         $data['replaces_plant'] = $plant->replaces_id
-            ? Plant::with('taxon:id,binomial_name,common_name_fr')
+            ? $this->visiblePlantsQuery()->with('taxon:id,binomial_name,common_name_fr')
                 ->select('id', 'name', 'status', 'taxon_id', 'planting_date', 'death_date', 'death_cause', 'health_status')
                 ->find($plant->replaces_id)
             : null;
@@ -211,6 +332,10 @@ class PlantController extends Controller
             'care_notes'           => ['nullable', 'string'],
             'replaces_id'          => ['nullable', 'exists:plants,id'],
         ]);
+
+        if ($response = $this->authorizePlantRelations($data)) {
+            return $response;
+        }
 
         $data['owner_id'] = Auth::id();
         $data['health_status'] = $data['health_status'] ?? 'good';
@@ -265,6 +390,10 @@ class PlantController extends Controller
             'care_notes'           => ['nullable', 'string'],
         ]);
 
+        if ($response = $this->authorizePlantRelations($data, $plant)) {
+            return $response;
+        }
+
         $plant->update($data);
 
         return response()->json($plant->load('taxon:id,binomial_name,common_name_fr', 'category:id,name', 'site:id,name'));
@@ -305,7 +434,8 @@ class PlantController extends Controller
      */
     public function byCategory(): JsonResponse
     {
-        $plants = Plant::with('taxon:id,binomial_name,common_name_fr', 'category:id,name,category_type')
+        $plants = $this->visiblePlantsQuery()
+            ->with('taxon:id,binomial_name,common_name_fr', 'category:id,name,category_type')
             ->withCount('observations')
             ->orderBy('name')
             ->get()
@@ -319,7 +449,8 @@ class PlantController extends Controller
      */
     public function bySite(): JsonResponse
     {
-        $plants = Plant::with('taxon:id,binomial_name,common_name_fr', 'site:id,name')
+        $plants = $this->visiblePlantsQuery()
+            ->with('taxon:id,binomial_name,common_name_fr', 'site:id,name')
             ->withCount('observations')
             ->orderBy('name')
             ->get()
@@ -333,10 +464,9 @@ class PlantController extends Controller
      */
     public function observations(int $id): JsonResponse
     {
-        $plant = Plant::findOrFail($id);
+        $plant = $this->visiblePlantsQuery()->findOrFail($id);
 
-        $observations = $plant->observations()
-            ->with('phenologicalStage:id,stage_code,stage_description,main_event_code', 'observer:id,name')
+        $observations = $this->visibleObservationsForPlant($plant)
             ->withCount('photos')
             ->orderByDesc('observation_date')
             ->get();
@@ -349,10 +479,9 @@ class PlantController extends Controller
      */
     public function photos(int $id): JsonResponse
     {
-        $plant = Plant::findOrFail($id);
+        $plant = $this->visiblePlantsQuery()->findOrFail($id);
 
-        $photos = $plant->photos()
-            ->with('photographer:id,name')
+        $photos = $this->visiblePhotosForPlant($plant)
             ->orderBy('display_order')
             ->orderByDesc('created_at')
             ->get();
@@ -365,9 +494,10 @@ class PlantController extends Controller
      */
     public function statistics(int $id): JsonResponse
     {
-        $plant = Plant::findOrFail($id);
+        $plant = $this->visiblePlantsQuery()->findOrFail($id);
+        $visibleObservations = $this->visibleObservationsForPlant($plant);
 
-        $observationsByStage = $plant->observations()
+        $observationsByStage = (clone $visibleObservations)
             ->join('phenological_stages', 'observations.phenological_stage_id', '=', 'phenological_stages.id')
             ->selectRaw('phenological_stages.stage_code, phenological_stages.stage_description, count(*) as count')
             ->groupBy('phenological_stages.stage_code', 'phenological_stages.stage_description')
@@ -379,19 +509,19 @@ class PlantController extends Controller
             'pgsql'             => 'EXTRACT(YEAR FROM observation_date)::integer',
             default             => 'YEAR(observation_date)',
         };
-        $observationsByYear = $plant->observations()
+        $observationsByYear = (clone $visibleObservations)
             ->selectRaw("{$yearExpr} as year, count(*) as count")
             ->groupByRaw($yearExpr)
             ->orderByRaw($yearExpr)
             ->get();
 
         return response()->json([
-            'observations_count'    => $plant->observations()->count(),
-            'photos_count'          => $plant->photos()->count(),
+            'observations_count'    => (clone $visibleObservations)->count(),
+            'photos_count'          => $this->visiblePhotosForPlant($plant)->count(),
             'observations_by_stage' => $observationsByStage,
             'observations_by_year'  => $observationsByYear,
-            'first_observation'     => $plant->observations()->orderBy('observation_date')->value('observation_date'),
-            'last_observation'      => $plant->observations()->orderByDesc('observation_date')->value('observation_date'),
+            'first_observation'     => (clone $visibleObservations)->orderBy('observation_date')->value('observation_date'),
+            'last_observation'      => (clone $visibleObservations)->orderByDesc('observation_date')->value('observation_date'),
         ]);
     }
 
@@ -405,7 +535,8 @@ class PlantController extends Controller
             'layer_id' => ['nullable', 'exists:site_plan_layers,id'],
         ]);
 
-        $query = Plant::where('site_id', $request->query('site_id'))
+        $query = $this->visiblePlantsQuery()
+            ->where('site_id', $request->query('site_id'))
             ->with('taxon:id,binomial_name,common_name_fr', 'category:id,name')
             ->select('id', 'name', 'latitude', 'longitude', 'taxon_id', 'category_id', 'site_id', 'status', 'health_status', 'map_position_x', 'map_position_y', 'layer_id');
 
@@ -442,7 +573,8 @@ class PlantController extends Controller
 
         $haversine = "(6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude))))";
 
-        $plants = Plant::whereNotNull('latitude')
+        $plants = $this->visiblePlantsQuery()
+            ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->selectRaw("*, {$haversine} AS distance_km", [$lat, $lng, $lat])
             ->whereRaw("{$haversine} < ?", [$lat, $lng, $lat, $radiusKm])
@@ -459,6 +591,10 @@ class PlantController extends Controller
     public function updateGpsLocation(Request $request, int $id): JsonResponse
     {
         $plant = Plant::findOrFail($id);
+
+        if (! $this->canManagePlant($plant)) {
+            return response()->json(['detail' => 'Non autorise.'], 403);
+        }
 
         $data = $request->validate([
             'latitude'     => ['required', 'numeric', 'between:-90,90'],
@@ -478,12 +614,25 @@ class PlantController extends Controller
      */
     public function exportWithObservations(Request $request): JsonResponse
     {
-        $query = Plant::with([
+        $user = Auth::user();
+
+        $query = $this->visiblePlantsQuery()->with([
             'taxon:id,binomial_name,common_name_fr,family,genus,species',
             'category:id,name',
             'site:id,name',
-            'observations' => fn ($q) => $q->with('phenologicalStage:id,stage_code,stage_description')
-                ->orderByDesc('observation_date'),
+            'observations' => function ($q) use ($user) {
+                $q->with('phenologicalStage:id,stage_code,stage_description')
+                    ->when(! $user?->is_staff, function ($visible) use ($user) {
+                        $visible->where(function ($scope) use ($user) {
+                            $scope->where('is_public', true);
+
+                            if ($user !== null) {
+                                $scope->orWhere('observer_id', $user->id);
+                            }
+                        });
+                    })
+                    ->orderByDesc('observation_date');
+            },
         ])->withCount('observations', 'photos');
 
         if ($siteId = $request->query('site_id')) {
@@ -535,7 +684,7 @@ class PlantController extends Controller
             'death_notes'   => $data['death_notes'] ?? null,
         ]);
 
-        $plant->load('taxon:id,binomial_name,common_name_fr', 'category:id,name', 'site:id,name', 'owner:id,name,email');
+        $plant->load('taxon:id,binomial_name,common_name_fr', 'category:id,name', 'site:id,name', 'owner:id,name');
 
         return response()->json([
             'message' => "Plante \"{$plant->name}\" marquée comme morte",
@@ -676,7 +825,51 @@ class PlantController extends Controller
             'positions.*.map_position_y' => ['required', 'numeric', 'between:0,100'],
         ]);
 
+        $user = Auth::user();
+        $plantIds = collect($data['positions'])->pluck('plant_id')->unique()->values();
+        $plants = Plant::whereIn('id', $plantIds)->get(['id', 'owner_id', 'site_id'])->keyBy('id');
+
+        if ($plants->count() !== $plantIds->count()) {
+            return response()->json(['detail' => 'Plante introuvable.'], 404);
+        }
+
+        if (! $user?->is_staff) {
+            $hasUnauthorizedPlant = $plants->contains(
+                fn (Plant $plant) => (int) $plant->owner_id !== (int) $user?->id
+            );
+
+            if ($hasUnauthorizedPlant) {
+                return response()->json(['detail' => 'Non autorise.'], 403);
+            }
+        }
+
+        if (isset($data['site_id'])) {
+            $siteMismatch = $plants->contains(
+                fn (Plant $plant) => (int) $plant->site_id !== (int) $data['site_id']
+            );
+
+            if ($siteMismatch) {
+                return response()->json([
+                    'errors' => ['site_id' => ['Toutes les plantes doivent appartenir au site fourni.']],
+                ], 422);
+            }
+        }
+
         $globalLayerId = $data['layer_id'] ?? null;
+
+        if ($globalLayerId !== null) {
+            $layer = SitePlanLayer::findOrFail($globalLayerId);
+            $layerMismatch = $plants->contains(
+                fn (Plant $plant) => (int) $plant->site_id !== (int) $layer->site_id
+            );
+
+            if ($layerMismatch) {
+                return response()->json([
+                    'errors' => ['layer_id' => ['Le calque doit appartenir au meme site que chaque plante.']],
+                ], 422);
+            }
+        }
+
         $count = 0;
 
         DB::transaction(function () use ($data, $globalLayerId, &$count) {

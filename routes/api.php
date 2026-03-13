@@ -19,12 +19,12 @@ use App\Http\Controllers\Api\TaxonController;
 use App\Http\Controllers\Api\TelaObservationController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('v1')->group(function () {
+Route::prefix('v1')->middleware('throttle:api')->group(function () {
 
     // ── Auth ──────────────────────────────────────────────
     Route::prefix('auth')->group(function () {
         Route::get('csrf-token', [AuthController::class, 'csrfToken']);
-        Route::post('login', [AuthController::class, 'login']);
+        Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login');
         Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
         Route::get('status', [AuthController::class, 'status']);
     });
@@ -115,6 +115,7 @@ Route::prefix('v1')->group(function () {
     // ── Plant Photos ─────────────────────────────────────
     Route::get('plant-photos/my-photos', [PlantPhotoController::class, 'myPhotos'])->middleware('auth:sanctum');
     Route::get('plant-photos/by-plant', [PlantPhotoController::class, 'byPlant']);
+    Route::get('plant-photos/{photo}/image', [PlantPhotoController::class, 'image']);
     Route::get('plant-photos/main-photos', [PlantPhotoController::class, 'mainPhotos']);
     Route::post('plant-photos/{photo}/set-as-main', [PlantPhotoController::class, 'setAsMain'])->middleware('auth:sanctum');
     Route::apiResource('plant-photos', PlantPhotoController::class)->only(['index', 'show']);
@@ -123,6 +124,7 @@ Route::prefix('v1')->group(function () {
     // ── Observation Photos ───────────────────────────────
     Route::get('observation-photos/my-photos', [ObservationPhotoController::class, 'myPhotos'])->middleware('auth:sanctum');
     Route::get('observation-photos/by-observation', [ObservationPhotoController::class, 'byObservation']);
+    Route::get('observation-photos/{photo}/image', [ObservationPhotoController::class, 'image']);
     Route::apiResource('observation-photos', ObservationPhotoController::class)->only(['index', 'show']);
     Route::apiResource('observation-photos', ObservationPhotoController::class)->only(['store', 'update', 'destroy'])->middleware('auth:sanctum');
 

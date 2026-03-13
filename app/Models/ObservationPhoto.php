@@ -47,7 +47,7 @@ class ObservationPhoto extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        return $this->image ? '/storage/' . $this->image : null;
+        return $this->image ? url("/api/v1/observation-photos/{$this->id}/image") : null;
     }
 
     // ── Relationships ───────────────────────────────────────────────

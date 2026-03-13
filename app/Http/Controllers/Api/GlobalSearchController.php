@@ -22,7 +22,7 @@ class GlobalSearchController extends Controller
             'q' => ['required', 'string', 'min:1'],
         ]);
 
-        $q = $request->query('q');
+        $q = $this->escapeLike($request->query('q'));
         $type = $request->query('type', 'all');
         $limit = min((int) $request->query('limit', 10), 50);
         $mine = $request->boolean('mine');

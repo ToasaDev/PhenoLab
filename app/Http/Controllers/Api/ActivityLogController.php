@@ -15,7 +15,7 @@ class ActivityLogController extends Controller
     public function index(Request $request): JsonResponse
     {
         $logs = ActivityLog::where('is_public', true)
-            ->with('actor:id,name,email')
+            ->with('actor:id,name')
             ->orderByDesc('created_at')
             ->paginate(min((int) $request->query('per_page', 20), 100));
 

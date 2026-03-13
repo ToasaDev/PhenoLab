@@ -44,7 +44,7 @@ class PlantPhoto extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        return $this->image ? '/storage/' . $this->image : null;
+        return $this->image ? url("/api/v1/plant-photos/{$this->id}/image") : null;
     }
 
     /**
@@ -68,14 +68,21 @@ class PlantPhoto extends Model
             // Extract image dimensions and file size for new uploads
             if ($photo->isDirty('image') && $photo->image) {
                 try {
-                    $path = Storage::disk('public')->path($photo->image);
-                    if (file_exists($path)) {
-                        $imageInfo = getimagesize($path);
-                        if ($imageInfo) {
-                            $photo->width = $imageInfo[0];
-                            $photo->height = $imageInfo[1];
+                    foreach (['local', 'public'] as $disk) {
+                        if (! Storage::disk($disk)->exists($photo->image)) {
+                            continue;
                         }
-                        $photo->file_size = filesize($path);
+
+                        $path = Storage::disk($disk)->path($photo->image);
+                        if (file_exists($path)) {
+                            $imageInfo = getimagesize($path);
+                            if ($imageInfo) {
+                                $photo->width = $imageInfo[0];
+                                $photo->height = $imageInfo[1];
+                            }
+                            $photo->file_size = filesize($path);
+                            break;
+                        }
                     }
                 } catch (\Throwable) {
                     // Metadata extraction is optional; do not fail the save

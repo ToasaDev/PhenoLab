@@ -4,18 +4,51 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\PlantPosition;
+use App\Models\Site;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class PlantPositionController extends Controller
 {
+    private function canManagePosition(PlantPosition $position): bool
+    {
+        $user = Auth::user();
+        $position->loadMissing('site:id,owner_id');
+
+        return $user !== null && (
+            $user->is_staff
+            || $position->owner_id === $user->id
+            || $position->site?->owner_id === $user->id
+        );
+    }
+
+    private function visiblePositionsQuery(): Builder
+    {
+        $query = PlantPosition::query();
+        $user = Auth::user();
+
+        if ($user?->is_staff) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $visible) use ($user) {
+            $visible->whereHas('site', fn (Builder $site) => $site->where('is_private', false));
+
+            if ($user !== null) {
+                $visible->orWhere('owner_id', $user->id)
+                    ->orWhereHas('site', fn (Builder $site) => $site->where('owner_id', $user->id));
+            }
+        });
+    }
+
     /**
      * List plant positions with optional filters.
      */
     public function index(Request $request): JsonResponse
     {
-        $query = PlantPosition::with('site:id,name', 'owner:id,name');
+        $query = $this->visiblePositionsQuery()->with('site:id,name', 'owner:id,name');
 
         if ($site = $request->query('site')) {
             $query->where('site_id', $site);
@@ -30,6 +63,7 @@ class PlantPositionController extends Controller
         }
 
         if ($search = $request->query('search')) {
+            $search = $this->escapeLike($search);
             $query->where(function ($q) use ($search) {
                 $q->where('label', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%");
@@ -48,7 +82,7 @@ class PlantPositionController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $position = PlantPosition::with([
+        $position = $this->visiblePositionsQuery()->with([
             'site:id,name',
             'owner:id,name',
             'plants' => fn ($q) => $q->orderBy('planting_date')->with('taxon:id,binomial_name,common_name_fr'),
@@ -91,6 +125,12 @@ class PlantPositionController extends Controller
             ], 422);
         }
 
+        $site = Site::findOrFail($data['site_id']);
+
+        if (! Auth::user()?->is_staff && (int) $site->owner_id !== (int) Auth::id()) {
+            return response()->json(['detail' => 'Non autorise.'], 403);
+        }
+
         $data['owner_id'] = Auth::id();
 
         $position = PlantPosition::create($data);
@@ -103,7 +143,11 @@ class PlantPositionController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        $position = PlantPosition::findOrFail($id);
+        $position = $this->visiblePositionsQuery()->findOrFail($id);
+
+        if (! $this->canManagePosition($position)) {
+            return response()->json(['detail' => 'Non autorise.'], 403);
+        }
 
         $data = $request->validate([
             'label'             => ['sometimes', 'required', 'string', 'max:100'],
@@ -143,7 +187,12 @@ class PlantPositionController extends Controller
      */
     public function destroy(int $id): JsonResponse
     {
-        $position = PlantPosition::findOrFail($id);
+        $position = $this->visiblePositionsQuery()->findOrFail($id);
+
+        if (! $this->canManagePosition($position)) {
+            return response()->json(['detail' => 'Non autorise.'], 403);
+        }
+
         $position->delete();
 
         return response()->json(null, 204);
@@ -154,7 +203,7 @@ class PlantPositionController extends Controller
      */
     public function succession(int $id): JsonResponse
     {
-        $position = PlantPosition::findOrFail($id);
+        $position = $this->visiblePositionsQuery()->findOrFail($id);
 
         $plants = $position->plants()
             ->with('taxon:id,binomial_name,common_name_fr')

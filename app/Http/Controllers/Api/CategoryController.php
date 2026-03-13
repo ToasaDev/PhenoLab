@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
+    use Concerns\SanitizesOrdering;
     /**
      * List categories with optional filters.
      */
@@ -21,15 +22,18 @@ class CategoryController extends Controller
         }
 
         if ($search = $request->query('search')) {
+            $search = $this->escapeLike($search);
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
-        $orderBy = $request->query('ordering', 'name');
-        $direction = str_starts_with($orderBy, '-') ? 'desc' : 'asc';
-        $column = ltrim($orderBy, '-');
+        [$column, $direction] = $this->parseOrdering(
+            $request->query('ordering', 'name'),
+            ['name', 'category_type', 'created_at', 'id'],
+            'name'
+        );
         $query->orderBy($column, $direction);
 
         return response()->json($query->get());

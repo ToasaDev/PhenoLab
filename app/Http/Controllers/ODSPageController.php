@@ -24,10 +24,11 @@ class ODSPageController extends Controller
 
         // Free-text search
         if ($searchQuery) {
-            $query->where(function ($q) use ($searchQuery) {
-                $q->where('scientific_name', 'like', "%{$searchQuery}%")
-                  ->orWhere('vernacular_name', 'like', "%{$searchQuery}%")
-                  ->orWhere('station_name', 'like', "%{$searchQuery}%");
+            $escaped = $this->escapeLike($searchQuery);
+            $query->where(function ($q) use ($escaped) {
+                $q->where('scientific_name', 'like', "%{$escaped}%")
+                  ->orWhere('vernacular_name', 'like', "%{$escaped}%")
+                  ->orWhere('station_name', 'like', "%{$escaped}%");
             });
         }
 

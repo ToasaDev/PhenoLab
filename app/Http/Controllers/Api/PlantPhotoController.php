@@ -3,20 +3,85 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Plant;
 use App\Models\PlantPhoto;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class PlantPhotoController extends Controller
 {
+    use Concerns\SanitizesOrdering;
+    private function canManagePhoto(PlantPhoto $photo): bool
+    {
+        $user = Auth::user();
+        $photo->loadMissing('plant.site:id,owner_id,is_private');
+
+        return $user !== null && (
+            $user->is_staff
+            || $photo->photographer_id === $user->id
+            || $photo->plant?->owner_id === $user->id
+        );
+    }
+
+    private function canViewPhoto(PlantPhoto $photo): bool
+    {
+        if ($this->canManagePhoto($photo)) {
+            return true;
+        }
+
+        $photo->loadMissing('plant.site:id,is_private');
+
+        return $photo->is_public
+            && ! $photo->plant?->is_private
+            && ! $photo->plant?->site?->is_private;
+    }
+
+    private function visiblePhotosQuery(): Builder
+    {
+        $query = PlantPhoto::query();
+        $user = Auth::user();
+
+        if ($user?->is_staff) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $visible) use ($user) {
+            $visible->where(function (Builder $public) {
+                $public->where('is_public', true)
+                    ->whereHas('plant', function (Builder $plant) {
+                        $plant->where('is_private', false)
+                            ->whereHas('site', fn (Builder $site) => $site->where('is_private', false));
+                    });
+            });
+
+            if ($user !== null) {
+                $visible->orWhere('photographer_id', $user->id)
+                    ->orWhereHas('plant', fn (Builder $plant) => $plant->where('owner_id', $user->id));
+            }
+        });
+    }
+
+    private function resolveImagePath(string $relativePath): ?string
+    {
+        foreach (['local', 'public'] as $disk) {
+            if (Storage::disk($disk)->exists($relativePath)) {
+                return Storage::disk($disk)->path($relativePath);
+            }
+        }
+
+        return null;
+    }
+
     /**
      * List plant photos with filters.
      */
     public function index(Request $request): JsonResponse
     {
-        $query = PlantPhoto::with('plant:id,name', 'photographer:id,name');
+        $query = $this->visiblePhotosQuery()->with('plant:id,name', 'photographer:id,name');
 
         if ($v = $request->query('plant'))     $query->where('plant_id', $v);
         if ($v = $request->query('photo_type')) $query->where('photo_type', $v);
@@ -30,15 +95,18 @@ class PlantPhotoController extends Controller
         }
 
         if ($search = $request->query('search')) {
+            $search = $this->escapeLike($search);
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
-        $orderBy = $request->query('ordering', 'display_order');
-        $direction = str_starts_with($orderBy, '-') ? 'desc' : 'asc';
-        $column = ltrim($orderBy, '-');
+        [$column, $direction] = $this->parseOrdering(
+            $request->query('ordering', 'display_order'),
+            ['display_order', 'created_at', 'taken_date', 'title', 'id'],
+            'display_order'
+        );
         $query->orderBy($column, $direction);
 
         $perPage = min((int) $request->query('per_page', 20), 100);
@@ -51,9 +119,21 @@ class PlantPhotoController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $photo = PlantPhoto::with('plant:id,name', 'photographer:id,name')->findOrFail($id);
+        $photo = $this->visiblePhotosQuery()->with('plant:id,name', 'photographer:id,name')->findOrFail($id);
 
         return response()->json($photo);
+    }
+
+    public function image(int $id): BinaryFileResponse
+    {
+        $photo = PlantPhoto::findOrFail($id);
+
+        abort_unless($this->canViewPhoto($photo), 404);
+
+        $path = $photo->image ? $this->resolveImagePath($photo->image) : null;
+        abort_unless($path !== null, 404);
+
+        return response()->file($path);
     }
 
     /**
@@ -63,7 +143,7 @@ class PlantPhotoController extends Controller
     {
         $data = $request->validate([
             'plant_id'      => ['required', 'exists:plants,id'],
-            'image'         => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:20480'],
+            'image'         => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
             'title'         => ['nullable', 'string', 'max:255'],
             'description'   => ['nullable', 'string'],
             'photo_type'    => ['nullable', 'string', 'in:general,leaves,flowers,fruits,bark,habitat,detail'],
@@ -77,8 +157,14 @@ class PlantPhotoController extends Controller
             'is_public'     => ['nullable', 'boolean'],
         ]);
 
+        $plant = Plant::with('site:id,owner_id')->findOrFail($data['plant_id']);
+
+        if (! Auth::user()?->is_staff && (int) $plant->owner_id !== (int) Auth::id()) {
+            return response()->json(['detail' => 'Non autorise.'], 403);
+        }
+
         $file = $request->file('image');
-        $path = $file->store("photos/plants/{$data['plant_id']}", 'public');
+        $path = $file->store("photos/plants/{$data['plant_id']}", 'local');
 
         // Extract image dimensions
         $imageInfo = getimagesize($file->getRealPath());
@@ -170,6 +256,7 @@ class PlantPhotoController extends Controller
 
         // Delete file from storage
         if ($photo->image) {
+            Storage::disk('local')->delete($photo->image);
             Storage::disk('public')->delete($photo->image);
         }
 
@@ -212,7 +299,8 @@ class PlantPhotoController extends Controller
             'plant_id' => ['required', 'exists:plants,id'],
         ]);
 
-        $photos = PlantPhoto::where('plant_id', $request->query('plant_id'))
+        $photos = $this->visiblePhotosQuery()
+            ->where('plant_id', $request->query('plant_id'))
             ->with('photographer:id,name')
             ->orderBy('display_order')
             ->orderByDesc('created_at')
@@ -226,7 +314,8 @@ class PlantPhotoController extends Controller
      */
     public function mainPhotos(): JsonResponse
     {
-        $photos = PlantPhoto::where('is_main_photo', true)
+        $photos = $this->visiblePhotosQuery()
+            ->where('is_main_photo', true)
             ->with('plant:id,name', 'photographer:id,name')
             ->orderByDesc('created_at')
             ->get();
@@ -240,6 +329,10 @@ class PlantPhotoController extends Controller
     public function setAsMain(Request $request, int $id): JsonResponse
     {
         $photo = PlantPhoto::findOrFail($id);
+
+        if (! $this->canManagePhoto($photo)) {
+            return response()->json(['detail' => 'Non autorise.'], 403);
+        }
 
         // Unset all main photos for this plant
         PlantPhoto::where('plant_id', $photo->plant_id)

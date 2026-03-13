@@ -9,6 +9,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class UserResource extends Resource
 {
@@ -25,6 +26,36 @@ class UserResource extends Resource
     protected static ?string $pluralModelLabel = 'Utilisateurs';
 
     protected static ?int $navigationSort = 1;
+
+    protected static function isSuperuser(): bool
+    {
+        return (bool) Auth::user()?->is_superuser;
+    }
+
+    public static function canViewAny(): bool
+    {
+        return static::isSuperuser();
+    }
+
+    public static function canCreate(): bool
+    {
+        return static::isSuperuser();
+    }
+
+    public static function canEdit($record): bool
+    {
+        return static::isSuperuser();
+    }
+
+    public static function canDelete($record): bool
+    {
+        return static::isSuperuser();
+    }
+
+    public static function canDeleteAny(): bool
+    {
+        return static::isSuperuser();
+    }
 
     public static function form(Form $form): Form
     {

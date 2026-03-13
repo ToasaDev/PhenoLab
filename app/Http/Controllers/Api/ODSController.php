@@ -18,15 +18,15 @@ class ODSController extends Controller
         $query = ODSObservation::query();
 
         if ($v = $request->query('scientific_name')) {
-            $query->where('scientific_name', 'like', "%{$v}%");
+            $query->where('scientific_name', 'like', '%' . $this->escapeLike($v) . '%');
         }
 
         if ($v = $request->query('vernacular_name')) {
-            $query->where('vernacular_name', 'like', "%{$v}%");
+            $query->where('vernacular_name', 'like', '%' . $this->escapeLike($v) . '%');
         }
 
         if ($v = $request->query('phenological_stage')) {
-            $query->where('phenological_stage', 'like', "%{$v}%");
+            $query->where('phenological_stage', 'like', '%' . $this->escapeLike($v) . '%');
         }
 
         if ($v = $request->query('bbch_code')) {
@@ -34,11 +34,11 @@ class ODSController extends Controller
         }
 
         if ($v = $request->query('department')) {
-            $query->where('department', 'like', "%{$v}%");
+            $query->where('department', 'like', '%' . $this->escapeLike($v) . '%');
         }
 
         if ($v = $request->query('habitat')) {
-            $query->where('habitat', 'like', "%{$v}%");
+            $query->where('habitat', 'like', '%' . $this->escapeLike($v) . '%');
         }
 
         if ($v = $request->query('year')) {
@@ -46,7 +46,7 @@ class ODSController extends Controller
         }
 
         if ($v = $request->query('station_name')) {
-            $query->where('station_name', 'like', "%{$v}%");
+            $query->where('station_name', 'like', '%' . $this->escapeLike($v) . '%');
         }
 
         $query->orderByDesc('date');
