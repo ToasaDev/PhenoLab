@@ -1,0 +1,252 @@
+/*
+ * PhenoLab Form Fixes
+ * Ensures readable form inputs across all contexts
+ * Overrides problematic dark mode auto-detection
+ */
+
+/* Force light, readable form styling regardless of OS dark mode preference */
+.form-control,
+.form-select {
+  /* Background and text */
+  background-color: #ffffff !important;
+  color: #212529 !important;
+
+  /* Border */
+  border: 1px solid #ced4da !important;
+  border-radius: 0.375rem;
+
+  /* Typography */
+  font-size: 0.95rem;
+  line-height: 1.5;
+  padding: 0.5rem 0.75rem;
+
+  /* Transitions */
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* Placeholder text - readable gray */
+.form-control::placeholder {
+  color: #6c757d !important;
+  opacity: 1;
+}
+
+/* Focus state - clear visual feedback */
+.form-control:focus,
+.form-select:focus {
+  background-color: #ffffff !important;
+  color: #212529 !important;
+  border-color: #198754 !important;
+  outline: 0;
+  box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25) !important;
+}
+
+/* Disabled state - clearly distinguishable */
+.form-control:disabled,
+.form-select:disabled {
+  background-color: #e9ecef !important;
+  color: #6c757d !important;
+  opacity: 1;
+  cursor: not-allowed;
+}
+
+/* Select-specific styling */
+.form-select {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px 12px;
+  /* Ensure selected value is always visible */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+/* Option elements - ensure readability in dropdown */
+.form-select option {
+  background-color: #ffffff !important;
+  color: #212529 !important;
+  padding: 0.5rem;
+}
+
+/* Placeholder option styling - slightly muted but still visible */
+.form-select option[value=""],
+.form-select option:first-child {
+  color: #6c757d !important;
+  font-style: italic;
+}
+
+/* Textarea-specific */
+textarea.form-control {
+  min-height: calc(1.5em + 1rem + 2px);
+  resize: vertical;
+}
+
+/* Form labels - consistent styling with maximum visibility */
+.form-label {
+  font-weight: 600;
+  color: #495057 !important;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  display: block;
+  /* Ensure labels are always visible and readable */
+  opacity: 1;
+}
+
+/* Input groups */
+.input-group .form-control,
+.input-group .form-select {
+  position: relative;
+  flex: 1 1 auto;
+  width: 1%;
+  min-width: 0;
+}
+
+.input-group .form-control:focus,
+.input-group .form-select:focus {
+  z-index: 3;
+}
+
+/* Valid state */
+.form-control.is-valid,
+.form-select.is-valid {
+  border-color: #198754 !important;
+  background-color: #ffffff !important;
+}
+
+.form-control.is-valid:focus,
+.form-select.is-valid:focus {
+  border-color: #198754 !important;
+  box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.25) !important;
+}
+
+/* Invalid state */
+.form-control.is-invalid,
+.form-select.is-invalid {
+  border-color: #dc3545 !important;
+  background-color: #ffffff !important;
+}
+
+.form-control.is-invalid:focus,
+.form-select.is-invalid:focus {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25) !important;
+}
+
+/* Remove any dark mode overrides */
+@media (prefers-color-scheme: dark) {
+  .form-control,
+  .form-select {
+    background-color: #ffffff !important;
+    color: #212529 !important;
+    border-color: #ced4da !important;
+  }
+
+  .form-select option {
+    background-color: #ffffff !important;
+    color: #212529 !important;
+  }
+
+  .form-control::placeholder {
+    color: #6c757d !important;
+  }
+}
+
+/* Modal forms - ensure consistency */
+.modal .form-control,
+.modal .form-select {
+  background-color: #ffffff !important;
+  color: #212529 !important;
+}
+
+/* Date/time inputs */
+input[type="date"].form-control,
+input[type="time"].form-control,
+input[type="datetime-local"].form-control {
+  background-color: #ffffff !important;
+  color: #212529 !important;
+}
+
+/* Number inputs */
+input[type="number"].form-control {
+  background-color: #ffffff !important;
+  color: #212529 !important;
+}
+
+/* File inputs */
+.form-control[type="file"] {
+  background-color: #ffffff !important;
+  color: #212529 !important;
+  overflow: hidden;
+}
+
+.form-control[type="file"]::-webkit-file-upload-button {
+  padding: 0.375rem 0.75rem;
+  margin: -0.375rem -0.75rem;
+  margin-inline-end: 0.75rem;
+  color: #212529;
+  background-color: #e9ecef;
+  pointer-events: none;
+  border-color: inherit;
+  border-style: solid;
+  border-width: 0;
+  border-inline-end-width: 1px;
+  border-radius: 0;
+  transition: all 0.15s ease-in-out;
+}
+
+/* Small form controls */
+.form-control-sm,
+.form-select-sm {
+  min-height: calc(1.5em + 0.5rem + 2px);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* Large form controls */
+.form-control-lg,
+.form-select-lg {
+  min-height: calc(1.5em + 1rem + 2px);
+  padding: 0.5rem 1rem;
+  font-size: 1.25rem;
+}
+
+/* Plant form modals - extra specificity for select readability */
+#addPlantModal select.form-select,
+#editPlantModal select.form-select {
+  background-color: #ffffff !important;
+  color: #212529 !important;
+  font-size: 0.95rem !important;
+  font-weight: 500;
+}
+
+#addPlantModal select.form-select option,
+#editPlantModal select.form-select option {
+  background-color: #ffffff !important;
+  color: #212529 !important;
+  padding: 0.5rem !important;
+  font-weight: 500;
+}
+
+/* Ensure selected option is visible */
+#addPlantModal select.form-select option:checked,
+#editPlantModal select.form-select option:checked {
+  background-color: #0d6efd !important;
+  color: #ffffff !important;
+}
+
+/* Browser-specific fixes for option visibility */
+@supports (-webkit-appearance: none) {
+  #addPlantModal select.form-select option,
+  #editPlantModal select.form-select option {
+    color: #212529 !important;
+  }
+}
+
+@-moz-document url-prefix() {
+  #addPlantModal select.form-select option,
+  #editPlantModal select.form-select option {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+}

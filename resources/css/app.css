@@ -1,0 +1,844 @@
+/* PhenoLab Custom Styles */
+
+:root {
+  --primary-color: #198754;
+  --secondary-color: #6c757d;
+  --accent-color: #0d6efd;
+  --warning-color: #ffc107;
+  --danger-color: #dc3545;
+  --light-bg: #f8f9fa;
+  --border-radius: 0.375rem;
+  --box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+/* Global Styles */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--light-bg);
+}
+
+/* Navigation */
+.navbar-brand {
+  font-weight: 600;
+  font-size: 1.5rem;
+}
+
+.navbar-nav .nav-link {
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.navbar-nav .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: var(--border-radius);
+}
+
+.navbar-nav .nav-link.active {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: var(--border-radius);
+}
+
+/* Cards */
+.card {
+  border: none;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.card-header {
+  background-color: white;
+  border-bottom: 1px solid #eee;
+  font-weight: 600;
+}
+
+/* Statistics Cards */
+.card.bg-primary,
+.card.bg-success,
+.card.bg-info,
+.card.bg-warning {
+  border: none;
+  color: white;
+}
+
+.card.bg-primary .card-body,
+.card.bg-success .card-body,
+.card.bg-info .card-body,
+.card.bg-warning .card-body {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+}
+
+/* Buttons */
+.btn {
+  border-radius: var(--border-radius);
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn-group .btn.active {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+/* Forms */
+.form-control,
+.form-select {
+  border-radius: var(--border-radius);
+  border: 1px solid #ced4da;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+  padding: 0.5rem 0.75rem;
+  line-height: 1.5;
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+}
+
+/* Select dropdown improvements - maximum contrast */
+.form-select {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px 12px;
+  cursor: pointer;
+}
+
+.form-select:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* Select option styling - maximum contrast and reliability */
+.form-select option {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+  padding: 0.5rem;
+  font-weight: normal;
+}
+
+/* Note: option:checked and option:hover pseudo-classes have limited cross-browser support
+   and are often ignored by Firefox/Safari. Removed for reliability. */
+
+/* Dark mode support removed - see form-fixes.css for consistent form styling */
+
+/* Improved form labels */
+.form-label {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+/* Modal */
+.modal-content {
+  border: none;
+  border-radius: var(--border-radius);
+  box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+}
+
+.modal-header {
+  border-bottom: 1px solid #eee;
+}
+
+.modal-footer {
+  border-top: 1px solid #eee;
+}
+
+/* Badges */
+.badge {
+  font-size: 0.75em;
+  font-weight: 500;
+}
+
+/* List Groups */
+.list-group-item {
+  border: none;
+  border-bottom: 1px solid #eee;
+}
+
+.list-group-item:last-child {
+  border-bottom: none;
+}
+
+/* Maps */
+#sitesMap {
+  border-radius: var(--border-radius);
+}
+
+.leaflet-container {
+  border-radius: var(--border-radius);
+}
+
+/* Loading States */
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.spinner-border {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+/* Responsive Utilities */
+@media (max-width: 768px) {
+  .container-fluid {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  .card-body {
+    padding: 1rem;
+  }
+  
+  .btn-group {
+    width: 100%;
+  }
+  
+  .btn-group .btn {
+    flex: 1;
+  }
+}
+
+/* Animation Classes */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-enter-active,
+.slide-leave-active {
+  transition: transform 0.3s ease;
+}
+
+.slide-enter-from {
+  transform: translateX(-100%);
+}
+
+.slide-leave-to {
+  transform: translateX(100%);
+}
+
+/* Site Cards Special Styling */
+.sites-view .card {
+  border-left: 4px solid var(--primary-color);
+}
+
+.sites-view .card:hover {
+  border-left-color: var(--accent-color);
+}
+
+/* Dashboard Stats Animation */
+.dashboard .card.bg-primary,
+.dashboard .card.bg-success,
+.dashboard .card.bg-info,
+.dashboard .card.bg-warning {
+  animation: slideInUp 0.6s ease-out;
+}
+
+.dashboard .card.bg-primary {
+  animation-delay: 0.1s;
+}
+
+.dashboard .card.bg-success {
+  animation-delay: 0.2s;
+}
+
+.dashboard .card.bg-info {
+  animation-delay: 0.3s;
+}
+
+.dashboard .card.bg-warning {
+  animation-delay: 0.4s;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Search and Filter Styles */
+.filter-section {
+  background: white;
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--box-shadow);
+}
+
+/* Chart Container */
+.chart-container {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}
+
+/* Photo Upload Areas */
+.photo-upload {
+  border: 2px dashed #ced4da;
+  border-radius: var(--border-radius);
+  padding: 2rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.photo-upload:hover {
+  border-color: var(--primary-color);
+  background-color: rgba(25, 135, 84, 0.05);
+}
+
+.photo-upload.dragover {
+  border-color: var(--accent-color);
+  background-color: rgba(13, 110, 253, 0.1);
+}
+
+/* Status Indicators */
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+}
+
+.status-indicator.excellent { background-color: #28a745; }
+.status-indicator.good { background-color: #17a2b8; }
+.status-indicator.fair { background-color: #ffc107; }
+.status-indicator.poor { background-color: #fd7e14; }
+.status-indicator.dead { background-color: #dc3545; }
+
+/* GPS Input Styling */
+.gps-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.gps-input-group .form-control {
+  flex: 1;
+}
+
+.gps-coordinates {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: var(--border-radius);
+  padding: 0.75rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+}
+
+.gps-accuracy {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-top: 0.25rem;
+}
+
+.gps-precision-high {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.gps-precision-medium {
+  color: #ffc107;
+  font-weight: 600;
+}
+
+.gps-precision-low {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+/* Map visualization for GPS */
+.gps-map-mini {
+  height: 200px;
+  border-radius: var(--border-radius);
+  border: 1px solid #dee2e6;
+  margin-top: 1rem;
+}
+
+/* GPS input validation */
+.form-control.gps-invalid {
+  border-color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
+.form-control.gps-valid {
+  border-color: #28a745;
+  background-color: rgba(40, 167, 69, 0.1);
+}
+
+/* Ultra-precise mapping indicators */
+.precision-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.precision-indicator.ultra-high {
+  background-color: rgba(40, 167, 69, 0.2);
+  color: #155724;
+  border: 1px solid rgba(40, 167, 69, 0.5);
+}
+
+.precision-indicator.high {
+  background-color: rgba(255, 193, 7, 0.2);
+  color: #856404;
+  border: 1px solid rgba(255, 193, 7, 0.5);
+}
+
+.precision-indicator.medium {
+  background-color: rgba(255, 99, 71, 0.2);
+  color: #721c24;
+  border: 1px solid rgba(255, 99, 71, 0.5);
+}
+
+/* Ultra-precise mapping styles for 10cm precision */
+.ultra-precise-marker {
+  position: relative;
+  z-index: 1000;
+}
+
+.ultra-precise-marker.clustered {
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 0 2px #007bff, 0 4px 12px rgba(0,0,0,0.4);
+  animation: pulse-precision 2s infinite;
+}
+
+@keyframes pulse-precision {
+  0% {
+    box-shadow: 0 0 0 2px #007bff, 0 4px 12px rgba(0,0,0,0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.5), 0 6px 16px rgba(0,0,0,0.5);
+  }
+  100% {
+    box-shadow: 0 0 0 2px #007bff, 0 4px 12px rgba(0,0,0,0.4);
+  }
+}
+
+.precision-cluster {
+  background: linear-gradient(45deg, #007bff, #0056b3);
+  color: white;
+  border: 3px solid white;
+  border-radius: 50%;
+  font-weight: bold;
+  font-size: 12px;
+  text-align: center;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  z-index: 1001;
+}
+
+.precision-cluster.ultra {
+  background: linear-gradient(45deg, #28a745, #1e7e34);
+  animation: cluster-glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes cluster-glow {
+  from {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 20px rgba(40, 167, 69, 0.5);
+  }
+  to {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3), 0 0 30px rgba(40, 167, 69, 0.8);
+  }
+}
+
+/* Precision grid overlay */
+.precision-grid-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 500;
+}
+
+.precision-grid-line {
+  stroke: rgba(0, 123, 255, 0.3);
+  stroke-width: 1;
+  stroke-dasharray: 5,5;
+}
+
+/* Measurement tools */
+.measurement-tool {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid #007bff;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  z-index: 2000;
+}
+
+.distance-line {
+  stroke: #dc3545;
+  stroke-width: 2;
+  stroke-dasharray: 3,3;
+  animation: dash-flow 2s linear infinite;
+}
+
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+/* Zoom level indicators */
+.zoom-precision-indicator {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 1000;
+}
+
+.zoom-precision-indicator.ultra-precise {
+  background: rgba(40, 167, 69, 0.9);
+  border: 2px solid #28a745;
+}
+
+.zoom-precision-indicator.high-precise {
+  background: rgba(255, 193, 7, 0.9);
+  color: #000;
+  border: 2px solid #ffc107;
+}
+
+/* Micro-positioning controls */
+.micro-position-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 1000;
+}
+
+.micro-position-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 30px);
+  grid-template-rows: repeat(3, 30px);
+  gap: 2px;
+}
+
+.micro-position-btn {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.micro-position-btn:hover {
+  background: #007bff;
+  color: white;
+}
+
+.micro-position-btn.center {
+  background: #dc3545;
+  color: white;
+}
+
+/* Precision scale reference */
+.precision-scale {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  z-index: 1000;
+}
+
+.scale-line {
+  height: 3px;
+  background: #000;
+  margin: 4px 0;
+  position: relative;
+}
+
+.scale-label {
+  position: absolute;
+  top: -20px;
+  left: 0;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* Accessibility Improvements */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus Styles */
+.btn:focus,
+.form-control:focus,
+.form-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+}
+
+/* Enhanced Plants Page Styles */
+.plant-card {
+  transition: all 0.3s ease;
+  border-left: 4px solid transparent;
+}
+
+.plant-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.plant-card.border-success {
+  border-left-color: #28a745;
+}
+
+.plant-card.border-warning {
+  border-left-color: #ffc107;
+}
+
+.plant-card.border-danger {
+  border-left-color: #dc3545;
+}
+
+.plant-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.taxonomic-info .scientific-name {
+  font-size: 1rem;
+  line-height: 1.3;
+}
+
+.taxonomic-info .common-name {
+  font-size: 0.9rem;
+  margin-top: 2px;
+}
+
+.taxonomic-info .family-badge {
+  margin-top: 4px;
+}
+
+.health-status .progress {
+  border-radius: 2px;
+  background-color: #e9ecef;
+}
+
+.location-info {
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  padding: 8px;
+  border-left: 3px solid #007bff;
+}
+
+.gps-coordinates {
+  font-family: 'Courier New', monospace;
+  background-color: rgba(13, 110, 253, 0.1);
+  padding: 2px 6px;
+  border-radius: 3px;
+  display: inline-block;
+  margin-top: 2px;
+}
+
+.statistics-grid .stat-card {
+  transition: all 0.2s ease;
+  border: 1px solid #e9ecef;
+}
+
+.statistics-grid .stat-card:hover {
+  transform: scale(1.05);
+  border-color: #007bff;
+}
+
+/* Advanced Filters Styling */
+#advancedFilters {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 10px;
+  border: 1px solid #dee2e6;
+}
+
+/* Plant Search Enhancements */
+.input-group .form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(25, 135, 84, 0.25);
+}
+
+/* Sort and Export Buttons */
+.dropdown-menu {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.dropdown-item {
+  transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: var(--primary-color);
+  color: white;
+  transform: translateX(2px);
+}
+
+/* Quick Stats Dashboard */
+.card.bg-light {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.card.bg-light:hover {
+  background-color: #e9ecef !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* List View Enhancements */
+.table-hover tbody tr {
+  transition: all 0.2s ease;
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(25, 135, 84, 0.05);
+  transform: scale(1.01);
+}
+
+/* Badge Improvements */
+.badge {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* Health Status Colors Enhancement */
+.bg-success { background-color: #198754 !important; }
+.bg-primary { background-color: #0d6efd !important; }
+.bg-warning { background-color: #ffc107 !important; color: #000 !important; }
+.bg-danger { background-color: #dc3545 !important; }
+.bg-secondary { background-color: #6c757d !important; }
+
+/* Responsive adjustments for ultra-precise mapping */
+@media (max-width: 768px) {
+  .micro-position-controls {
+    bottom: 10px;
+    left: 10px;
+    padding: 8px;
+  }
+  
+  .micro-position-grid {
+    grid-template-columns: repeat(3, 25px);
+    grid-template-rows: repeat(3, 25px);
+  }
+  
+  .precision-scale {
+    bottom: 10px;
+    right: 10px;
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  
+  .zoom-precision-indicator {
+    top: 5px;
+    right: 5px;
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+  
+  /* Mobile Plant Cards */
+  .plant-card {
+    margin-bottom: 1rem;
+  }
+  
+  .plant-avatar {
+    width: 35px;
+    height: 35px;
+    font-size: 16px;
+  }
+  
+  .statistics-grid .col-4 {
+    margin-bottom: 5px;
+  }
+  
+  .location-info {
+    padding: 6px;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .navbar,
+  .btn,
+  .modal {
+    display: none !important;
+  }
+  
+  .card {
+    break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
+}

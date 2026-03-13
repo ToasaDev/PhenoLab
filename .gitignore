@@ -1,0 +1,53 @@
+# ── Laravel core ────────────────────────────────────────────
+/bootstrap/cache/*.php
+/public/build
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/storage/logs/*.log
+/storage/framework/cache/data/
+/storage/framework/sessions/
+/storage/framework/views/
+/vendor
+
+# ── Testing ──────────────────────────────────────────────────
+/.phpunit.cache
+.phpunit.result.cache
+
+# ── Environment ──────────────────────────────────────────────
+.env
+.env.backup
+.env.production
+
+# ── Databases (local SQLite files) ──────────────────────────
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+/database/*.sqlite
+/database/*.sqlite3
+/phenolab
+
+# ── Node.js ──────────────────────────────────────────────────
+/node_modules
+npm-debug.log
+yarn-error.log
+
+# ── OS files ─────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ── IDEs / editors ───────────────────────────────────────────
+/.fleet
+/.idea
+/.nova
+/.vscode
+/.zed
+.phpactor.json
+
+# ── Homestead (legacy) ───────────────────────────────────────
+Homestead.json
+Homestead.yaml
+/auth.json
