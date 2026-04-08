@@ -150,6 +150,55 @@ php artisan route:cache
 php artisan view:cache
 ```
 
+### Sécurité — honeypot login
+
+Le formulaire de login affiche volontairement `admin / admin123` comme leurre.
+Toute tentative utilisant un username ou un mot de passe figurant dans la liste
+honeypot (`admin`, `root`, `test`, `demo`, `admin123`, `password`, `123456`...)
+est :
+
+- toujours rejetée (même si un user existe avec ces credentials),
+- enregistrée dans la table `login_attempts` (IP, user-agent, raison),
+- ralentie par un délai aléatoire pour décourager le bruteforce.
+
+Au bout de 3 hits honeypot, l'IP est bloquée 24 h pour toute tentative de
+connexion (`reason = blocked_ip`).
+
+Le vrai compte admin doit être créé/rotaté via :
+
+```bash
+php artisan security:rotate-admin
+# Renomme l'admin et génère un mot de passe aléatoire fort.
+# Les credentials sont affichés UNE seule fois — note-les.
+```
+
+Pour consulter les tentatives :
+
+```bash
+# Les 30 dernières tentatives (toutes raisons confondues)
+php artisan security:login-attempts
+
+# Honeypot uniquement
+php artisan security:login-attempts --honeypot
+
+# Top des IPs les plus actives
+php artisan security:login-attempts --top-ips
+
+# Filtrer par IP
+php artisan security:login-attempts --ip=192.168.1.42
+
+# Sur une fenêtre temporelle
+php artisan security:login-attempts --since="1 hour ago"
+php artisan security:login-attempts --since="2026-04-01" --honeypot --limit=100
+```
+
+Ou via l'admin Filament : **/admin → Système → Tentatives de connexion**
+(visible uniquement par les superusers, badge rouge = hits honeypot des 24 h).
+
+> ⚠️ Derrière un reverse-proxy (nginx, Cloudflare), pense à configurer
+> `app/Http/Middleware/TrustProxies.php` pour que `request()->ip()` retourne
+> l'IP cliente réelle via `X-Forwarded-For` au lieu de `127.0.0.1`.
+
 ### Licence
 
 Ce projet est distribué sous licence MIT. Voir [LICENSE](LICENSE) pour plus de détails.
