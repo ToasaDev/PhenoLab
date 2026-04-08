@@ -462,16 +462,34 @@ class SiteController extends Controller
             'drawing_overlay'  => ['nullable', 'array'],
             'notes'            => ['nullable', 'string'],
             'copy_from_active' => ['nullable', 'boolean'],
+            'source_layer_id'  => ['nullable', 'integer', 'exists:site_plan_layers,id'],
         ]);
 
         $copyFromActive = (bool) ($data['copy_from_active'] ?? false);
-        unset($data['copy_from_active']);
+        $sourceLayerId  = $data['source_layer_id'] ?? null;
+        unset($data['copy_from_active'], $data['source_layer_id']);
 
         $data['site_id'] = $site->id;
 
-        $sourceLayer = $copyFromActive
-            ? SitePlanLayer::where('site_id', $site->id)->where('is_active', true)->orderByDesc('id')->first()
-            : null;
+        // When copying, prefer the active layer; fall back to the most
+        // recently created one if none is currently marked active (which
+        // can happen after manual edits or imports).
+        $sourceLayer = null;
+        if ($copyFromActive) {
+            if ($sourceLayerId) {
+                $sourceLayer = SitePlanLayer::where('site_id', $site->id)
+                    ->where('id', $sourceLayerId)
+                    ->first();
+            }
+            $sourceLayer = $sourceLayer
+                ?? SitePlanLayer::where('site_id', $site->id)
+                    ->where('is_active', true)
+                    ->orderByDesc('id')
+                    ->first()
+                ?? SitePlanLayer::where('site_id', $site->id)
+                    ->orderByDesc('id')
+                    ->first();
+        }
 
         // If copying and no drawing_overlay was explicitly provided, clone it.
         if ($sourceLayer && ! array_key_exists('drawing_overlay', $data)) {

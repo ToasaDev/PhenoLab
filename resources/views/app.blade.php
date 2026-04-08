@@ -4760,6 +4760,21 @@
                                                 <i class="fas fa-check"></i> Terminer
                                             </button>
 
+                                            <!-- Selected shape actions -->
+                                            <template v-if="siteMapEditor.editMode && siteMapEditor.selectedShape !== null">
+                                                <button v-if="siteMapEditor.drawingShapes[siteMapEditor.selectedShape] && siteMapEditor.drawingShapes[siteMapEditor.selectedShape].type === 'text'"
+                                                        class="btn btn-sm btn-outline-secondary"
+                                                        @click="editSelectedShapeText()"
+                                                        title="Modifier le texte">
+                                                    <i class="fas fa-pen"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger"
+                                                        @click="deleteSelectedShape()"
+                                                        title="Supprimer la forme sélectionnée">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </template>
+
                                             <!-- Repeat Pattern Tool -->
                                             <button v-if="siteMapEditor.editMode"
                                                     class="btn btn-sm btn-outline-info"
@@ -4808,14 +4823,46 @@
                                                     <i class="fas fa-crosshairs"></i>
                                                     Cliquez sur le plan pour placer « @{{ siteMapEditor.plantToPlace?.name }} »
                                                 </small>
-                                                <small v-else-if="siteMapEditor.editMode" class="text-muted">
-                                                    <i class="fas fa-info-circle"></i>
-                                                    <i class="fas fa-plus text-primary"></i> sélectionne une plante puis cliquez sur le plan. Glissez pour déplacer. ← ↑ ↓ → pour ajuster (Shift = +)
-                                                </small>
+                                                <button v-else-if="siteMapEditor.editMode"
+                                                        type="button"
+                                                        class="btn btn-sm btn-outline-secondary"
+                                                        @click="siteMapEditor.showHelp = !siteMapEditor.showHelp"
+                                                        :title="siteMapEditor.showHelp ? 'Masquer l\'aide' : 'Afficher l\'aide'">
+                                                    <i class="fas fa-question-circle"></i>
+                                                </button>
                                                 <span class="badge bg-info">
                                                     <i class="fas fa-map-pin"></i>
                                                     @{{ getPositionedPlantsCount() }} / @{{ siteMapEditor.plants.length }} positionnés
                                                 </span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Help panel -->
+                                        <div v-if="siteMapEditor.editMode && siteMapEditor.showHelp"
+                                             class="alert alert-info alert-sm mb-2 small mx-2">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <strong><i class="fas fa-map-marked-alt me-1"></i> Placer / déplacer les plantes</strong>
+                                                    <ul class="mb-2 mt-1">
+                                                        <li>Sélectionne une plante dans la barre latérale, puis clique sur le plan pour la placer.</li>
+                                                        <li>En mode édition, glisse une plante pour la déplacer.</li>
+                                                        <li>← ↑ ↓ → ajuste finement la sélection (Shift = pas plus large).</li>
+                                                        <li>Bouton « Libérer » dans la sidebar pour retirer une plante du plan.</li>
+                                                    </ul>
+                                                    <strong><i class="fas fa-pencil-ruler me-1"></i> Dessins et annotations</strong>
+                                                    <ul class="mb-2 mt-1">
+                                                        <li>Choisis un outil (rectangle, cercle, polyligne, texte) et trace sur le plan.</li>
+                                                        <li>Outil <i class="fas fa-mouse-pointer"></i> Sélectionner pour cliquer une forme existante.</li>
+                                                        <li>Une fois sélectionnée : <i class="fas fa-pen"></i> modifier le texte, <i class="fas fa-trash"></i> supprimer.</li>
+                                                        <li>N'oublie pas de sauvegarder le dessin (bouton dédié).</li>
+                                                    </ul>
+                                                    <strong><i class="fas fa-layer-group me-1"></i> Couches</strong>
+                                                    <ul class="mb-0 mt-1">
+                                                        <li>Chaque couche garde son propre état (positions + dessins) — historique du site.</li>
+                                                        <li>À la création, tu peux copier l'état de la couche active ou repartir à vide.</li>
+                                                    </ul>
+                                                </div>
+                                                <button type="button" class="btn-close" @click="siteMapEditor.showHelp = false"></button>
                                             </div>
                                         </div>
 

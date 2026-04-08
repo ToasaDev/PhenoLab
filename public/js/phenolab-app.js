@@ -123,6 +123,7 @@ createApp({
                 polylinePoints: [],
                 selectedShape: null,
                 drawingUnsavedChanges: false,
+                showHelp: false,
                 // Repeat pattern tool
                 showRepeatPatternModal: false,
                 repeatPattern: { cols: 4, rows: 3, marginX: 10, marginY: 10 }
@@ -1890,12 +1891,38 @@ createApp({
                     page_size: 1000
                 };
 
-                const response = await axios.get(`/api/v1/plants`, {
-                    params: params
-                });
+                const [plantsResponse, mapResponse] = await Promise.all([
+                    axios.get(`/api/v1/plants`, { params }),
+                    layerId
+                        ? axios.get(`/api/v1/plants/site-map`, { params: { site_id: siteId, layer_id: layerId } })
+                        : Promise.resolve(null),
+                ]);
 
-                this.siteMapEditor.plants = this.extractCollection(response.data);
-                console.log('📍 Loaded plants for map:', this.siteMapEditor.plants.length);
+                const plants = this.extractCollection(plantsResponse.data);
+
+                // Overlay layer-specific positions from the pivot. Plants not
+                // present in this layer get their position cleared so they
+                // appear as unplaced in the sidebar.
+                if (mapResponse) {
+                    const byId = {};
+                    (mapResponse.data.plants || []).forEach(p => { byId[p.id] = p; });
+                    plants.forEach(p => {
+                        const layerPlant = byId[p.id];
+                        if (layerPlant && layerPlant.map_position_x !== null && layerPlant.map_position_x !== undefined) {
+                            p.map_position_x = layerPlant.map_position_x;
+                            p.map_position_y = layerPlant.map_position_y;
+                            p.layer_id = layerId;
+                        } else {
+                            p.map_position_x = null;
+                            p.map_position_y = null;
+                            p.layer_id = null;
+                        }
+                    });
+                }
+
+                this.siteMapEditor.plants = plants;
+                this.siteMapEditor.unsavedChanges = false;
+                console.log('📍 Loaded plants for map:', this.siteMapEditor.plants.length, 'layer:', layerId);
             } catch (error) {
                 console.error('Error loading site map plants:', error);
                 this.showAlert('Erreur lors du chargement des plantes', 'danger');
@@ -2296,6 +2323,17 @@ createApp({
             }
         },
 
+        editSelectedShapeText() {
+            const idx = this.siteMapEditor.selectedShape;
+            if (idx === null) return;
+            const shape = this.siteMapEditor.drawingShapes[idx];
+            if (!shape || shape.type !== 'text') return;
+            const next = prompt('Modifier le texte :', shape.text || '');
+            if (next === null) return;
+            shape.text = next;
+            this.siteMapEditor.drawingUnsavedChanges = true;
+        },
+
         async saveDrawingOverlay() {
             if (!this.siteMapEditor.selectedLayer) {
                 this.showAlert('Aucune couche sélectionnée', 'warning');
@@ -2312,8 +2350,11 @@ createApp({
                     }
                 );
 
-                // Update local layer data
-                this.siteMapEditor.selectedLayer.drawing_overlay = response.data.drawing_overlay;
+                // Update local layer data with a clone to keep refs decoupled.
+                const saved = response.data.drawing_overlay;
+                this.siteMapEditor.selectedLayer.drawing_overlay = Array.isArray(saved)
+                    ? JSON.parse(JSON.stringify(saved))
+                    : [];
                 this.siteMapEditor.drawingUnsavedChanges = false;
                 this.showAlert(`Dessin sauvegardé dans "${this.siteMapEditor.selectedLayer.name}"`, 'success');
                 console.log('✅ Drawing overlay saved to layer:', response.data);
@@ -2326,14 +2367,16 @@ createApp({
         },
 
         async loadDrawingOverlay() {
-            // Load from selected layer if available, otherwise from site
-            if (this.siteMapEditor.selectedLayer && this.siteMapEditor.selectedLayer.drawing_overlay) {
-                this.siteMapEditor.drawingShapes = this.siteMapEditor.selectedLayer.drawing_overlay || [];
-                console.log('📐 Loaded drawing overlay from layer:', this.siteMapEditor.drawingShapes.length, 'shapes');
-            } else if (this.siteMapEditor.site && this.siteMapEditor.site.drawing_overlay) {
-                this.siteMapEditor.drawingShapes = this.siteMapEditor.site.drawing_overlay || [];
-                console.log('📐 Loaded drawing overlay from site:', this.siteMapEditor.drawingShapes.length, 'shapes');
-            }
+            // Always deep-clone so editing the current layer doesn't mutate
+            // the layer object stored in siteMapEditor.layers (which would
+            // bleed changes across layers).
+            const source = this.siteMapEditor.selectedLayer?.drawing_overlay;
+            this.siteMapEditor.drawingShapes = Array.isArray(source)
+                ? JSON.parse(JSON.stringify(source))
+                : [];
+            this.siteMapEditor.selectedShape = null;
+            this.siteMapEditor.drawingUnsavedChanges = false;
+            console.log('📐 Loaded drawing overlay:', this.siteMapEditor.drawingShapes.length, 'shapes');
         },
 
         // ==================== LAYER MANAGEMENT ====================
@@ -2425,7 +2468,8 @@ createApp({
                     `/api/v1/sites/${this.siteMapEditor.site.id}/layers`,
                     {
                         ...this.siteMapEditor.newLayerData,
-                        is_active: true
+                        is_active: true,
+                        source_layer_id: this.siteMapEditor.selectedLayer?.id || null,
                     }
                 );
                 // The new layer is now active — deactivate the others locally too.
