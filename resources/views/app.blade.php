@@ -514,9 +514,6 @@
                         <button class="btn btn-primary" @click="openModal('site')">
                             <i class="fas fa-plus me-1"></i>Ajouter un site
                         </button>
-                        <button class="btn btn-success ms-2" @click="openModal('test')">
-                            <i class="fas fa-vial me-1"></i>Test Formulaire
-                        </button>
                     </div>
                 </div>
 
@@ -551,10 +548,15 @@
                 <div class="row mb-3">
                     <div class="col-12">
                         <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-outline-primary" 
+                            <button type="button" class="btn btn-outline-primary"
                                     :class="{active: sitesViewMode === 'grid'}"
                                     @click="sitesViewMode = 'grid'">
                                 <i class="fas fa-th me-1"></i>Grille
+                            </button>
+                            <button type="button" class="btn btn-outline-primary"
+                                    :class="{active: sitesViewMode === 'list'}"
+                                    @click="sitesViewMode = 'list'">
+                                <i class="fas fa-list me-1"></i>Liste
                             </button>
                             <button type="button" class="btn btn-outline-primary"
                                     :class="{active: sitesViewMode === 'map'}"
@@ -649,6 +651,98 @@
                     </div>
                 </div>
 
+                <!-- Sites List (table) -->
+                <div v-if="sitesViewMode === 'list'">
+                    <div class="card shadow-sm">
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead class="table-light sticky-top">
+                                        <tr>
+                                            <th style="min-width: 180px;">Nom</th>
+                                            <th style="min-width: 140px;">Environnement</th>
+                                            <th class="text-center" style="width: 80px;">Plantes</th>
+                                            <th class="text-center" style="width: 90px;">Obs.</th>
+                                            <th style="min-width: 110px;">Altitude</th>
+                                            <th style="min-width: 160px;">Coordonnées</th>
+                                            <th style="min-width: 120px;">Propriétaire</th>
+                                            <th style="min-width: 110px;">Créé le</th>
+                                            <th class="text-center" style="width: 110px;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-if="loading.sites">
+                                            <td colspan="9" class="text-center py-5">
+                                                <div class="spinner-border text-primary" role="status">
+                                                    <span class="visually-hidden">Chargement...</span>
+                                                </div>
+                                                <p class="mt-3 text-muted mb-0">Chargement des sites...</p>
+                                            </td>
+                                        </tr>
+                                        <tr v-else-if="filteredSites.length === 0">
+                                            <td colspan="9" class="text-center py-5">
+                                                <i class="fas fa-map-marker-alt fa-3x text-muted mb-3"></i>
+                                                <h5 class="text-muted">Aucun site trouvé</h5>
+                                                <p class="text-muted mb-0">Aucun site ne correspond à vos critères.</p>
+                                            </td>
+                                        </tr>
+                                        <tr v-else v-for="site in filteredSites" :key="site.id"
+                                            style="cursor: pointer;"
+                                            @click="viewSite(site)">
+                                            <td>
+                                                <strong v-text="site.name"></strong>
+                                                <span v-if="site.is_private" class="badge bg-warning text-dark ms-1" title="Site privé">
+                                                    <i class="fas fa-lock"></i>
+                                                </span>
+                                                <br>
+                                                <small class="text-muted text-truncate d-inline-block" style="max-width: 220px;" v-text="site.description || ''"></small>
+                                            </td>
+                                            <td v-text="getEnvironmentLabel(site.environment)"></td>
+                                            <td class="text-center">
+                                                <span class="badge bg-success" v-text="site.plants_count || 0"></span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-info" v-text="site.observations_count || 0"></span>
+                                            </td>
+                                            <td>
+                                                <span v-if="site.altitude"><span v-text="site.altitude"></span> m</span>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
+                                            <td>
+                                                <small v-if="site.latitude && site.longitude" class="text-muted">
+                                                    <span v-text="parseFloat(site.latitude).toFixed(4)"></span>,
+                                                    <span v-text="parseFloat(site.longitude).toFixed(4)"></span>
+                                                </small>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
+                                            <td>
+                                                <small v-if="site.owner && site.owner.username">
+                                                    <i class="fas fa-user me-1"></i><span v-text="site.owner.username"></span>
+                                                </small>
+                                                <span v-else class="text-muted">-</span>
+                                            </td>
+                                            <td>
+                                                <small v-text="formatDate(site.created_at)"></small>
+                                            </td>
+                                            <td class="text-center" @click.stop>
+                                                <button class="btn btn-sm btn-outline-primary me-1" @click="viewSite(site)" title="Voir">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-secondary"
+                                                        @click="editSiteAction(site)"
+                                                        v-if="user.isAuthenticated && (user.id === site.owner?.id || user.isStaff)"
+                                                        title="Modifier">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div v-if="sitesViewMode === 'map'" class="row">
                     <div class="col-12">
                         <div class="card">
@@ -713,19 +807,21 @@
                             <p class="text-muted mb-0" v-if="siteDetail.site.description" v-text="siteDetail.site.description"></p>
                             <p class="text-muted mb-0" v-else><em>Aucune description</em></p>
                         </div>
-                        <div class="col-md-4 text-md-end">
-                            <button class="btn btn-outline-secondary me-2" @click="backToSites">
-                                <i class="fas fa-arrow-left me-1"></i>Retour
-                            </button>
-                            <button class="btn btn-success me-2" @click="showSiteMap(siteDetail.site)" title="Carte détaillée avec GPS des plantes">
-                                <i class="fas fa-map-marked-alt me-1"></i>Carte GPS détaillée
-                            </button>
-                            <button class="btn btn-info me-2" @click="openSiteMapEditor(siteDetail.site)" title="Éditeur de plan du site">
-                                <i class="fas fa-drawing-compass me-1"></i>Plan du Site
-                            </button>
-                            <button class="btn btn-primary" @click="editSiteAction(siteDetail.site)" v-if="user.isAuthenticated && (user.id === siteDetail.site.owner?.id || user.isStaff)">
-                                <i class="fas fa-edit me-1"></i>Modifier
-                            </button>
+                        <div class="col-md-4">
+                            <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+                                <button class="btn btn-sm btn-outline-secondary" @click="backToSites">
+                                    <i class="fas fa-arrow-left me-1"></i>Retour
+                                </button>
+                                <button class="btn btn-sm btn-success" @click="showSiteMap(siteDetail.site)" title="Carte détaillée avec GPS des plantes">
+                                    <i class="fas fa-map-marked-alt me-1"></i>Carte GPS
+                                </button>
+                                <button class="btn btn-sm btn-info" @click="openSiteMapEditor(siteDetail.site)" title="Éditeur de plan du site">
+                                    <i class="fas fa-drafting-compass me-1"></i>Plan du site
+                                </button>
+                                <button class="btn btn-sm btn-primary" @click="editSiteAction(siteDetail.site)" v-if="user.isAuthenticated && (user.id === siteDetail.site.owner?.id || user.isStaff)">
+                                    <i class="fas fa-edit me-1"></i>Modifier
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -2479,19 +2575,48 @@
                                 <label for="siteDescription" class="form-label">Description</label>
                                 <textarea v-model="newSite.description" class="form-control" id="siteDescription" rows="3"></textarea>
                             </div>
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <label for="siteLatitude" class="form-label">Latitude *</label>
-                                    <input v-model="newSite.latitude" type="number" step="any" class="form-control" id="siteLatitude" required>
+                            <div class="mb-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <label class="form-label mb-0 fw-bold">
+                                    <i class="fas fa-location-crosshairs me-1"></i>Coordonnées GPS <span class="text-danger">*</span>
+                                </label>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary"
+                                        :disabled="geolocating"
+                                        @click="locateInto(newSite)">
+                                    <i class="fas" :class="geolocating ? 'fa-spinner fa-spin' : 'fa-crosshairs'"></i>
+                                    <span v-if="geolocating">Localisation…</span>
+                                    <span v-else>Utiliser ma position</span>
+                                </button>
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-4">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text" style="min-width: 80px;">Latitude</span>
+                                        <input v-model.number="newSite.latitude" type="number" step="0.000001" min="-90" max="90" class="form-control" id="siteLatitude" placeholder="45.7640" required>
+                                    </div>
                                 </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="siteLongitude" class="form-label">Longitude *</label>
-                                    <input v-model="newSite.longitude" type="number" step="any" class="form-control" id="siteLongitude" required>
+                                <div class="col-md-4">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text" style="min-width: 80px;">Longitude</span>
+                                        <input v-model.number="newSite.longitude" type="number" step="0.000001" min="-180" max="180" class="form-control" id="siteLongitude" placeholder="4.8357" required>
+                                    </div>
                                 </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="siteAltitude" class="form-label">Altitude (m)</label>
-                                    <input v-model="newSite.altitude" type="number" class="form-control" id="siteAltitude">
+                                <div class="col-md-4">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text" style="min-width: 80px;">Altitude</span>
+                                        <input v-model.number="newSite.altitude" type="number" class="form-control" id="siteAltitude" placeholder="m">
+                                        <span class="input-group-text">m</span>
+                                    </div>
                                 </div>
+                            </div>
+                            <div class="mb-3" v-if="newSite.latitude && newSite.longitude">
+                                <small class="text-muted">
+                                    <i class="fas fa-map-marker-alt me-1 text-success"></i>
+                                    <a :href="`https://www.openstreetmap.org/?mlat=${newSite.latitude}&mlon=${newSite.longitude}#map=17/${newSite.latitude}/${newSite.longitude}`"
+                                       target="_blank" rel="noopener">
+                                        Prévisualiser sur OpenStreetMap
+                                    </a>
+                                </small>
                             </div>
                             <div class="row">
                                 <div class="col-md-4 mb-3">
@@ -3525,7 +3650,7 @@
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="plantTaxon" class="form-label">Taxon</label>
+                                    <label for="plantTaxon" class="form-label">Taxon <span class="text-danger">*</span></label>
                                     <div class="position-relative">
                                         <input
                                             v-model="taxonAutocomplete.query"
@@ -3612,12 +3737,18 @@
                             </div>
                             <!-- GPS Location Section -->
                             <div class="row mb-3">
-                                <div class="col-12">
-                                    <h6 class="mb-3">
+                                <div class="col-12 d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                                    <h6 class="mb-0">
                                         <i class="fas fa-map-marker-alt text-primary me-2"></i>
                                         Localisation GPS précise
-                                        <small class="text-muted ms-2">(optionnel - précision centimétrique possible)</small>
+                                        <small class="text-muted ms-2">(optionnel)</small>
                                     </h6>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-primary"
+                                            @click="getCurrentLocation()">
+                                        <i class="fas fa-crosshairs me-1"></i>
+                                        Utiliser ma position
+                                    </button>
                                 </div>
                             </div>
                             <div class="row">
@@ -3861,19 +3992,48 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <label for="editPlantLatitude" class="form-label">Latitude</label>
-                                    <input v-model="editPlantData.latitude" type="number" step="0.000001" min="-90" max="90" class="form-control" id="editPlantLatitude" placeholder="ex: 43.710200">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-map-marker-alt text-primary me-2"></i>Localisation GPS
+                                </h6>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary"
+                                        :disabled="geolocating"
+                                        @click="locateInto(editPlantData)">
+                                    <i class="fas" :class="geolocating ? 'fa-spinner fa-spin' : 'fa-crosshairs'"></i>
+                                    <span v-if="geolocating">Localisation…</span>
+                                    <span v-else>Utiliser ma position</span>
+                                </button>
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-4">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text" style="min-width: 90px;">Latitude</span>
+                                        <input v-model.number="editPlantData.latitude" type="number" step="0.000001" min="-90" max="90" class="form-control" id="editPlantLatitude" placeholder="43.710200">
+                                    </div>
                                 </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="editPlantLongitude" class="form-label">Longitude</label>
-                                    <input v-model="editPlantData.longitude" type="number" step="0.000001" min="-180" max="180" class="form-control" id="editPlantLongitude" placeholder="ex: 7.262000">
+                                <div class="col-md-4">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text" style="min-width: 90px;">Longitude</span>
+                                        <input v-model.number="editPlantData.longitude" type="number" step="0.000001" min="-180" max="180" class="form-control" id="editPlantLongitude" placeholder="7.262000">
+                                    </div>
                                 </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="editPlantAccuracy" class="form-label">Précision GPS (m)</label>
-                                    <input v-model="editPlantData.gps_accuracy" type="number" step="0.1" min="0" max="1000" class="form-control" id="editPlantAccuracy" placeholder="ex: 2.5">
+                                <div class="col-md-4">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text" style="min-width: 90px;">Précision</span>
+                                        <input v-model.number="editPlantData.gps_accuracy" type="number" step="0.1" min="0" max="1000" class="form-control" id="editPlantAccuracy" placeholder="2.5">
+                                        <span class="input-group-text">m</span>
+                                    </div>
                                 </div>
+                            </div>
+                            <div class="mb-3" v-if="editPlantData.latitude && editPlantData.longitude">
+                                <small class="text-muted">
+                                    <i class="fas fa-map-marker-alt me-1 text-success"></i>
+                                    <a :href="`https://www.openstreetmap.org/?mlat=${editPlantData.latitude}&mlon=${editPlantData.longitude}#map=18/${editPlantData.latitude}/${editPlantData.longitude}`"
+                                       target="_blank" rel="noopener">
+                                        Prévisualiser sur OpenStreetMap
+                                    </a>
+                                </small>
                             </div>
                             <div class="mb-3">
                                 <label for="editPlantNotes" class="form-label">Notes techniques</label>
@@ -3898,7 +4058,7 @@
         </div>
 
         <!-- Add Observation Modal -->
-        <div class="modal fade" :class="{ 'show': showAddObservationModal }" id="addObservationModal" tabindex="-1" v-show="showAddObservationModal" @click.self="closeModal()" :style="{ display: showAddObservationModal ? 'block' : 'none' }">
+        <div v-show="showAddObservationModal" class="modal fade show" id="addObservationModal" tabindex="-1" @click.self="closeModal()" style="display: block;">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div class="modal-header">
@@ -3987,6 +4147,270 @@
                 </div>
             </div>
         </div>
+
+        <!-- Update GPS Modal -->
+        <div v-show="showUpdateGpsModal" class="modal fade show" id="updateGpsModal" tabindex="-1" @click.self="closeUpdateGpsModal()" style="display: block;">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-map-marked-alt me-2"></i>Mettre à jour la position GPS
+                        </h5>
+                        <button type="button" class="btn-close" @click="closeUpdateGpsModal()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form @submit.prevent="saveUpdatedGps">
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-primary w-100" @click="useCurrentLocation()" :disabled="gpsLoading">
+                                    <i class="fas" :class="gpsLoading ? 'fa-spinner fa-spin' : 'fa-location-arrow'"></i>
+                                    <span v-text="gpsLoading ? ' Localisation...' : ' Utiliser ma position actuelle'"></span>
+                                </button>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Latitude *</label>
+                                    <input v-model="updateGps.latitude" type="number" step="0.000001" min="-90" max="90" class="form-control" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Longitude *</label>
+                                    <input v-model="updateGps.longitude" type="number" step="0.000001" min="-180" max="180" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Précision GPS (m)</label>
+                                <input v-model="updateGps.gps_accuracy" type="number" step="0.1" min="0" class="form-control" placeholder="ex: 5">
+                            </div>
+                            <div v-if="updateGpsError" class="alert alert-danger" v-text="updateGpsError"></div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @click="closeUpdateGpsModal()">Annuler</button>
+                        <button type="button" class="btn btn-primary" @click="saveUpdatedGps" :disabled="gpsSaving">
+                            <i class="fas" :class="gpsSaving ? 'fa-spinner fa-spin' : 'fa-save'"></i>
+                            <span v-text="gpsSaving ? ' Enregistrement...' : ' Enregistrer'"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div v-if="showUpdateGpsModal" class="modal-backdrop fade show"></div>
+
+        <!-- Plant Statistics Modal -->
+        <div v-show="showStatsModal" class="modal fade show" id="statsModal" tabindex="-1" @click.self="closeStatsModal()" style="display: block;">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-chart-line me-2"></i>Statistiques :
+                            <span v-text="plantDetail.plant ? plantDetail.plant.name : ''"></span>
+                        </h5>
+                        <button type="button" class="btn-close" @click="closeStatsModal()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div v-if="statsLoading" class="text-center py-5">
+                            <i class="fas fa-spinner fa-spin fa-2x text-muted"></i>
+                            <p class="mt-3 text-muted">Chargement des statistiques...</p>
+                        </div>
+                        <div v-else-if="statsError" class="alert alert-danger" v-text="statsError"></div>
+                        <div v-else-if="plantStats">
+                            <!-- Summary cards -->
+                            <div class="row mb-4">
+                                <div class="col-md-3 col-6 mb-2">
+                                    <div class="card text-center bg-light">
+                                        <div class="card-body py-3">
+                                            <h3 class="text-primary mb-0" v-text="plantStats.observations_count"></h3>
+                                            <small class="text-muted">Observations</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-6 mb-2">
+                                    <div class="card text-center bg-light">
+                                        <div class="card-body py-3">
+                                            <h3 class="text-info mb-0" v-text="plantStats.distinct_observers_count"></h3>
+                                            <small class="text-muted">Observateurs</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-6 mb-2">
+                                    <div class="card text-center bg-light">
+                                        <div class="card-body py-3">
+                                            <h3 class="text-success mb-0" v-text="plantStats.photos_count"></h3>
+                                            <small class="text-muted">Photos</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-6 mb-2">
+                                    <div class="card text-center bg-light">
+                                        <div class="card-body py-3">
+                                            <h3 class="text-warning mb-0" v-text="plantStats.recent_activity.observations_last_30_days"></h3>
+                                            <small class="text-muted">Obs. (30 derniers j.)</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Stage distribution chart -->
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Répartition par stade phénologique</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div v-if="plantStats.observations_by_stage.length === 0" class="text-muted text-center py-3">
+                                        Aucune donnée
+                                    </div>
+                                    <canvas v-else id="statsStageChart" height="120"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Phenological calendar -->
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Calendrier phénologique</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div v-if="plantStats.phenological_calendar.length === 0" class="text-muted text-center py-3">
+                                        Aucune donnée
+                                    </div>
+                                    <table v-else class="table table-sm table-striped mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Stade</th>
+                                                <th>Première obs.</th>
+                                                <th>Dernière obs.</th>
+                                                <th>Durée (jours)</th>
+                                                <th>Nombre</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="row in plantStats.phenological_calendar" :key="row.stage_code">
+                                                <td>
+                                                    <strong v-text="row.stage_code"></strong>
+                                                    <small class="text-muted d-block" v-text="row.stage_description"></small>
+                                                </td>
+                                                <td v-text="formatDate(row.first_date)"></td>
+                                                <td v-text="formatDate(row.last_date)"></td>
+                                                <td v-text="row.duration_days != null ? row.duration_days : '-'"></td>
+                                                <td v-text="row.count"></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Interannual comparison -->
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="fas fa-history me-2"></i>Comparaison interannuelle</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div v-if="plantStats.interannual_by_stage.length === 0" class="text-muted text-center py-3">
+                                        Aucune donnée
+                                    </div>
+                                    <div v-else>
+                                        <p class="text-muted small mb-3">
+                                            Date de première observation de chaque stade par année. Permet de suivre l'évolution phénologique d'une année sur l'autre.
+                                        </p>
+                                        <div v-for="stage in plantStats.interannual_by_stage" :key="stage.stage_code" class="mb-3">
+                                            <strong v-text="stage.stage_code + ' - ' + stage.stage_description"></strong>
+                                            <table class="table table-sm mt-1 mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Année</th>
+                                                        <th>Première observation</th>
+                                                        <th>Jour de l'année</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="entry in stage.years" :key="entry.year">
+                                                        <td v-text="entry.year"></td>
+                                                        <td v-text="formatDate(entry.first_date)"></td>
+                                                        <td v-text="entry.day_of_year != null ? entry.day_of_year : '-'"></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Weather -->
+                            <div class="card mb-4">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="fas fa-cloud-sun me-2"></i>Météo associée</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row text-center mb-3">
+                                        <div class="col-md-4">
+                                            <h4 class="mb-0">
+                                                <span v-if="plantStats.weather.avg_temperature !== null">
+                                                    <span v-text="plantStats.weather.avg_temperature"></span> °C
+                                                </span>
+                                                <span v-else class="text-muted">-</span>
+                                            </h4>
+                                            <small class="text-muted">Température moyenne</small>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <h4 class="mb-0">
+                                                <span v-if="plantStats.weather.avg_humidity !== null">
+                                                    <span v-text="plantStats.weather.avg_humidity"></span> %
+                                                </span>
+                                                <span v-else class="text-muted">-</span>
+                                            </h4>
+                                            <small class="text-muted">Humidité moyenne</small>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <h4 class="mb-0">
+                                                <span v-if="plantStats.weather.avg_wind_speed !== null">
+                                                    <span v-text="plantStats.weather.avg_wind_speed"></span> km/h
+                                                </span>
+                                                <span v-else class="text-muted">-</span>
+                                            </h4>
+                                            <small class="text-muted">Vent moyen</small>
+                                        </div>
+                                    </div>
+                                    <div v-if="plantStats.weather.conditions.length > 0">
+                                        <strong>Conditions observées :</strong>
+                                        <span v-for="cond in plantStats.weather.conditions" :key="cond.weather_condition" class="badge bg-secondary me-1">
+                                            <span v-text="cond.weather_condition"></span> (<span v-text="cond.count"></span>)
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Average intensity per stage -->
+                            <div class="card mb-2">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Intensité moyenne par stade</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div v-if="plantStats.observations_by_stage.length === 0" class="text-muted text-center py-3">
+                                        Aucune donnée
+                                    </div>
+                                    <table v-else class="table table-sm mb-0">
+                                        <thead>
+                                            <tr><th>Stade</th><th>Intensité moyenne (1-5)</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="row in plantStats.observations_by_stage" :key="row.stage_code">
+                                                <td>
+                                                    <strong v-text="row.stage_code"></strong>
+                                                    <small class="text-muted d-block" v-text="row.stage_description"></small>
+                                                </td>
+                                                <td v-text="row.avg_intensity ? Number(row.avg_intensity).toFixed(2) : '-'"></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @click="closeStatsModal()">Fermer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div v-if="showStatsModal" class="modal-backdrop fade show"></div>
 
         <!-- Edit Observation Modal -->
         <div class="modal fade" :class="{ 'show': showEditObservationModal }" id="editObservationModal" tabindex="-1" v-show="showEditObservationModal" @click.self="closeEditObservationModal()" :style="{ display: showEditObservationModal ? 'block' : 'none' }">
@@ -4162,7 +4586,7 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" @click="closeDeletePlantModal()">Annuler</button>
                         <button type="button" class="btn btn-danger" @click="deletePlant" :disabled="deletingPlant">
-                            <i class="fas" :class="deletingPlant ? 'fa-spinner fa-spin' : 'fa-trash'" me-1></i>
+                            <i class="fas me-1" :class="deletingPlant ? 'fa-spinner fa-spin' : 'fa-trash'"></i>
                             <span v-text="deletingPlant ? 'Suppression...' : 'Supprimer définitivement'"></span>
                         </button>
                     </div>
@@ -4235,15 +4659,25 @@
                                                 </div>
 
                                                 <!-- Position Status Icon / Add Button -->
-                                                <div class="ms-2">
-                                                    <i v-if="plant.map_position_x !== null && plant.map_position_y !== null"
-                                                       class="fas fa-map-pin text-success" title="Positionné"></i>
-                                                    <button v-else
+                                                <div class="ms-2 d-flex align-items-center gap-1">
+                                                    <template v-if="plant.map_position_x !== null && plant.map_position_y !== null">
+                                                        <i class="fas fa-map-pin text-success" title="Positionné"></i>
+                                                        <button v-if="siteMapEditor.editMode"
+                                                                class="btn btn-sm btn-outline-danger py-0 px-1"
+                                                                @click.stop="unplacePlant(plant)"
+                                                                title="Retirer du plan (repositionner)">
+                                                            <i class="fas fa-eraser"></i>
+                                                        </button>
+                                                    </template>
+                                                    <button v-else-if="siteMapEditor.editMode"
                                                             class="btn btn-sm btn-outline-primary py-0 px-1"
+                                                            :class="{ 'btn-warning text-dark': siteMapEditor.placementMode && siteMapEditor.plantToPlace?.id === plant.id }"
                                                             @click.stop="addPlantToMap(plant)"
-                                                            title="Ajouter sur la carte">
-                                                        <i class="fas fa-plus"></i>
+                                                            title="Cliquer puis cliquer sur le plan pour positionner">
+                                                        <i class="fas"
+                                                           :class="siteMapEditor.placementMode && siteMapEditor.plantToPlace?.id === plant.id ? 'fa-crosshairs' : 'fa-plus'"></i>
                                                     </button>
+                                                    <i v-else class="fas fa-map-pin text-muted" title="Non positionné"></i>
                                                 </div>
                                             </div>
                                         </div>
@@ -4364,13 +4798,23 @@
                                             </div>
 
                                             <div class="ms-auto d-flex align-items-center gap-2">
-                                                <small v-if="siteMapEditor.editMode" class="text-muted">
+                                                <button v-if="siteMapEditor.editMode && siteMapEditor.placementMode"
+                                                        class="btn btn-sm btn-warning"
+                                                        @click="cancelPlacement()"
+                                                        title="Annuler le placement (Échap)">
+                                                    <i class="fas fa-times"></i> Annuler placement
+                                                </button>
+                                                <small v-if="siteMapEditor.editMode && siteMapEditor.placementMode" class="text-primary fw-bold">
+                                                    <i class="fas fa-crosshairs"></i>
+                                                    Cliquez sur le plan pour placer « @{{ siteMapEditor.plantToPlace?.name }} »
+                                                </small>
+                                                <small v-else-if="siteMapEditor.editMode" class="text-muted">
                                                     <i class="fas fa-info-circle"></i>
-                                                    Cliquez <i class="fas fa-plus text-primary"></i> pour ajouter une plante, puis glissez-déposez pour positionner
+                                                    <i class="fas fa-plus text-primary"></i> sélectionne une plante puis cliquez sur le plan. Glissez pour déplacer. ← ↑ ↓ → pour ajuster (Shift = +)
                                                 </small>
                                                 <span class="badge bg-info">
                                                     <i class="fas fa-map-pin"></i>
-                                                    @{{ getPositionedPlantsCount }} / @{{ siteMapEditor.plants.length }} positionnés
+                                                    @{{ getPositionedPlantsCount() }} / @{{ siteMapEditor.plants.length }} positionnés
                                                 </span>
                                             </div>
                                         </div>
@@ -4380,7 +4824,7 @@
                                             <svg id="siteMapSvg"
                                                  :viewBox="`0 0 ${siteMapEditor.svgDimensions.width} ${siteMapEditor.svgDimensions.height}`"
                                                  class="w-100"
-                                                 style="height: 100%; min-height: 500px; background: #f8f9fa; display: block;"
+                                                 :style="{ height: '100%', minHeight: '500px', background: '#f8f9fa', display: 'block', cursor: siteMapEditor.placementMode ? 'crosshair' : 'default' }"
                                                  @mousedown="handleSvgMouseDown"
                                                  @mousemove="handleSvgMouseMove"
                                                  @mouseup="handleSvgMouseUp">
@@ -4407,7 +4851,7 @@
                                                       width="100%" height="100%" fill="url(#grid)" />
 
                                                 <!-- Plant Markers -->
-                                                <g v-for="plant in getPositionedPlants"
+                                                <g v-for="plant in getPositionedPlants()"
                                                    :key="plant.id"
                                                    :transform="`translate(${(plant.map_position_x / 100) * siteMapEditor.svgDimensions.width}, ${(plant.map_position_y / 100) * siteMapEditor.svgDimensions.height})`"
                                                    @mousedown="startDragPlant(plant, $event)"
@@ -4666,6 +5110,18 @@
                                           v-model="siteMapEditor.newLayerData.notes"
                                           rows="3"
                                           placeholder="Description de cette version du plan..."></textarea>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       id="layerCopyFromActive"
+                                       v-model="siteMapEditor.newLayerData.copy_from_active">
+                                <label class="form-check-label" for="layerCopyFromActive">
+                                    Copier les positions et dessins de la couche active
+                                </label>
+                                <div class="form-text">
+                                    Démarre la nouvelle couche comme une copie de l'état actuel, puis modifiez-la librement.
+                                </div>
                             </div>
                             <div class="d-flex gap-2">
                                 <button type="submit"
@@ -4997,19 +5453,48 @@
                                 <label for="editSiteDescription" class="form-label">Description</label>
                                 <textarea v-model="editSite.description" class="form-control" id="editSiteDescription" rows="3"></textarea>
                             </div>
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <label for="editSiteLatitude" class="form-label">Latitude *</label>
-                                    <input v-model="editSite.latitude" type="number" step="any" class="form-control" id="editSiteLatitude" required>
+                            <div class="mb-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <label class="form-label mb-0 fw-bold">
+                                    <i class="fas fa-location-crosshairs me-1"></i>Coordonnées GPS <span class="text-danger">*</span>
+                                </label>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-primary"
+                                        :disabled="geolocating"
+                                        @click="locateInto(editSite)">
+                                    <i class="fas" :class="geolocating ? 'fa-spinner fa-spin' : 'fa-crosshairs'"></i>
+                                    <span v-if="geolocating">Localisation…</span>
+                                    <span v-else>Utiliser ma position</span>
+                                </button>
+                            </div>
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-4">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text" style="min-width: 80px;">Latitude</span>
+                                        <input v-model.number="editSite.latitude" type="number" step="0.000001" min="-90" max="90" class="form-control" id="editSiteLatitude" required>
+                                    </div>
                                 </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="editSiteLongitude" class="form-label">Longitude *</label>
-                                    <input v-model="editSite.longitude" type="number" step="any" class="form-control" id="editSiteLongitude" required>
+                                <div class="col-md-4">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text" style="min-width: 80px;">Longitude</span>
+                                        <input v-model.number="editSite.longitude" type="number" step="0.000001" min="-180" max="180" class="form-control" id="editSiteLongitude" required>
+                                    </div>
                                 </div>
-                                <div class="col-md-4 mb-3">
-                                    <label for="editSiteAltitude" class="form-label">Altitude (m)</label>
-                                    <input v-model="editSite.altitude" type="number" class="form-control" id="editSiteAltitude">
+                                <div class="col-md-4">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text" style="min-width: 80px;">Altitude</span>
+                                        <input v-model.number="editSite.altitude" type="number" class="form-control" id="editSiteAltitude">
+                                        <span class="input-group-text">m</span>
+                                    </div>
                                 </div>
+                            </div>
+                            <div class="mb-3" v-if="editSite.latitude && editSite.longitude">
+                                <small class="text-muted">
+                                    <i class="fas fa-map-marker-alt me-1 text-success"></i>
+                                    <a :href="`https://www.openstreetmap.org/?mlat=${editSite.latitude}&mlon=${editSite.longitude}#map=17/${editSite.latitude}/${editSite.longitude}`"
+                                       target="_blank" rel="noopener">
+                                        Prévisualiser sur OpenStreetMap
+                                    </a>
+                                </small>
                             </div>
                             <div class="row">
                                 <div class="col-md-4 mb-3">
@@ -5514,7 +5999,7 @@
                         <i class="fas fa-arrow-left me-1"></i>Retour
                     </button>
                     <button class="btn btn-sm btn-success" v-if="plantDetail.plant.coordinates"
-                            @click="showSiteMap(plantDetail.plant.site)" title="Voir sur la carte">
+                            @click="showSiteMap(plantDetail.plant.site, plantDetail.plant)" title="Voir sur la carte">
                         <i class="fas fa-map-marked-alt me-1"></i>Carte
                     </button>
                     <button class="btn btn-sm btn-primary" @click="editPlant(plantDetail.plant)"
@@ -5961,10 +6446,10 @@
                                 <button class="btn btn-success" @click="openModal('photo', { plantId: currentPlant })">
                                     <i class="fas fa-camera me-2"></i>Ajouter photo
                                 </button>
-                                <button class="btn btn-info" v-if="plantDetail.plant.coordinates">
+                                <button class="btn btn-info" @click="openUpdateGpsModal()">
                                     <i class="fas fa-map-marked-alt me-2"></i>Mettre à jour GPS
                                 </button>
-                                <button class="btn btn-outline-secondary">
+                                <button class="btn btn-outline-secondary" @click="openStatsModal()">
                                     <i class="fas fa-chart-line me-2"></i>Voir statistiques
                                 </button>
                             </div>

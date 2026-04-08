@@ -44,6 +44,11 @@ class SitePlanLayer extends Model
         return $this->hasMany(Plant::class, 'layer_id');
     }
 
+    public function positions(): HasMany
+    {
+        return $this->hasMany(PlantLayerPosition::class, 'layer_id');
+    }
+
     // ── Helper methods ──────────────────────────────────────────────
 
     /**

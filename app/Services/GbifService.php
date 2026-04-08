@@ -57,6 +57,61 @@ class GbifService
     }
 
     /**
+     * Search species belonging to a given family using the GBIF faceted
+     * search parameters. This is far more precise than a full-text `q=`
+     * search, which also matches placeholders like "Fagaceae sp.KR0492".
+     *
+     * Uses the GBIF Backbone dataset and filters by family + rank=SPECIES.
+     */
+    public function searchSpeciesByFamily(string $familyName, int $limit = 100, int $offset = 0, bool $acceptedOnly = true): array
+    {
+        $familyName = $this->normalizeString($familyName);
+        if (! $familyName) {
+            return ['results' => [], 'count' => 0, 'offset' => 0, 'limit' => $limit];
+        }
+
+        // Resolve the family to its GBIF backbone key so we can scope the
+        // species search to that higher taxon. GBIF's /species/search does
+        // not accept a `family=` parameter — only `highertaxonKey`.
+        $familyMatch = $this->backboneMatch($familyName, false, 'FAMILY');
+        $familyKey = $familyMatch['usageKey'] ?? $familyMatch['familyKey'] ?? null;
+        if (! $familyKey) {
+            return ['results' => [], 'count' => 0, 'offset' => 0, 'limit' => $limit];
+        }
+
+        $params = [
+            'highertaxon_key' => $familyKey,
+            'rank' => 'SPECIES',
+            'limit' => min(max(1, $limit), 1000),
+            'offset' => max(0, $offset),
+        ];
+
+        if ($acceptedOnly) {
+            $params['status'] = 'ACCEPTED';
+        }
+
+        $response = $this->makeRequest('/species/search', $params);
+        Log::info('GBIF searchSpeciesByFamily', [
+            'family' => $familyName,
+            'familyKey' => $familyKey,
+            'count' => $response['count'] ?? 0,
+            'returned' => count($response['results'] ?? []),
+        ]);
+
+        if (! $response) {
+            return ['results' => [], 'count' => 0, 'offset' => $offset, 'limit' => $limit];
+        }
+
+        return [
+            'results' => $response['results'] ?? [],
+            'count' => $response['count'] ?? 0,
+            'offset' => $response['offset'] ?? $offset,
+            'limit' => $response['limit'] ?? $limit,
+            'endOfRecords' => $response['endOfRecords'] ?? true,
+        ];
+    }
+
+    /**
      * Get detailed information for a specific GBIF taxon by ID.
      */
     public function getTaxon(int $gbifId): ?array

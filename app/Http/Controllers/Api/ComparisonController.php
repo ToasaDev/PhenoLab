@@ -28,7 +28,7 @@ class ComparisonController extends Controller
         $plantId = $request->query('plant_id');
         $stageCode = $request->query('stage_code');
 
-        $plant = Plant::with('taxon:id,binomial_name,common_name_fr')->findOrFail($plantId);
+        $plant = Plant::with('taxon:id,binomial_name,gbif_canonical_name,common_name_fr')->findOrFail($plantId);
 
         // User observations for this plant and stage
         $userObservations = Observation::where('plant_id', $plantId)
@@ -60,8 +60,26 @@ class ComparisonController extends Controller
             default  => 'YEAR(date)',
         };
 
+        // Match ODS scientific names that may include taxonomic authors
+        // (e.g. "Arbutus unedo" vs "Arbutus unedo L.") OR that use a
+        // different accepted name than GBIF (e.g. ODS uses the horticultural
+        // "Platanus acerifolia" while GBIF's accepted name is
+        // "Platanus hispanica"). We therefore also try the GBIF canonical
+        // name as a fallback, and escape LIKE wildcards in both.
+        $candidateNames = array_values(array_filter(array_unique([
+            $plant->taxon->binomial_name,
+            $plant->taxon->gbif_canonical_name,
+        ])));
+        $odsNameFilter = function ($q) use ($candidateNames) {
+            foreach ($candidateNames as $name) {
+                $escaped = addcslashes($name, '%_\\');
+                $q->orWhere('scientific_name', $name)
+                  ->orWhere('scientific_name', 'like', $escaped . ' %');
+            }
+        };
+
         // ODS comparison data (national statistics)
-        $odsStats = ODSObservation::where('scientific_name', $plant->taxon->binomial_name)
+        $odsStats = ODSObservation::where($odsNameFilter)
             ->where('bbch_code', $stageCode)
             ->whereNotNull('date')
             ->selectRaw("
@@ -73,7 +91,7 @@ class ComparisonController extends Controller
             ->first();
 
         // ODS observations by year
-        $odsByYear = ODSObservation::where('scientific_name', $plant->taxon->binomial_name)
+        $odsByYear = ODSObservation::where($odsNameFilter)
             ->where('bbch_code', $stageCode)
             ->whereNotNull('date')
             ->selectRaw("{$yearExpr} as obs_year, avg({$doyExpr}) as avg_day_of_year, count(*) as obs_count")

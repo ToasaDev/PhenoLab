@@ -62,7 +62,7 @@ class TaxonController extends Controller
 
         $query->orderBy('binomial_name');
 
-        $perPage = min((int) $request->query('per_page', 20), 100);
+        $perPage = min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 100);
 
         $results = $query->paginate($perPage);
 
@@ -294,6 +294,13 @@ class TaxonController extends Controller
             $data['import_limit'] ?? 1000,
             $data['dry_run'] ?? false,
         );
+
+        $counts = $result['results'] ?? [];
+        $result['imported_count'] = ($counts['created'] ?? 0) + ($counts['updated'] ?? 0);
+        $result['created_count'] = $counts['created'] ?? 0;
+        $result['updated_count'] = $counts['updated'] ?? 0;
+        $result['skipped_count'] = $counts['skipped'] ?? 0;
+        $result['error_count'] = $counts['errors'] ?? 0;
 
         return response()->json($result);
     }

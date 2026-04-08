@@ -10,6 +10,7 @@ createApp({
         
         // Site detailed mapping
         siteMapData: null,
+        siteMapFocusPlant: null,
         siteMapVisible: false,
         selectedPlantOnMap: null,
         mapInstance: null,
@@ -96,6 +97,8 @@ createApp({
                 draggingPlant: null,
                 dragStartX: 0,
                 dragStartY: 0,
+                placementMode: false, // "click-to-place" mode
+                plantToPlace: null,   // plant selected for click-to-place
                 svgDimensions: { width: 800, height: 600 },
                 zoom: 1,
                 pan: { x: 0, y: 0 },
@@ -169,6 +172,17 @@ createApp({
             showAddPlantModal: false,
             showEditPlantModal: false,
             showAddObservationModal: false,
+            showUpdateGpsModal: false,
+            updateGps: { latitude: null, longitude: null, gps_accuracy: null },
+            updateGpsError: '',
+            gpsLoading: false,
+            geolocating: false,
+            gpsSaving: false,
+            showStatsModal: false,
+            statsLoading: false,
+            statsError: '',
+            plantStats: null,
+            statsChartInstance: null,
             showEditObservationModal: false,
             showDeleteObservationModal: false,
             showDeletePlantModal: false,
@@ -809,6 +823,19 @@ createApp({
         // Watch for changes in map view mode
         mapViewMode(newMode) {
             this.updateMapLayers();
+        },
+
+        // Watch for sites view mode (grid / list / map)
+        sitesViewMode(newMode) {
+            if (newMode === 'map') {
+                this.$nextTick(() => {
+                    this.initializeMap();
+                    if (this.map) {
+                        this.map.invalidateSize();
+                        this.fitSitesMapBounds();
+                    }
+                });
+            }
         },
         
         // Watch for changes in site filters
@@ -1666,6 +1693,22 @@ createApp({
             
             // Add layer to map
             this.map.addLayer(this.sitesLayer);
+
+            // Auto-fit the view to all visible site markers
+            this.fitSitesMapBounds();
+        },
+
+        fitSitesMapBounds() {
+            if (!this.map) return;
+            const pts = this.filteredSites
+                .filter(s => s.latitude && s.longitude)
+                .map(s => [parseFloat(s.latitude), parseFloat(s.longitude)]);
+            if (pts.length === 0) return;
+            if (pts.length === 1) {
+                this.map.setView(pts[0], 13);
+            } else {
+                this.map.fitBounds(pts, { padding: [40, 40], maxZoom: 14 });
+            }
         },
         
         // Site management methods
@@ -1735,11 +1778,11 @@ createApp({
 
                 this.siteDetail.plants = this.extractCollection(response.data);
                 this.siteDetail.pagination = {
-                    count: response.data.count,
-                    next: response.data.next,
-                    previous: response.data.previous,
-                    current_page: page,
-                    total_pages: Math.ceil(response.data.count / filters.page_size)
+                    count: response.data.total ?? response.data.count ?? 0,
+                    next: response.data.next_page_url ?? response.data.next,
+                    previous: response.data.prev_page_url ?? response.data.previous,
+                    current_page: response.data.current_page ?? page,
+                    total_pages: response.data.last_page ?? Math.ceil((response.data.total ?? response.data.count ?? 0) / filters.page_size)
                 };
 
                 console.log('✅ Site plants loaded:', this.siteDetail.plants.length, 'plants');
@@ -1809,6 +1852,10 @@ createApp({
             this.showSiteMapEditorModal = true;
             console.log('📍 Modal should be visible now, showSiteMapEditorModal =', this.showSiteMapEditorModal);
 
+            // Bind keyboard handler for nudging / escape
+            this._mapKeydownHandler = (e) => this.onMapEditorKeydown(e);
+            document.addEventListener('keydown', this._mapKeydownHandler);
+
             // Load layers first (which will load plants for the selected layer)
             await this.loadLayers();
         },
@@ -1819,12 +1866,18 @@ createApp({
                     return;
                 }
             }
+            if (this._mapKeydownHandler) {
+                document.removeEventListener('keydown', this._mapKeydownHandler);
+                this._mapKeydownHandler = null;
+            }
             this.showSiteMapEditorModal = false;
             this.siteMapEditor.active = false;
             this.siteMapEditor.editMode = false;
             this.siteMapEditor.plants = [];
             this.siteMapEditor.selectedPlant = null;
             this.siteMapEditor.unsavedChanges = false;
+            this.siteMapEditor.placementMode = false;
+            this.siteMapEditor.plantToPlace = null;
         },
 
         async loadSiteMapPlants(siteId, layerId = null) {
@@ -1860,43 +1913,60 @@ createApp({
             this.siteMapEditor.editMode = !this.siteMapEditor.editMode;
         },
 
+        // Convert a client (mouse/touch) point to SVG-percent coordinates
+        // using the proper SVG CTM so clicks land exactly under the cursor,
+        // regardless of zoom, resize or viewBox letterboxing.
+        _svgPercentFromClient(clientX, clientY) {
+            const svg = document.querySelector('#siteMapSvg');
+            if (!svg) return null;
+            const pt = svg.createSVGPoint();
+            pt.x = clientX;
+            pt.y = clientY;
+            const ctm = svg.getScreenCTM();
+            if (!ctm) return null;
+            const svgP = pt.matrixTransform(ctm.inverse());
+            const w = this.siteMapEditor.svgDimensions.width;
+            const h = this.siteMapEditor.svgDimensions.height;
+            return {
+                x: Math.max(0, Math.min(100, (svgP.x / w) * 100)),
+                y: Math.max(0, Math.min(100, (svgP.y / h) * 100)),
+            };
+        },
+
         startDragPlant(plant, event) {
             if (!this.siteMapEditor.editMode) return;
+            // Don't start a drag if we're in placement mode
+            if (this.siteMapEditor.placementMode) return;
             event.preventDefault();
             event.stopPropagation();
 
             this.siteMapEditor.draggingPlant = plant;
-            this.siteMapEditor.dragStartX = event.clientX;
-            this.siteMapEditor.dragStartY = event.clientY;
+            this.siteMapEditor.selectedPlant = plant;
             this.siteMapEditor._dragMoved = false;
 
-            // Use arrow functions to preserve `this` context
+            const pointerId = event.pointerId;
+
             this.siteMapEditor._onDragMove = (e) => {
                 if (!this.siteMapEditor.draggingPlant) return;
                 e.preventDefault();
-
                 this.siteMapEditor._dragMoved = true;
-
-                const svg = document.querySelector('#siteMapSvg');
-                if (!svg) return;
-                const rect = svg.getBoundingClientRect();
-
-                const x = ((e.clientX - rect.left) / rect.width) * 100;
-                const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-                this.siteMapEditor.draggingPlant.map_position_x = Math.max(0, Math.min(100, x));
-                this.siteMapEditor.draggingPlant.map_position_y = Math.max(0, Math.min(100, y));
+                const p = this._svgPercentFromClient(e.clientX, e.clientY);
+                if (!p) return;
+                this.siteMapEditor.draggingPlant.map_position_x = p.x;
+                this.siteMapEditor.draggingPlant.map_position_y = p.y;
                 this.siteMapEditor.unsavedChanges = true;
             };
 
             this.siteMapEditor._onDragEnd = () => {
                 this.siteMapEditor.draggingPlant = null;
-                document.removeEventListener('mousemove', this.siteMapEditor._onDragMove);
-                document.removeEventListener('mouseup', this.siteMapEditor._onDragEnd);
+                document.removeEventListener('pointermove', this.siteMapEditor._onDragMove);
+                document.removeEventListener('pointerup', this.siteMapEditor._onDragEnd);
+                document.removeEventListener('pointercancel', this.siteMapEditor._onDragEnd);
             };
 
-            document.addEventListener('mousemove', this.siteMapEditor._onDragMove);
-            document.addEventListener('mouseup', this.siteMapEditor._onDragEnd);
+            document.addEventListener('pointermove', this.siteMapEditor._onDragMove, { passive: false });
+            document.addEventListener('pointerup', this.siteMapEditor._onDragEnd);
+            document.addEventListener('pointercancel', this.siteMapEditor._onDragEnd);
         },
 
         selectPlant(plant) {
@@ -1908,14 +1978,82 @@ createApp({
             this.siteMapEditor.selectedPlant = plant;
         },
 
+        // Human-friendly "click-to-place": pick a plant in the sidebar,
+        // then click anywhere on the map to drop it exactly there.
         addPlantToMap(plant) {
-            // Place plant at center of map if it doesn't have a position yet
-            if (plant.map_position_x === null || plant.map_position_y === null) {
-                plant.map_position_x = 50; // Center horizontally
-                plant.map_position_y = 50; // Center vertically
+            if (!this.siteMapEditor.editMode) {
+                this.showAlert('Activez le mode édition pour placer des plantes', 'info');
+                return;
+            }
+            this.siteMapEditor.placementMode = true;
+            this.siteMapEditor.plantToPlace = plant;
+            this.siteMapEditor.selectedPlant = plant;
+            this.showAlert(`Cliquez sur le plan pour placer "${plant.name}" (Échap pour annuler)`, 'info');
+        },
+
+        // Remove a plant's position so it can be re-placed.
+        unplacePlant(plant) {
+            if (!this.siteMapEditor.editMode) return;
+            plant.map_position_x = null;
+            plant.map_position_y = null;
+            this.siteMapEditor.unsavedChanges = true;
+            if (this.siteMapEditor.selectedPlant?.id === plant.id) {
+                this.siteMapEditor.selectedPlant = null;
+            }
+        },
+
+        cancelPlacement() {
+            this.siteMapEditor.placementMode = false;
+            this.siteMapEditor.plantToPlace = null;
+        },
+
+        // Called by the SVG click handler when in placement mode.
+        placePlantAt(clientX, clientY) {
+            const plant = this.siteMapEditor.plantToPlace;
+            if (!plant) return false;
+            const p = this._svgPercentFromClient(clientX, clientY);
+            if (!p) return false;
+            plant.map_position_x = p.x;
+            plant.map_position_y = p.y;
+            this.siteMapEditor.unsavedChanges = true;
+            this.siteMapEditor.placementMode = false;
+            this.siteMapEditor.plantToPlace = null;
+            this.siteMapEditor.selectedPlant = plant;
+            return true;
+        },
+
+        // Keyboard nudging for precise positioning of the selected plant.
+        // Arrow keys = 0.5%, Shift+Arrow = 2%. Delete = remove from map.
+        onMapEditorKeydown(event) {
+            if (!this.siteMapEditor.active || !this.siteMapEditor.editMode) return;
+            if (event.key === 'Escape' && this.siteMapEditor.placementMode) {
+                this.cancelPlacement();
+                event.preventDefault();
+                return;
+            }
+            const plant = this.siteMapEditor.selectedPlant;
+            if (!plant || plant.map_position_x === null) return;
+            // Don't hijack typing in inputs
+            const tag = (event.target?.tagName || '').toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+            const step = event.shiftKey ? 2 : 0.5;
+            let handled = true;
+            switch (event.key) {
+                case 'ArrowLeft':
+                    plant.map_position_x = Math.max(0, plant.map_position_x - step); break;
+                case 'ArrowRight':
+                    plant.map_position_x = Math.min(100, plant.map_position_x + step); break;
+                case 'ArrowUp':
+                    plant.map_position_y = Math.max(0, plant.map_position_y - step); break;
+                case 'ArrowDown':
+                    plant.map_position_y = Math.min(100, plant.map_position_y + step); break;
+                default:
+                    handled = false;
+            }
+            if (handled) {
                 this.siteMapEditor.unsavedChanges = true;
-                this.siteMapEditor.selectedPlant = plant;
-                console.log(`📍 Placed ${plant.name} at center (50%, 50%)`);
+                event.preventDefault();
             }
         },
 
@@ -2048,6 +2186,15 @@ createApp({
         },
 
         handleSvgMouseDown(event) {
+            // Click-to-place short-circuit: if a plant is waiting to be placed,
+            // drop it exactly where the user clicked and stop here.
+            if (this.siteMapEditor.placementMode && this.siteMapEditor.editMode) {
+                if (this.placePlantAt(event.clientX, event.clientY)) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    return;
+                }
+            }
             if (this.siteMapEditor.drawingMode === 'select' || !this.siteMapEditor.editMode) return;
 
             const svg = document.querySelector('#siteMapSvg');
@@ -2261,7 +2408,8 @@ createApp({
                 name: '',
                 start_date: today,
                 end_date: '',
-                notes: ''
+                notes: '',
+                copy_from_active: false
             };
             this.siteMapEditor.showCreateLayerModal = true;
         },
@@ -2280,9 +2428,14 @@ createApp({
                         is_active: true
                     }
                 );
+                // The new layer is now active — deactivate the others locally too.
+                this.siteMapEditor.layers.forEach(l => { l.is_active = false; });
                 this.siteMapEditor.layers.push(response.data);
                 this.siteMapEditor.selectedLayer = response.data;
-                this.siteMapEditor.drawingShapes = []; // Clear shapes for new layer
+                // Reload plants + drawings for the new layer (will show copied
+                // content if copy_from_active was checked, empty otherwise).
+                await this.loadSiteMapPlants(this.siteMapEditor.site.id, response.data.id);
+                await this.loadDrawingOverlay();
                 this.closeCreateLayerModal();
                 this.showAlert(`Couche "${response.data.name}" créée`, 'success');
                 console.log('✅ Created new layer:', response.data);
@@ -2335,7 +2488,7 @@ createApp({
                 const params = new URLSearchParams();
 
                 // Add filters to query params
-                if (filters.q) params.append('q', filters.q);
+                if (filters.q) params.append('search', filters.q);
                 if (filters.site) params.append('site', filters.site);
                 if (filters.category) params.append('category', filters.category);
                 if (filters.status) params.append('status', filters.status);
@@ -2350,11 +2503,11 @@ createApp({
 
                 this.plantsList.items = this.extractCollection(response.data);
                 this.plantsList.pagination = {
-                    count: response.data.count,
-                    next: response.data.next,
-                    previous: response.data.previous,
-                    current_page: page,
-                    total_pages: Math.ceil(response.data.count / filters.page_size)
+                    count: response.data.total ?? response.data.count ?? 0,
+                    next: response.data.next_page_url ?? response.data.next,
+                    previous: response.data.prev_page_url ?? response.data.previous,
+                    current_page: response.data.current_page ?? page,
+                    total_pages: response.data.last_page ?? Math.ceil((response.data.total ?? response.data.count ?? 0) / filters.page_size)
                 };
 
                 console.log('✅ Plants list loaded:', this.plantsList.items.length, 'plants');
@@ -2433,7 +2586,7 @@ createApp({
                 const params = new URLSearchParams();
 
                 // Add filters to query params
-                if (filters.q) params.append('q', filters.q);
+                if (filters.q) params.append('search', filters.q);
                 if (filters.year) params.append('year', filters.year);
                 if (filters.date_from) params.append('date_from', filters.date_from);
                 if (filters.date_to) params.append('date_to', filters.date_to);
@@ -2452,11 +2605,11 @@ createApp({
 
                 this.observationsList.items = this.extractCollection(response.data);
                 this.observationsList.pagination = {
-                    count: response.data.count,
-                    next: response.data.next,
-                    previous: response.data.previous,
-                    current_page: page,
-                    total_pages: Math.ceil(response.data.count / filters.page_size)
+                    count: response.data.total ?? response.data.count ?? 0,
+                    next: response.data.next_page_url ?? response.data.next,
+                    previous: response.data.prev_page_url ?? response.data.previous,
+                    current_page: response.data.current_page ?? page,
+                    total_pages: response.data.last_page ?? Math.ceil((response.data.total ?? response.data.count ?? 0) / filters.page_size)
                 };
 
                 console.log('✅ Observations list loaded:', this.observationsList.items.length, 'observations');
@@ -2637,6 +2790,13 @@ createApp({
                     this.sites[siteIndex] = response.data;
                     this.filteredSites = this.filteredSitesComputed;
                 }
+
+                // Update site detail view if currently showing this site
+                if (this.siteDetail.site && this.siteDetail.site.id === this.editSite.id) {
+                    this.siteDetail.site = this.normalizeSite
+                        ? this.normalizeSite(response.data)
+                        : response.data;
+                }
                 
                 // Close modal and reset form
                 this.closeModal();
@@ -2768,6 +2928,183 @@ createApp({
         },
         
         // Utility: Clean up all modal artifacts (backdrops, body classes, overflow)
+        async openStatsModal() {
+            const plant = this.plantDetail.plant;
+            if (!plant) return;
+            this.showStatsModal = true;
+            this.statsLoading = true;
+            this.statsError = '';
+            this.plantStats = null;
+            if (this.statsChartInstance) {
+                this.statsChartInstance.destroy();
+                this.statsChartInstance = null;
+            }
+            try {
+                const response = await axios.get(`/api/v1/plants/${plant.id}/statistics`);
+                this.plantStats = response.data;
+                this.statsLoading = false;
+                this.$nextTick(() => this.renderStatsChart());
+            } catch (error) {
+                this.statsError = error.response?.data?.message || error.message || 'Erreur lors du chargement.';
+                this.statsLoading = false;
+            }
+        },
+
+        closeStatsModal() {
+            this.showStatsModal = false;
+            if (this.statsChartInstance) {
+                this.statsChartInstance.destroy();
+                this.statsChartInstance = null;
+            }
+        },
+
+        renderStatsChart() {
+            const canvas = document.getElementById('statsStageChart');
+            if (!canvas || !this.plantStats || !this.plantStats.observations_by_stage.length) return;
+            const data = this.plantStats.observations_by_stage;
+            this.statsChartInstance = new Chart(canvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.stage_code),
+                    datasets: [{
+                        label: 'Nombre d\'observations',
+                        data: data.map(d => d.count),
+                        backgroundColor: 'rgba(40, 167, 69, 0.6)',
+                        borderColor: 'rgba(40, 167, 69, 1)',
+                        borderWidth: 1,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: (items) => {
+                                    const idx = items[0].dataIndex;
+                                    return data[idx].stage_code + ' - ' + data[idx].stage_description;
+                                },
+                            },
+                        },
+                    },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+                },
+            });
+        },
+
+        openUpdateGpsModal() {
+            const plant = this.plantDetail.plant;
+            if (!plant) return;
+            this.updateGps = {
+                latitude: plant.latitude ?? plant.coordinates?.latitude ?? null,
+                longitude: plant.longitude ?? plant.coordinates?.longitude ?? null,
+                gps_accuracy: plant.gps_accuracy ?? null,
+            };
+            this.updateGpsError = '';
+            this.showUpdateGpsModal = true;
+        },
+
+        closeUpdateGpsModal() {
+            this.showUpdateGpsModal = false;
+            this.updateGpsError = '';
+        },
+
+        // Generic geolocation helper: fills lat/lon/altitude on a target object.
+        // Usage: this.locateInto(this.newSite) or this.locateInto(this.editSite)
+        locateInto(target, onError) {
+            if (!navigator.geolocation) {
+                const msg = 'Géolocalisation non supportée par ce navigateur.';
+                this.showAlert(msg, 'warning');
+                if (onError) onError(msg);
+                return;
+            }
+            this.geolocating = true;
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    target.latitude = Number(pos.coords.latitude.toFixed(6));
+                    target.longitude = Number(pos.coords.longitude.toFixed(6));
+                    if (pos.coords.altitude != null && !isNaN(pos.coords.altitude)) {
+                        target.altitude = Math.round(pos.coords.altitude);
+                    }
+                    if (pos.coords.accuracy != null && 'gps_accuracy' in target) {
+                        target.gps_accuracy = Number(pos.coords.accuracy.toFixed(1));
+                    }
+                    this.geolocating = false;
+                    this.showAlert(
+                        `Position obtenue (précision ~${pos.coords.accuracy ? pos.coords.accuracy.toFixed(0) : '?'} m)`,
+                        'success'
+                    );
+                },
+                (err) => {
+                    this.geolocating = false;
+                    const msg = 'Impossible d\'obtenir la position : ' + err.message;
+                    this.showAlert(msg, 'danger');
+                    if (onError) onError(msg);
+                },
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+            );
+        },
+
+        useCurrentLocation() {
+            if (!navigator.geolocation) {
+                this.updateGpsError = 'Géolocalisation non supportée par ce navigateur.';
+                return;
+            }
+            this.gpsLoading = true;
+            this.updateGpsError = '';
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    this.updateGps.latitude = Number(pos.coords.latitude.toFixed(6));
+                    this.updateGps.longitude = Number(pos.coords.longitude.toFixed(6));
+                    this.updateGps.gps_accuracy = pos.coords.accuracy ? Number(pos.coords.accuracy.toFixed(1)) : null;
+                    this.gpsLoading = false;
+                },
+                (err) => {
+                    this.updateGpsError = 'Impossible d\'obtenir la position : ' + err.message;
+                    this.gpsLoading = false;
+                },
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+            );
+        },
+
+        async saveUpdatedGps() {
+            const plant = this.plantDetail.plant;
+            if (!plant) return;
+            if (this.updateGps.latitude == null || this.updateGps.longitude == null) {
+                this.updateGpsError = 'Latitude et longitude requises.';
+                return;
+            }
+            this.gpsSaving = true;
+            this.updateGpsError = '';
+            try {
+                const response = await axios.patch(`/api/v1/plants/${plant.id}`, {
+                    latitude: this.updateGps.latitude,
+                    longitude: this.updateGps.longitude,
+                    gps_accuracy: this.updateGps.gps_accuracy,
+                });
+                const fresh = response.data;
+                plant.latitude = fresh.latitude;
+                plant.longitude = fresh.longitude;
+                plant.gps_accuracy = fresh.gps_accuracy;
+                if (plant.coordinates) {
+                    plant.coordinates.latitude = fresh.latitude;
+                    plant.coordinates.longitude = fresh.longitude;
+                } else {
+                    plant.coordinates = { latitude: fresh.latitude, longitude: fresh.longitude };
+                }
+                this.showAlert('Position GPS mise à jour avec succès !', 'success');
+                this.showUpdateGpsModal = false;
+            } catch (error) {
+                const errors = error.response?.data?.errors;
+                this.updateGpsError = errors
+                    ? Object.values(errors).flat().join(' ')
+                    : (error.response?.data?.message || error.message);
+            } finally {
+                this.gpsSaving = false;
+            }
+        },
+
         cleanupModalArtifacts() {
             // Remove all modal backdrops
             const backdrops = document.querySelectorAll('.modal-backdrop');
@@ -2781,7 +3118,7 @@ createApp({
             document.body.style.removeProperty('padding-right');
         },
 
-        // Close modal and clean up backdrop
+        // Close any currently open modal (only toggles the one that's actually open)
         closeModal() {
             // Close photo modal using Bootstrap API (if exists)
             const photoModalElement = document.getElementById('addPhotoModal');
@@ -2792,25 +3129,17 @@ createApp({
                 }
             }
 
-            // Close all other modals (Vue state)
-            this.showAddSiteModal = false;
-            this.showEditSiteModal = false;
-            this.showAddPlantModal = false;
-            this.showEditPlantModal = false;
-            this.showAddObservationModal = false;
-            this.showEditObservationModal = false;
-            this.showDeleteObservationModal = false;
-            this.showDeletePlantModal = false;
-            this.showEditPhotoModal = false;
-            this.showLoginModal = false;
-            this.showTestSiteModal = false;
-            this.showMarkDeadModal = false;
-            this.showReplacePlantModal = false;
-
-            // Failsafe cleanup (only for non-Bootstrap modals)
-            setTimeout(() => {
-                this.cleanupModalArtifacts();
-            }, 200);
+            // Only flip the modal flag that is actually true — flipping
+            // already-false flags still triggers Vue patches and can corrupt the DOM.
+            const modalFlags = [
+                'showAddSiteModal', 'showEditSiteModal', 'showAddPlantModal', 'showEditPlantModal',
+                'showAddObservationModal', 'showEditObservationModal', 'showDeleteObservationModal',
+                'showDeletePlantModal', 'showEditPhotoModal', 'showLoginModal', 'showTestSiteModal',
+                'showMarkDeadModal', 'showReplacePlantModal',
+            ];
+            for (const flag of modalFlags) {
+                if (this[flag]) this[flag] = false;
+            }
         },
         
         // ===== AUTHENTICATION METHODS =====
@@ -2917,24 +3246,35 @@ createApp({
         },
         
         // ===== SITE DETAILED MAPPING METHODS =====
-        async showSiteMap(site) {
+        async showSiteMap(site, focusPlant = null) {
+            if (!site || !site.id) {
+                console.error('showSiteMap: site invalide', site);
+                this.showAlert('Site introuvable pour cette plante.', 'warning');
+                return;
+            }
             this.loading.sites = true;
+            // Remember which plant to focus on once the map is ready
+            this.siteMapFocusPlant = focusPlant || null;
             try {
                 const response = await fetch(`/api/v1/plants/site-map?site_id=${site.id}`);
                 if (response.ok) {
                     this.siteMapData = await response.json();
                     this.siteMapVisible = true;
                     this.currentView = 'site-map';
-                    
-                    // Initialize map after Vue renders the element
+                    // Update hash so the router doesn't override currentView on next event
+                    if (window.location.hash !== `#site-map/${site.id}`) {
+                        history.replaceState(null, '', `#site-map/${site.id}`);
+                    }
                     this.$nextTick(() => {
                         this.initializeSiteMap();
                     });
                 } else {
-                    console.error('Erreur lors du chargement de la carte du site');
+                    console.error('Erreur lors du chargement de la carte du site', response.status);
+                    this.showAlert('Erreur lors du chargement de la carte.', 'danger');
                 }
             } catch (error) {
-                console.error('Erreur:', error);
+                console.error('Erreur showSiteMap:', error);
+                this.showAlert('Erreur réseau lors du chargement de la carte.', 'danger');
             } finally {
                 this.loading.sites = false;
             }
@@ -2956,7 +3296,10 @@ createApp({
             }
             
             // Create new map centered on site
-            const siteCoords = site.coordinates || [46.603354, 1.888334]; // Default center of France
+            const siteCoords = site.coordinates
+                || (site.latitude != null && site.longitude != null
+                    ? [parseFloat(site.latitude), parseFloat(site.longitude)]
+                    : [46.603354, 1.888334]); // Default center of France
             this.mapInstance = L.map('site-detailed-map').setView(siteCoords, 18); // High zoom for detail
             
             // Add satellite imagery for precision
@@ -3017,6 +3360,56 @@ createApp({
             
             // Add scale control
             L.control.scale({ metric: true, imperial: false }).addTo(this.mapInstance);
+
+            // If we were asked to focus on a specific plant (e.g. arriving
+            // from the plant detail page), recenter the map on its actual
+            // coordinates, add a highlighted marker on top, and open popup.
+            const focus = this.siteMapFocusPlant;
+            if (focus) {
+                // `focus.coordinates` can be either [lat, lon] (Plant::getCoordinates)
+                // or { latitude, longitude } (PlantController::show). Normalize.
+                let coords = null;
+                if (Array.isArray(focus.coordinates) && focus.coordinates.length === 2) {
+                    coords = [parseFloat(focus.coordinates[0]), parseFloat(focus.coordinates[1])];
+                } else if (focus.coordinates && focus.coordinates.latitude && focus.coordinates.longitude) {
+                    coords = [parseFloat(focus.coordinates.latitude), parseFloat(focus.coordinates.longitude)];
+                } else if (focus.latitude && focus.longitude) {
+                    coords = [parseFloat(focus.latitude), parseFloat(focus.longitude)];
+                }
+                if (coords) {
+                    this.mapInstance.setView(coords, 20);
+
+                    // Highlighted marker (large pulsing pin) so the user can
+                    // immediately spot the plant they came from.
+                    const highlightIcon = L.divIcon({
+                        className: 'focus-plant-marker',
+                        html: '<div style="position:relative;width:44px;height:44px;">'
+                            + '<div style="position:absolute;inset:0;border-radius:50%;background:rgba(255,193,7,0.35);animation:focusPulse 1.6s infinite;"></div>'
+                            + '<div style="position:absolute;inset:8px;border-radius:50%;background:#ffc107;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:16px;">📍</div>'
+                            + '</div>',
+                        iconSize: [44, 44],
+                        iconAnchor: [22, 22],
+                    });
+                    const highlight = L.marker(coords, { icon: highlightIcon, zIndexOffset: 1000 })
+                        .addTo(this.mapInstance);
+                    highlight.bindPopup(
+                        `<div class="plant-popup">`
+                        + `<h6>📍 ${focus.name}</h6>`
+                        + (focus.taxon?.binomial_name ? `<p><em>${focus.taxon.binomial_name}</em></p>` : '')
+                        + `<small class="text-muted">Plante sélectionnée</small>`
+                        + `</div>`
+                    ).openPopup();
+
+                    // Inject the pulse keyframes once
+                    if (!document.getElementById('focus-plant-marker-style')) {
+                        const style = document.createElement('style');
+                        style.id = 'focus-plant-marker-style';
+                        style.textContent = '@keyframes focusPulse{0%{transform:scale(.8);opacity:.9}70%{transform:scale(1.8);opacity:0}100%{transform:scale(.8);opacity:0}}';
+                        document.head.appendChild(style);
+                    }
+                }
+                this.siteMapFocusPlant = null;
+            }
         },
         
         getPlantIcon(plant) {
@@ -3697,22 +4090,60 @@ createApp({
             }
 
             axios.post('/api/v1/observations', payload)
-                .then(response => {
+                .then(async response => {
+                    console.log('✅ Observation created:', response.data);
+                    const observedPlantId = payload.plant_id || (this.plantDetail.plant && this.plantDetail.plant.id) || this.currentPlant;
+
+                    // Refresh data FIRST while modal is still open, then close modal once at the end.
+                    try {
+                        if (observedPlantId && this.plantDetail.plant && this.plantDetail.plant.id === observedPlantId) {
+                            const [obsResponse, statsResponse, plantResponse] = await Promise.all([
+                                fetch(`/api/v1/plants/${observedPlantId}/observations`),
+                                fetch(`/api/v1/plants/${observedPlantId}/statistics`),
+                                fetch(`/api/v1/plants/${observedPlantId}`),
+                            ]);
+                            if (obsResponse.ok) {
+                                const obsData = await obsResponse.json();
+                                const list = Array.isArray(obsData) ? obsData : (obsData.observations || obsData.data || []);
+                                this.plantDetail.observations.splice(0, this.plantDetail.observations.length, ...list);
+                            }
+                            if (statsResponse.ok) {
+                                const stats = await statsResponse.json();
+                                Object.assign(this.plantDetail.statistics || (this.plantDetail.statistics = {}), stats);
+                            }
+                            if (plantResponse.ok) {
+                                const fresh = await plantResponse.json();
+                                if (this.plantDetail.plant) {
+                                    this.plantDetail.plant.observations_count = fresh.observations_count;
+                                    this.plantDetail.plant.photos_count = fresh.photos_count;
+                                    this.plantDetail.plant.last_observation = fresh.last_observation;
+                                }
+                            }
+                        }
+                        if (this.currentView === 'observations') {
+                            this.loadObservations();
+                        }
+                    } catch (e) {
+                        console.error('Error refreshing plant detail data:', e);
+                    }
+
                     this.showAddObservationModal = false;
-                    this.resetNewObservationForm();
                     this.showAlert('Observation ajoutée avec succès !', 'success');
-                    // Reload observations if we're on the observations view
-                    if (this.currentView === 'observations') {
-                        this.loadObservations();
-                    }
-                    // Reload plant detail if viewing a plant
-                    if (this.currentView === 'plant-detail' && this.plantDetail.plant) {
-                        this.viewPlantDetail(this.plantDetail.plant.id);
-                    }
+                    this.$nextTick(() => {
+                        this.resetNewObservationForm();
+                    });
                 })
                 .catch(error => {
                     console.error('Error adding observation:', error);
-                    const msg = error.response ? `Erreur ${error.response.status}: ${error.response.data.message || JSON.stringify(error.response.data.errors || error.response.data)}` : error.message;
+                    console.error('Payload was:', payload);
+                    console.error('Response data:', error.response?.data);
+                    const errors = error.response?.data?.errors;
+                    let msg = error.response ? `Erreur ${error.response.status}: ` : error.message;
+                    if (errors) {
+                        msg += Object.entries(errors).map(([f, msgs]) => `${f}: ${msgs.join(', ')}`).join(' | ');
+                    } else {
+                        msg += error.response?.data?.message || JSON.stringify(error.response?.data);
+                    }
                     this.showAlert(msg, 'danger');
                 });
         },

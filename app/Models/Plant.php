@@ -148,6 +148,11 @@ class Plant extends Model
         return $this->belongsTo(SitePlanLayer::class, 'layer_id');
     }
 
+    public function layerPositions(): HasMany
+    {
+        return $this->hasMany(PlantLayerPosition::class, 'plant_id');
+    }
+
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');

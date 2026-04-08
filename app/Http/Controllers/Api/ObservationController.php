@@ -111,7 +111,7 @@ class ObservationController extends Controller
         );
         $query->orderBy($column, $direction);
 
-        $perPage = min((int) $request->query('per_page', 20), 100);
+        $perPage = min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 100);
 
         return response()->json($query->paginate($perPage));
     }
@@ -267,7 +267,7 @@ class ObservationController extends Controller
             )
             ->withCount('photos')
             ->orderByDesc('observation_date')
-            ->paginate(min((int) $request->query('per_page', 20), 100));
+            ->paginate(min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 100));
 
         return response()->json($observations);
     }

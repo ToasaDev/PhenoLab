@@ -178,7 +178,7 @@ class GbifImportService
 
         try {
             while ($totalProcessed < $limit) {
-                $batch = $this->gbif->searchTaxa($familyName, $batchSize, $offset);
+                $batch = $this->gbif->searchSpeciesByFamily($familyName, $batchSize, $offset, $acceptedOnly);
 
                 if (empty($batch['results'])) {
                     break;
@@ -218,17 +218,37 @@ class GbifImportService
                         continue;
                     }
 
+                    // Skip placeholder/unidentified entries that lack a proper
+                    // genus + species (e.g. "Fagaceae sp.KR0492", "Fagaceae environmental sample").
+                    $itemGenus = trim($item['genus'] ?? '');
+                    $itemSpecies = trim($item['species'] ?? '');
+                    if ($itemGenus === '' || $itemSpecies === '' || strcasecmp($itemGenus, $familyName) === 0) {
+                        $results['skipped']++;
+                        continue;
+                    }
+
                     $totalProcessed++;
 
                     if (! $dryRun) {
                         try {
-                            $syncResult = $this->syncByScientificName($sciName, false, true);
+                            // Use the GBIF key from the batch item directly to avoid
+                            // backbone re-matching, which can resolve ambiguous names
+                            // (e.g. "Fagaceae sp.KR0492") back to the FAMILY level.
+                            $gbifId = $item['key'] ?? $item['nubKey'] ?? null;
+                            $gbifDetails = $gbifId ? $this->gbif->getTaxon($gbifId) : null;
 
-                            if ($syncResult['success']) {
-                                $syncResult['created'] ? $results['created']++ : $results['updated']++;
+                            if (! $gbifDetails) {
+                                // Fallback to name-based sync if details lookup fails.
+                                $syncResult = $this->syncByScientificName($sciName, false, true);
+                                if ($syncResult['success']) {
+                                    $syncResult['created'] ? $results['created']++ : $results['updated']++;
+                                } else {
+                                    $results['errors']++;
+                                    $errorLog[] = "{$sciName}: {$syncResult['message']}";
+                                }
                             } else {
-                                $results['errors']++;
-                                $errorLog[] = "{$sciName}: {$syncResult['message']}";
+                                [$taxon, $created] = $this->upsertFromGbif($gbifDetails, true);
+                                $created ? $results['created']++ : $results['updated']++;
                             }
                         } catch (\Exception $e) {
                             $results['errors']++;

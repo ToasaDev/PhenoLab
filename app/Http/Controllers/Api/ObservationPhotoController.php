@@ -110,7 +110,7 @@ class ObservationPhotoController extends Controller
 
         $query->orderBy('display_order')->orderByDesc('created_at');
 
-        $perPage = min((int) $request->query('per_page', 20), 100);
+        $perPage = min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 100);
 
         return response()->json($query->paginate($perPage));
     }
@@ -243,7 +243,7 @@ class ObservationPhotoController extends Controller
         $photos = ObservationPhoto::where('photographer_id', Auth::id())
             ->with('observation:id,observation_date,plant_id')
             ->orderByDesc('created_at')
-            ->paginate(min((int) $request->query('per_page', 20), 100));
+            ->paginate(min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 100));
 
         return response()->json($photos);
     }

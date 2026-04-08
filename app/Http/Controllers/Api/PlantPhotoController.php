@@ -109,7 +109,7 @@ class PlantPhotoController extends Controller
         );
         $query->orderBy($column, $direction);
 
-        $perPage = min((int) $request->query('per_page', 20), 100);
+        $perPage = min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 100);
 
         return response()->json($query->paginate($perPage));
     }
@@ -285,7 +285,7 @@ class PlantPhotoController extends Controller
         $photos = PlantPhoto::where('photographer_id', Auth::id())
             ->with('plant:id,name')
             ->orderByDesc('created_at')
-            ->paginate(min((int) $request->query('per_page', 20), 100));
+            ->paginate(min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 100));
 
         return response()->json($photos);
     }

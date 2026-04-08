@@ -72,7 +72,7 @@ class PlantPositionController extends Controller
 
         $query->orderBy('site_id')->orderBy('label');
 
-        $perPage = min((int) $request->query('per_page', 20), 100);
+        $perPage = min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 100);
 
         return response()->json($query->paginate($perPage));
     }

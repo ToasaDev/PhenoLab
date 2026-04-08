@@ -17,7 +17,7 @@ class ActivityLogController extends Controller
         $logs = ActivityLog::where('is_public', true)
             ->with('actor:id,name')
             ->orderByDesc('created_at')
-            ->paginate(min((int) $request->query('per_page', 20), 100));
+            ->paginate(min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 100));
 
         return response()->json($logs);
     }

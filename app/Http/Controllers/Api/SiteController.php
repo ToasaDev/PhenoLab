@@ -92,7 +92,7 @@ class SiteController extends Controller
         );
         $query->orderBy($column, $direction);
 
-        $perPage = min((int) $request->query('per_page', 20), 100);
+        $perPage = min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 100);
 
         return response()->json($query->paginate($perPage));
     }
@@ -321,7 +321,7 @@ class SiteController extends Controller
         $sortDir = $request->query('sort_dir', 'asc');
         $query->orderBy($sortBy, $sortDir);
 
-        $perPage = min((int) $request->query('per_page', 20), 100);
+        $perPage = min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 100);
 
         return response()->json($query->paginate($perPage));
     }
@@ -455,17 +455,59 @@ class SiteController extends Controller
         }
 
         $data = $request->validate([
-            'name'            => ['required', 'string', 'max:100'],
-            'start_date'      => ['required', 'date'],
-            'end_date'        => ['nullable', 'date', 'after:start_date'],
-            'is_active'       => ['nullable', 'boolean'],
-            'drawing_overlay' => ['nullable', 'array'],
-            'notes'           => ['nullable', 'string'],
+            'name'             => ['required', 'string', 'max:100'],
+            'start_date'       => ['required', 'date'],
+            'end_date'         => ['nullable', 'date', 'after:start_date'],
+            'is_active'        => ['nullable', 'boolean'],
+            'drawing_overlay'  => ['nullable', 'array'],
+            'notes'            => ['nullable', 'string'],
+            'copy_from_active' => ['nullable', 'boolean'],
         ]);
+
+        $copyFromActive = (bool) ($data['copy_from_active'] ?? false);
+        unset($data['copy_from_active']);
 
         $data['site_id'] = $site->id;
 
-        $layer = SitePlanLayer::create($data);
+        $sourceLayer = $copyFromActive
+            ? SitePlanLayer::where('site_id', $site->id)->where('is_active', true)->orderByDesc('id')->first()
+            : null;
+
+        // If copying and no drawing_overlay was explicitly provided, clone it.
+        if ($sourceLayer && ! array_key_exists('drawing_overlay', $data)) {
+            $data['drawing_overlay'] = $sourceLayer->drawing_overlay;
+        }
+
+        $layer = \Illuminate\Support\Facades\DB::transaction(function () use ($data, $sourceLayer) {
+            $layer = SitePlanLayer::create($data);
+
+            if ($sourceLayer) {
+                $sourcePositions = \App\Models\PlantLayerPosition::where('layer_id', $sourceLayer->id)->get();
+                $now = now();
+                $rows = $sourcePositions->map(fn ($p) => [
+                    'layer_id'       => $layer->id,
+                    'plant_id'       => $p->plant_id,
+                    'map_position_x' => $p->map_position_x,
+                    'map_position_y' => $p->map_position_y,
+                    'notes'          => $p->notes,
+                    'created_at'     => $now,
+                    'updated_at'     => $now,
+                ])->all();
+
+                if (! empty($rows)) {
+                    \App\Models\PlantLayerPosition::insert($rows);
+                }
+            }
+
+            // If the new layer is active, deactivate the others on the same site.
+            if ($layer->is_active) {
+                SitePlanLayer::where('site_id', $layer->site_id)
+                    ->where('id', '!=', $layer->id)
+                    ->update(['is_active' => false]);
+            }
+
+            return $layer;
+        });
 
         return response()->json($layer, 201);
     }

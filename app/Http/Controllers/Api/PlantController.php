@@ -424,7 +424,7 @@ class PlantController extends Controller
             ->with('taxon:id,binomial_name,common_name_fr', 'category:id,name', 'site:id,name')
             ->withCount('observations', 'photos')
             ->orderBy('name')
-            ->paginate(min((int) $request->query('per_page', 20), 100));
+            ->paginate(min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 100));
 
         return response()->json($plants);
     }
@@ -499,8 +499,9 @@ class PlantController extends Controller
 
         $observationsByStage = (clone $visibleObservations)
             ->join('phenological_stages', 'observations.phenological_stage_id', '=', 'phenological_stages.id')
-            ->selectRaw('phenological_stages.stage_code, phenological_stages.stage_description, count(*) as count')
-            ->groupBy('phenological_stages.stage_code', 'phenological_stages.stage_description')
+            ->selectRaw('phenological_stages.id as stage_id, phenological_stages.stage_code, phenological_stages.stage_description, count(*) as count, AVG(observations.intensity) as avg_intensity')
+            ->groupBy('phenological_stages.id', 'phenological_stages.stage_code', 'phenological_stages.stage_description')
+            ->orderBy('phenological_stages.stage_code')
             ->get();
 
         $yearExpr = match (DB::connection()->getDriverName()) {
@@ -515,13 +516,96 @@ class PlantController extends Controller
             ->orderByRaw($yearExpr)
             ->get();
 
+        // Phenological calendar: first/last observation date per stage
+        $phenologicalCalendar = (clone $visibleObservations)
+            ->join('phenological_stages', 'observations.phenological_stage_id', '=', 'phenological_stages.id')
+            ->selectRaw('phenological_stages.stage_code, phenological_stages.stage_description, MIN(observation_date) as first_date, MAX(observation_date) as last_date, count(*) as count')
+            ->groupBy('phenological_stages.stage_code', 'phenological_stages.stage_description')
+            ->orderBy('phenological_stages.stage_code')
+            ->get()
+            ->map(function ($row) {
+                $first = $row->first_date ? \Carbon\Carbon::parse($row->first_date) : null;
+                $last  = $row->last_date  ? \Carbon\Carbon::parse($row->last_date)  : null;
+                return [
+                    'stage_code'        => $row->stage_code,
+                    'stage_description' => $row->stage_description,
+                    'first_date'        => $row->first_date,
+                    'last_date'         => $row->last_date,
+                    'count'             => (int) $row->count,
+                    'duration_days'     => ($first && $last) ? $first->diffInDays($last) + 1 : null,
+                ];
+            });
+
+        // Interannual comparison: first observation date for each stage, per year
+        $interannualByStage = (clone $visibleObservations)
+            ->join('phenological_stages', 'observations.phenological_stage_id', '=', 'phenological_stages.id')
+            ->selectRaw("phenological_stages.stage_code, phenological_stages.stage_description, {$yearExpr} as year, MIN(observation_date) as first_date, MIN(day_of_year) as first_doy")
+            ->groupByRaw("phenological_stages.stage_code, phenological_stages.stage_description, {$yearExpr}")
+            ->orderBy('phenological_stages.stage_code')
+            ->orderByRaw($yearExpr)
+            ->get()
+            ->groupBy('stage_code')
+            ->map(function ($rows, $stageCode) {
+                return [
+                    'stage_code'        => $stageCode,
+                    'stage_description' => $rows->first()->stage_description,
+                    'years'             => $rows->map(fn ($r) => [
+                        'year'       => (int) $r->year,
+                        'first_date' => $r->first_date,
+                        'day_of_year' => $r->first_doy ? (int) $r->first_doy : null,
+                    ])->values(),
+                ];
+            })
+            ->values();
+
+        // Weather averages
+        $weather = (clone $visibleObservations)
+            ->selectRaw('AVG(temperature) as avg_temperature, AVG(humidity) as avg_humidity, AVG(wind_speed) as avg_wind_speed')
+            ->first();
+
+        $weatherConditions = (clone $visibleObservations)
+            ->whereNotNull('weather_condition')
+            ->selectRaw('weather_condition, count(*) as count')
+            ->groupBy('weather_condition')
+            ->orderByDesc('count')
+            ->get();
+
+        // Recent activity (last 30 days)
+        $thirtyDaysAgo = now()->subDays(30)->toDateString();
+        $recentObservationsCount = (clone $visibleObservations)
+            ->where('observation_date', '>=', $thirtyDaysAgo)
+            ->count();
+
+        $lastPhoto = $this->visiblePhotosForPlant($plant)
+            ->orderByDesc('created_at')
+            ->select('id', 'title', 'created_at', 'photo_type')
+            ->first();
+
+        // Distinct observers count
+        $distinctObserversCount = (clone $visibleObservations)
+            ->distinct('observer_id')
+            ->count('observer_id');
+
         return response()->json([
-            'observations_count'    => (clone $visibleObservations)->count(),
-            'photos_count'          => $this->visiblePhotosForPlant($plant)->count(),
-            'observations_by_stage' => $observationsByStage,
-            'observations_by_year'  => $observationsByYear,
-            'first_observation'     => (clone $visibleObservations)->orderBy('observation_date')->value('observation_date'),
-            'last_observation'      => (clone $visibleObservations)->orderByDesc('observation_date')->value('observation_date'),
+            'observations_count'       => (clone $visibleObservations)->count(),
+            'distinct_observers_count' => $distinctObserversCount,
+            'photos_count'             => $this->visiblePhotosForPlant($plant)->count(),
+            'observations_by_stage'    => $observationsByStage,
+            'observations_by_year'     => $observationsByYear,
+            'phenological_calendar'    => $phenologicalCalendar,
+            'interannual_by_stage'     => $interannualByStage,
+            'weather'                  => [
+                'avg_temperature' => $weather?->avg_temperature ? round((float) $weather->avg_temperature, 1) : null,
+                'avg_humidity'    => $weather?->avg_humidity ? round((float) $weather->avg_humidity, 1) : null,
+                'avg_wind_speed'  => $weather?->avg_wind_speed ? round((float) $weather->avg_wind_speed, 1) : null,
+                'conditions'      => $weatherConditions,
+            ],
+            'recent_activity' => [
+                'observations_last_30_days' => $recentObservationsCount,
+                'last_photo'                => $lastPhoto,
+            ],
+            'first_observation' => (clone $visibleObservations)->orderBy('observation_date')->value('observation_date'),
+            'last_observation'  => (clone $visibleObservations)->orderByDesc('observation_date')->value('observation_date'),
         ]);
     }
 
@@ -535,24 +619,57 @@ class PlantController extends Controller
             'layer_id' => ['nullable', 'exists:site_plan_layers,id'],
         ]);
 
+        $siteId = $request->query('site_id');
+        $layerId = $request->query('layer_id');
+
+        // Resolve effective layer: explicit param, otherwise active layer for the site.
+        if (! $layerId) {
+            $layerId = SitePlanLayer::where('site_id', $siteId)
+                ->where('is_active', true)
+                ->orderByDesc('id')
+                ->value('id');
+        }
+
         $query = $this->visiblePlantsQuery()
-            ->where('site_id', $request->query('site_id'))
+            ->where('site_id', $siteId)
             ->with('taxon:id,binomial_name,common_name_fr', 'category:id,name')
             ->select('id', 'name', 'latitude', 'longitude', 'taxon_id', 'category_id', 'site_id', 'status', 'health_status', 'map_position_x', 'map_position_y', 'layer_id');
 
-        if ($layerId = $request->query('layer_id')) {
-            $query->where('layer_id', $layerId);
+        $plants = $query->get();
+
+        // Overlay layer-specific positions from the pivot (source of truth per layer).
+        if ($layerId) {
+            $positions = \App\Models\PlantLayerPosition::where('layer_id', $layerId)
+                ->whereIn('plant_id', $plants->pluck('id'))
+                ->get()
+                ->keyBy('plant_id');
+
+            $plants = $plants->map(function ($p) use ($positions, $layerId) {
+                $pos = $positions->get($p->id);
+                $p->map_position_x = $pos?->map_position_x;
+                $p->map_position_y = $pos?->map_position_y;
+                $p->layer_id = $pos ? $layerId : null;
+                return $p;
+            });
         }
 
-        // Include plants with GPS or map position
-        $query->where(function ($q) {
-            $q->whereNotNull('map_position_x')
-              ->orWhere(function ($q2) {
-                  $q2->whereNotNull('latitude')->whereNotNull('longitude');
-              });
-        });
+        // Filter to plants visible on this layer (positioned) or with GPS fallback.
+        $plants = $plants->filter(function ($p) {
+            return $p->map_position_x !== null
+                || ($p->latitude !== null && $p->longitude !== null);
+        })->values();
 
-        return response()->json($query->get());
+        $site = \App\Models\Site::select('id', 'name', 'latitude', 'longitude', 'description')
+            ->find($request->query('site_id'));
+
+        $plantsWithGps = $plants->filter(fn ($p) => $p->latitude !== null && $p->longitude !== null)->count();
+
+        return response()->json([
+            'site'                => $site,
+            'plants'              => $plants,
+            'total_plants'        => $plants->count(),
+            'plants_without_gps'  => $plants->count() - $plantsWithGps,
+        ]);
     }
 
     /**
@@ -870,18 +987,37 @@ class PlantController extends Controller
             }
         }
 
+        if ($globalLayerId === null) {
+            return response()->json([
+                'errors' => ['layer_id' => ['Un calque est requis pour enregistrer les positions.']],
+            ], 422);
+        }
+
+        // Determine if this layer is the currently active layer for its site,
+        // so we can also sync the cache columns on plants.
+        $layer = $layer ?? SitePlanLayer::findOrFail($globalLayerId);
+        $isActiveLayer = (bool) $layer->is_active;
+
         $count = 0;
 
-        DB::transaction(function () use ($data, $globalLayerId, &$count) {
+        DB::transaction(function () use ($data, $globalLayerId, $isActiveLayer, &$count) {
             foreach ($data['positions'] as $pos) {
-                $updateData = [
-                    'map_position_x' => $pos['map_position_x'],
-                    'map_position_y' => $pos['map_position_y'],
-                ];
-                if ($globalLayerId !== null) {
-                    $updateData['layer_id'] = $globalLayerId;
+                \App\Models\PlantLayerPosition::updateOrCreate(
+                    ['layer_id' => $globalLayerId, 'plant_id' => $pos['plant_id']],
+                    [
+                        'map_position_x' => $pos['map_position_x'],
+                        'map_position_y' => $pos['map_position_y'],
+                    ],
+                );
+
+                if ($isActiveLayer) {
+                    Plant::where('id', $pos['plant_id'])->update([
+                        'map_position_x' => $pos['map_position_x'],
+                        'map_position_y' => $pos['map_position_y'],
+                        'layer_id'       => $globalLayerId,
+                    ]);
                 }
-                Plant::where('id', $pos['plant_id'])->update($updateData);
+
                 $count++;
             }
         });

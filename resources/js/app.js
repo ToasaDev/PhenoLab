@@ -58,11 +58,12 @@ async function bootstrapLegacyApp() {
 
     window.__phenolabLegacyBootstrapped = true;
 
+    const cacheBust = `?v=${Date.now()}`;
     const legacyScripts = [
-        '/js/services/api.js',
-        '/js/utils/errorHandler.js',
-        '/js/utils/formHelpers.js',
-        '/js/phenolab-app.js',
+        '/js/services/api.js' + cacheBust,
+        '/js/utils/errorHandler.js' + cacheBust,
+        '/js/utils/formHelpers.js' + cacheBust,
+        '/js/phenolab-app.js' + cacheBust,
     ];
 
     for (const source of legacyScripts) {

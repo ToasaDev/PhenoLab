@@ -49,7 +49,7 @@ class TelaObservationController extends Controller
 
         $query->orderByDesc('date');
 
-        $perPage = min((int) $request->query('per_page', 20), 100);
+        $perPage = min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 100);
 
         return response()->json($query->paginate($perPage));
     }
