@@ -3058,57 +3058,120 @@ createApp({
         // Usage: this.locateInto(this.newSite) or this.locateInto(this.editSite)
         locateInto(target, onError) {
             if (!navigator.geolocation) {
-                const msg = 'Géolocalisation non supportée par ce navigateur.';
+                const msg = window.isSecureContext === false
+                    ? 'Géolocalisation indisponible : une connexion HTTPS est requise sur mobile.'
+                    : 'Géolocalisation non supportée par ce navigateur.';
                 this.showAlert(msg, 'warning');
                 if (onError) onError(msg);
                 return;
             }
+            if (!window.isSecureContext) {
+                const msg = 'Géolocalisation indisponible : une connexion HTTPS est requise sur mobile.';
+                this.showAlert(msg, 'warning');
+                if (onError) onError(msg);
+                return;
+            }
+
+            // Check permission state first — if previously denied, guide the
+            // user instead of silently failing.
+            if (navigator.permissions) {
+                try {
+                    const perm = await navigator.permissions.query({ name: 'geolocation' });
+                    if (perm.state === 'denied') {
+                        const msg = 'Géolocalisation bloquée par le navigateur. '
+                            + 'Pour l\'activer : appuyez sur le cadenas 🔒 à côté de l\'URL → Autorisations → Position → Autoriser, '
+                            + 'puis rechargez la page.';
+                        this.showAlert(msg, 'warning');
+                        if (onError) onError(msg);
+                        return;
+                    }
+                } catch (e) {
+                    // permissions API not fully supported, proceed anyway
+                }
+            }
+
             this.geolocating = true;
+
+            // Keep a reference to the Vue instance so the async callback
+            // always triggers Vue reactivity, even on mobile where the
+            // GPS acquisition can be slow.
+            const vm = this;
+
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
-                    target.latitude = Number(pos.coords.latitude.toFixed(6));
-                    target.longitude = Number(pos.coords.longitude.toFixed(6));
+                    // Use Object.assign so Vue's reactivity proxy detects the
+                    // batch of changes in a single tick.
+                    const updates = {
+                        latitude: Number(pos.coords.latitude.toFixed(6)),
+                        longitude: Number(pos.coords.longitude.toFixed(6)),
+                    };
                     if (pos.coords.altitude != null && !isNaN(pos.coords.altitude)) {
-                        target.altitude = Math.round(pos.coords.altitude);
+                        updates.altitude = Math.round(pos.coords.altitude);
                     }
                     if (pos.coords.accuracy != null && 'gps_accuracy' in target) {
-                        target.gps_accuracy = Number(pos.coords.accuracy.toFixed(1));
+                        updates.gps_accuracy = Number(pos.coords.accuracy.toFixed(1));
                     }
-                    this.geolocating = false;
-                    this.showAlert(
+                    Object.assign(target, updates);
+                    vm.geolocating = false;
+                    vm.showAlert(
                         `Position obtenue (précision ~${pos.coords.accuracy ? pos.coords.accuracy.toFixed(0) : '?'} m)`,
                         'success'
                     );
                 },
                 (err) => {
-                    this.geolocating = false;
-                    const msg = 'Impossible d\'obtenir la position : ' + err.message;
-                    this.showAlert(msg, 'danger');
+                    vm.geolocating = false;
+                    let msg;
+                    switch (err.code) {
+                        case 1: msg = 'Géolocalisation refusée. Autorisez l\'accès dans les paramètres de votre navigateur.'; break;
+                        case 2: msg = 'Position indisponible. Vérifiez que le GPS est activé sur votre appareil.'; break;
+                        case 3: msg = 'Délai d\'attente GPS dépassé. Réessayez à l\'extérieur ou dans un endroit dégagé.'; break;
+                        default: msg = 'Impossible d\'obtenir la position : ' + err.message;
+                    }
+                    vm.showAlert(msg, 'danger');
                     if (onError) onError(msg);
                 },
-                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                { enableHighAccuracy: true, timeout: 30000, maximumAge: 60000 }
             );
         },
 
-        useCurrentLocation() {
-            if (!navigator.geolocation) {
-                this.updateGpsError = 'Géolocalisation non supportée par ce navigateur.';
+        async useCurrentLocation() {
+            if (!navigator.geolocation || !window.isSecureContext) {
+                this.updateGpsError = !window.isSecureContext
+                    ? 'Géolocalisation indisponible : HTTPS requis sur mobile.'
+                    : 'Géolocalisation non supportée par ce navigateur.';
                 return;
+            }
+            if (navigator.permissions) {
+                try {
+                    const perm = await navigator.permissions.query({ name: 'geolocation' });
+                    if (perm.state === 'denied') {
+                        this.updateGpsError = 'Géolocalisation bloquée. Appuyez sur le cadenas 🔒 → Autorisations → Position → Autoriser, puis rechargez.';
+                        return;
+                    }
+                } catch (e) { /* proceed */ }
             }
             this.gpsLoading = true;
             this.updateGpsError = '';
+            const vm = this;
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
-                    this.updateGps.latitude = Number(pos.coords.latitude.toFixed(6));
-                    this.updateGps.longitude = Number(pos.coords.longitude.toFixed(6));
-                    this.updateGps.gps_accuracy = pos.coords.accuracy ? Number(pos.coords.accuracy.toFixed(1)) : null;
-                    this.gpsLoading = false;
+                    Object.assign(vm.updateGps, {
+                        latitude: Number(pos.coords.latitude.toFixed(6)),
+                        longitude: Number(pos.coords.longitude.toFixed(6)),
+                        gps_accuracy: pos.coords.accuracy ? Number(pos.coords.accuracy.toFixed(1)) : null,
+                    });
+                    vm.gpsLoading = false;
                 },
                 (err) => {
-                    this.updateGpsError = 'Impossible d\'obtenir la position : ' + err.message;
-                    this.gpsLoading = false;
+                    switch (err.code) {
+                        case 1: vm.updateGpsError = 'Géolocalisation refusée. Autorisez l\'accès dans les paramètres du navigateur.'; break;
+                        case 2: vm.updateGpsError = 'Position indisponible. Vérifiez que le GPS est activé.'; break;
+                        case 3: vm.updateGpsError = 'Délai GPS dépassé. Réessayez dehors ou dans un endroit dégagé.'; break;
+                        default: vm.updateGpsError = 'Impossible d\'obtenir la position : ' + err.message;
+                    }
+                    vm.gpsLoading = false;
                 },
-                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                { enableHighAccuracy: true, timeout: 30000, maximumAge: 60000 }
             );
         },
 
@@ -5630,9 +5693,20 @@ createApp({
         
         // GPS Control Methods
         async getCurrentLocation() {
-            if (!navigator.geolocation) {
-                this.showAlert('Géolocalisation non supportée', 'error');
+            if (!navigator.geolocation || !window.isSecureContext) {
+                this.showAlert(!window.isSecureContext
+                    ? 'Géolocalisation indisponible : HTTPS requis sur mobile.'
+                    : 'Géolocalisation non supportée', 'warning');
                 return;
+            }
+            if (navigator.permissions) {
+                try {
+                    const perm = await navigator.permissions.query({ name: 'geolocation' });
+                    if (perm.state === 'denied') {
+                        this.showAlert('Géolocalisation bloquée. Appuyez sur le cadenas 🔒 → Autorisations → Position → Autoriser, puis rechargez.', 'warning');
+                        return;
+                    }
+                } catch (e) { /* proceed */ }
             }
             
             try {
@@ -5642,25 +5716,34 @@ createApp({
                         reject,
                         {
                             enableHighAccuracy: true,
-                            timeout: 10000,
+                            timeout: 30000,
                             maximumAge: 60000
                         }
                     );
                 });
-                
-                this.newPlant.latitude = position.coords.latitude.toFixed(6);
-                this.newPlant.longitude = position.coords.longitude.toFixed(6);
-                this.newPlant.gps_accuracy = position.coords.accuracy ? position.coords.accuracy.toFixed(1) : null;
-                
+
+                Object.assign(this.newPlant, {
+                    latitude: position.coords.latitude.toFixed(6),
+                    longitude: position.coords.longitude.toFixed(6),
+                    gps_accuracy: position.coords.accuracy ? position.coords.accuracy.toFixed(1) : null,
+                });
+
                 this.validateGpsCoordinates();
                 this.showAlert(
-                    `Position obtenue: précision ±${position.coords.accuracy.toFixed(1)}m`,
+                    `Position obtenue (précision ~${position.coords.accuracy ? position.coords.accuracy.toFixed(0) : '?'} m)`,
                     'success'
                 );
-                
+
             } catch (error) {
                 console.error('Erreur géolocalisation:', error);
-                this.showAlert('Impossible d\'obtenir la position', 'error');
+                let msg;
+                switch (error.code) {
+                    case 1: msg = 'Géolocalisation refusée. Autorisez l\'accès dans les paramètres du navigateur.'; break;
+                    case 2: msg = 'Position indisponible. Vérifiez que le GPS est activé.'; break;
+                    case 3: msg = 'Délai GPS dépassé. Réessayez dehors ou dans un endroit dégagé.'; break;
+                    default: msg = 'Impossible d\'obtenir la position.';
+                }
+                this.showAlert(msg, 'danger');
             }
         },
         
