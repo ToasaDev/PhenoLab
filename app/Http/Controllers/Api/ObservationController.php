@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class ObservationController extends Controller
@@ -127,6 +128,7 @@ class ObservationController extends Controller
             'plant.taxon',
             'plant.category:id,name',
             'plant.site:id,name',
+            'plant.mainPhoto:id,plant_id,image',
             'phenologicalStage',
             'observer:id,name',
             'validatedBy:id,name',
@@ -151,6 +153,11 @@ class ObservationController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        $lockKey = 'observation_store_' . Auth::id();
+        if (! Cache::lock($lockKey, 5)->get()) {
+            return response()->json(['message' => 'Requête déjà en cours, veuillez patienter.'], 429);
+        }
+
         $data = $request->validate([
             'observation_date'      => ['required', 'date'],
             'plant_id'              => ['required', 'exists:plants,id'],

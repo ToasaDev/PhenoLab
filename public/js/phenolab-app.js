@@ -20,12 +20,14 @@ createApp({
             
             // Plant navigation and detail
             currentPlant: null,
+            observationReturnView: null,
             plantDetail: {
                 plant: null,
                 loading: false,
                 observations: [],
                 photos: [],
-                statistics: null
+                statistics: null,
+                observationSortAsc: false, // false = newest first
             },
             
             // User data
@@ -276,7 +278,10 @@ createApp({
                 // GPS fields
                 latitude: null,
                 longitude: null,
-                gps_accuracy: null
+                gps_accuracy: null,
+                // Photo optionnelle
+                _photoFile: null,
+                _photoPreview: null,
             },
 
             // Edit plant form data
@@ -333,7 +338,9 @@ createApp({
                 notes: '',
                 weather_conditions: '',
                 temperature: null,
-                is_public: true
+                is_public: true,
+                _photoFile: null,
+                _photoPreview: null,
             },
             
             newPhoto: {
@@ -349,7 +356,8 @@ createApp({
                 title: '',
                 description: '',
                 photo_type: 'general',
-                is_public: true
+                is_public: true,
+                _context: 'plant', // 'plant' or 'observation'
             },
 
             photoOperationLoading: false,
@@ -487,6 +495,11 @@ createApp({
                 plants: false,
                 map: false,
                 observations: false
+            },
+
+            submitting: {
+                plant: false,
+                observation: false,
             },
 
             // Observations data (List Page Contract)
@@ -635,6 +648,22 @@ createApp({
             }
 
             return filtered.sort((a, b) => new Date(b.observation_date) - new Date(a.observation_date));
+        },
+
+        // Observations on plant detail, sorted by date (default newest first).
+        plantMainPhoto() {
+            if (!this.plantDetail.photos) return null;
+            return this.plantDetail.photos.find(p => p.is_main_photo) || null;
+        },
+
+        sortedPlantObservations() {
+            const obs = [...this.plantDetail.observations];
+            const asc = this.plantDetail.observationSortAsc;
+            return obs.sort((a, b) => {
+                const da = new Date(a.observation_date);
+                const db = new Date(b.observation_date);
+                return asc ? da - db : db - da;
+            });
         },
 
         // Year range for analysis selector (from database)
@@ -2931,6 +2960,9 @@ createApp({
                     this.showEditSiteModal = true;
                     break;
                 case 'plant':
+                    if (context && context.siteId) {
+                        this.newPlant.site = context.siteId;
+                    }
                     this.showAddPlantModal = true;
                     break;
                 case 'observation':
@@ -3056,7 +3088,7 @@ createApp({
 
         // Generic geolocation helper: fills lat/lon/altitude on a target object.
         // Usage: this.locateInto(this.newSite) or this.locateInto(this.editSite)
-        locateInto(target, onError) {
+        async locateInto(target, onError) {
             if (!navigator.geolocation) {
                 const msg = window.isSecureContext === false
                     ? 'Géolocalisation indisponible : une connexion HTTPS est requise sur mobile.'
@@ -3809,14 +3841,90 @@ createApp({
             }
         },
 
+        /**
+         * Resize an image file client-side if it exceeds maxBytes.
+         * Returns a Promise<File> — the original file if already small enough,
+         * or a resized JPEG/WebP otherwise.
+         * Uses a canvas to scale down progressively, keeping quality high.
+         */
+        _resizeImageIfNeeded(file, maxBytes = 10 * 1024 * 1024) {
+            return new Promise((resolve, reject) => {
+                if (file.size <= maxBytes) {
+                    resolve(file);
+                    return;
+                }
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                img.onload = () => {
+                    URL.revokeObjectURL(url);
+                    const canvas = document.createElement('canvas');
+                    let { width, height } = img;
+                    // Scale down progressively until the result fits.
+                    // Start with quality 0.92, then reduce dimensions if still too big.
+                    const outputType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+                    let quality = 0.92;
+                    let scale = 1.0;
+
+                    const attempt = () => {
+                        canvas.width = Math.round(width * scale);
+                        canvas.height = Math.round(height * scale);
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        canvas.toBlob((blob) => {
+                            if (!blob) { resolve(file); return; }
+                            if (blob.size <= maxBytes || scale < 0.2) {
+                                const resized = new File([blob], file.name, { type: outputType, lastModified: Date.now() });
+                                console.log(`📷 Photo resized: ${(file.size/1024/1024).toFixed(1)}MB → ${(resized.size/1024/1024).toFixed(1)}MB (${canvas.width}×${canvas.height})`);
+                                resolve(resized);
+                            } else {
+                                // Reduce scale by 15% each step
+                                scale *= 0.85;
+                                quality = Math.max(0.7, quality - 0.03);
+                                attempt();
+                            }
+                        }, outputType, quality);
+                    };
+                    attempt();
+                };
+                img.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    resolve(file); // fallback: send original
+                };
+                img.src = url;
+            });
+        },
+
+        async handleNewPlantPhoto(event) {
+            const raw = event.target.files[0] || null;
+            if (raw) {
+                const file = await this._resizeImageIfNeeded(raw);
+                this.newPlant._photoFile = file;
+                const reader = new FileReader();
+                reader.onload = (e) => { this.newPlant._photoPreview = e.target.result; };
+                reader.readAsDataURL(file);
+            } else {
+                this.newPlant._photoFile = null;
+                this.newPlant._photoPreview = null;
+            }
+        },
+
+        clearNewPlantPhoto() {
+            this.newPlant._photoFile = null;
+            this.newPlant._photoPreview = null;
+            const fileInput = document.getElementById('plantPhoto');
+            if (fileInput) fileInput.value = '';
+        },
+
         async addPlant() {
+            if (this.submitting.plant) return;
             if (!this.user.isAuthenticated) {
                 this.showAlert('Fonctionnalité de démonstration - Connectez-vous avec admin/admin123 pour enregistrer réellement', 'info');
                 this.showAddPlantModal = false;
                 this.resetNewPlantForm();
                 return;
             }
-            
+
+            this.submitting.plant = true;
             try {
                 // Prepare data - map field names and convert empty strings to null
                 const plantData = {};
@@ -3830,20 +3938,54 @@ createApp({
                 if (plantData.position) { plantData.position_id = plantData.position; delete plantData.position; }
                 delete plantData.location;
 
+                const photoFile = this.newPlant._photoFile;
+
+                // Remove non-API fields before sending
+                delete plantData._photoFile;
+                delete plantData._photoPreview;
+
                 const response = await axios.post('/api/v1/plants', plantData);
-                
-                this.plants.push(response.data);
+                const createdPlant = response.data;
+
+                // Upload photo if provided
+                if (photoFile) {
+                    try {
+                        const formData = new FormData();
+                        formData.append('plant_id', createdPlant.id);
+                        formData.append('image', photoFile);
+                        formData.append('photo_type', 'general');
+                        formData.append('is_main_photo', '1');
+                        await axios.post('/api/v1/plant-photos', formData, {
+                            headers: { 'Content-Type': 'multipart/form-data' },
+                        });
+                    } catch (photoErr) {
+                        console.error('Photo upload failed:', photoErr);
+                        this.showAlert('Plante créée mais erreur lors de l\'upload de la photo.', 'warning');
+                    }
+                }
+
                 this.showAddPlantModal = false;
                 this.resetNewPlantForm();
                 this.showAlert('Plante ajoutée avec succès !', 'success');
+
+                // Recharger les listes
+                await this.loadPlants();
+                if (this.currentView === 'plants') {
+                    await this.loadPlantsList();
+                }
+                if (this.siteDetail.site && createdPlant.site_id == this.siteDetail.site.id) {
+                    await this.loadSitePlants(this.siteDetail.site.id);
+                }
             } catch (error) {
                 console.error('Error adding plant:', error);
                 const status = error.response?.status || 'unknown';
                 const msg = error.response?.data?.message || error.response?.data?.detail || JSON.stringify(error.response?.data?.errors || error.message);
                 this.showAlert(`Erreur ${status}: ${msg}`, 'danger');
+            } finally {
+                this.submitting.plant = false;
             }
         },
-        
+
         resetNewPlantForm() {
             this.newPlant = {
                 name: '',
@@ -3867,9 +4009,16 @@ createApp({
                 // GPS fields
                 latitude: null,
                 longitude: null,
-                gps_accuracy: null
+                gps_accuracy: null,
+                // Photo optionnelle
+                _photoFile: null,
+                _photoPreview: null,
             };
-            
+
+            // Clear the file input if it exists
+            const fileInput = document.getElementById('plantPhoto');
+            if (fileInput) fileInput.value = '';
+
             // Reset GPS validation and preview
             this.gpsValidation.latitude = null;
             this.gpsValidation.longitude = null;
@@ -4178,15 +4327,42 @@ createApp({
         },
 
         // ===== OBSERVATION FORM METHODS =====
+        async handleNewObservationPhoto(event) {
+            const raw = event.target.files[0] || null;
+            if (raw) {
+                const file = await this._resizeImageIfNeeded(raw);
+                this.newObservation._photoFile = file;
+                const reader = new FileReader();
+                reader.onload = (e) => { this.newObservation._photoPreview = e.target.result; };
+                reader.readAsDataURL(file);
+            } else {
+                this.newObservation._photoFile = null;
+                this.newObservation._photoPreview = null;
+            }
+        },
+
+        clearNewObservationPhoto() {
+            this.newObservation._photoFile = null;
+            this.newObservation._photoPreview = null;
+            const fileInput = document.getElementById('obsPhoto');
+            if (fileInput) fileInput.value = '';
+        },
+
         addObservation() {
+            if (this.submitting.observation) return;
             if (!this.user.isAuthenticated) {
                 this.showAlert('Fonctionnalité de démonstration - Connectez-vous avec admin/admin123 pour enregistrer réellement', 'info');
                 this.showAddObservationModal = false;
                 this.resetNewObservationForm();
                 return;
             }
-            
+
+            this.submitting.observation = true;
+            const photoFile = this.newObservation._photoFile;
             const payload = { ...this.newObservation };
+            // Remove non-API fields
+            delete payload._photoFile;
+            delete payload._photoPreview;
             // Map frontend field names to Laravel _id fields
             if (payload.plant) { payload.plant_id = payload.plant; delete payload.plant; }
             if (payload.phenological_stage) { payload.phenological_stage_id = payload.phenological_stage; delete payload.phenological_stage; }
@@ -4199,6 +4375,22 @@ createApp({
             axios.post('/api/v1/observations', payload)
                 .then(async response => {
                     console.log('✅ Observation created:', response.data);
+
+                    // Upload photo if provided
+                    if (photoFile && response.data.id) {
+                        try {
+                            const formData = new FormData();
+                            formData.append('observation_id', response.data.id);
+                            formData.append('image', photoFile);
+                            formData.append('photo_type', 'phenological_state');
+                            await axios.post('/api/v1/observation-photos', formData, {
+                                headers: { 'Content-Type': 'multipart/form-data' },
+                            });
+                        } catch (photoErr) {
+                            console.error('Observation photo upload failed:', photoErr);
+                            this.showAlert('Observation créée mais erreur lors de l\'upload de la photo.', 'warning');
+                        }
+                    }
                     const observedPlantId = payload.plant_id || (this.plantDetail.plant && this.plantDetail.plant.id) || this.currentPlant;
 
                     // Refresh data FIRST while modal is still open, then close modal once at the end.
@@ -4252,9 +4444,12 @@ createApp({
                         msg += error.response?.data?.message || JSON.stringify(error.response?.data);
                     }
                     this.showAlert(msg, 'danger');
+                })
+                .finally(() => {
+                    this.submitting.observation = false;
                 });
         },
-        
+
         resetNewObservationForm() {
             this.newObservation = {
                 plant: null,
@@ -4264,8 +4459,12 @@ createApp({
                 notes: '',
                 weather_conditions: '',
                 temperature: null,
-                is_public: true
+                is_public: true,
+                _photoFile: null,
+                _photoPreview: null,
             };
+            const fileInput = document.getElementById('obsPhoto');
+            if (fileInput) fileInput.value = '';
         },
 
         // ===== OBSERVATION LIST METHODS =====
@@ -4308,6 +4507,7 @@ createApp({
                 const response = await fetch(`/api/v1/observations/${obsId}`);
                 if (response.ok) {
                     this.currentObservation = await response.json();
+                    this.observationReturnView = this.currentView;
                     this.currentView = 'observation-detail';
                     this.telaComparison = null; // Reset comparison data
 
@@ -4328,9 +4528,11 @@ createApp({
         },
 
         backToObservations() {
-            this.currentView = 'observations';
+            const returnTo = this.observationReturnView || 'observations';
+            this.observationReturnView = null;
             this.currentObservation = null;
             this.telaComparison = null;
+            this.currentView = returnTo;
         },
 
         async loadTelaComparison() {
@@ -4686,9 +4888,10 @@ createApp({
             this.uploadingPhoto = true;
 
             try {
+                const resizedPhoto = await this._resizeImageIfNeeded(this.photoFile);
                 const formData = new FormData();
                 formData.append('observation_id', this.newPhoto.observation);
-                formData.append('image', this.photoFile);
+                formData.append('image', resizedPhoto);
                 if (this.newPhoto.title) formData.append('title', this.newPhoto.title);
                 if (this.newPhoto.description) formData.append('description', this.newPhoto.description);
                 if (this.newPhoto.photo_type) formData.append('photo_type', this.newPhoto.photo_type);
@@ -4706,15 +4909,16 @@ createApp({
                     this.showAlert('Photo ajoutée avec succès !', 'success');
                     console.log('Photo uploaded:', response.data);
 
+                    const observationId = this.newPhoto.observation;
                     this.closeUploadPhotoModal();
 
                     // Reload photos for this observation
-                    await this.loadObservationPhotos(this.newPhoto.observation);
+                    await this.loadObservationPhotos(observationId);
 
                     // Refresh observation detail if viewing
                     if (this.currentView === 'observation-detail' &&
-                        this.currentObservation?.id === this.newPhoto.observation) {
-                        await this.viewObservationDetail(this.newPhoto.observation);
+                        this.currentObservation?.id === observationId) {
+                        await this.viewObservationDetail(observationId);
                     }
                 }
             } catch (error) {
@@ -5170,8 +5374,9 @@ createApp({
 
             this.photoOperationLoading = true;
             try {
+                const resizedPhoto = await this._resizeImageIfNeeded(fileInput.files[0]);
                 const formData = new FormData();
-                formData.append('image', fileInput.files[0]);
+                formData.append('image', resizedPhoto);
                 formData.append('plant_id', this.newPhoto.plant);
                 if (this.newPhoto.title) formData.append('title', this.newPhoto.title);
                 if (this.newPhoto.description) formData.append('description', this.newPhoto.description);
@@ -5279,7 +5484,7 @@ createApp({
             if (fileInput) fileInput.value = '';
         },
 
-        openEditPhotoModal(photo) {
+        openEditPhotoModal(photo, context = 'plant') {
             if (!this.user.isAuthenticated) {
                 return;
             }
@@ -5288,7 +5493,8 @@ createApp({
                 title: photo.title || '',
                 description: photo.description || '',
                 photo_type: photo.photo_type,
-                is_public: photo.is_public !== undefined ? photo.is_public : true
+                is_public: photo.is_public !== undefined ? photo.is_public : true,
+                _context: context,
             };
             this.showEditPhotoModal = true;
         },
@@ -5300,22 +5506,25 @@ createApp({
             }
 
             this.photoOperationLoading = true;
+            const isObservation = this.editPhoto._context === 'observation';
+            const endpoint = isObservation
+                ? `/api/v1/observation-photos/${this.editPhoto.id}`
+                : `/api/v1/plant-photos/${this.editPhoto.id}`;
+
             try {
-                const response = await axios.patch(
-                    `/api/v1/plant-photos/${this.editPhoto.id}`,
-                    {
-                        title: this.editPhoto.title,
-                        description: this.editPhoto.description,
-                        photo_type: this.editPhoto.photo_type,
-                        is_public: this.editPhoto.is_public
-                    }
-                );
+                await axios.patch(endpoint, {
+                    title: this.editPhoto.title,
+                    description: this.editPhoto.description,
+                    photo_type: this.editPhoto.photo_type,
+                    is_public: this.editPhoto.is_public
+                });
 
                 this.showEditPhotoModal = false;
                 this.showAlert('Photo mise à jour avec succès !', 'success');
 
-                // Reload plant detail
-                if (this.currentView === 'plant-detail' && this.currentPlant) {
+                if (isObservation && this.currentObservation) {
+                    await this.loadObservationPhotos(this.currentObservation.id);
+                } else if (this.currentView === 'plant-detail' && this.currentPlant) {
                     await this.viewPlantDetail(this.currentPlant);
                 }
             } catch (error) {
@@ -5916,17 +6125,15 @@ createApp({
             // Collect all coordinates
             if (this.mapViewMode === 'sites' || this.mapViewMode === 'both') {
                 this.sites.forEach(site => {
-                    if (site.latitude && site.longitude) {
-                        bounds.push([site.latitude, site.longitude]);
-                    }
+                    const lat = parseFloat(site.latitude), lng = parseFloat(site.longitude);
+                    if (isFinite(lat) && isFinite(lng)) bounds.push([lat, lng]);
                 });
             }
-            
+
             if (this.mapViewMode === 'plants' || this.mapViewMode === 'both') {
                 this.plants.forEach(plant => {
-                    if (plant.latitude && plant.longitude) {
-                        bounds.push([plant.latitude, plant.longitude]);
-                    }
+                    const lat = parseFloat(plant.latitude), lng = parseFloat(plant.longitude);
+                    if (isFinite(lat) && isFinite(lng)) bounds.push([lat, lng]);
                 });
             }
             
@@ -5938,9 +6145,16 @@ createApp({
             }
         },
         
-        refreshMapData() {
+        async refreshMapData() {
             this.selectedMapItem = null;
-            this.initGeneralMap();
+            try {
+                await this.loadMapData();
+                this.updateMapLayersWithClustering();
+                this.centerMapOnData();
+            } catch (error) {
+                console.error('Error refreshing map data:', error);
+                this.showAlert('Erreur lors du rafraîchissement de la carte', 'error');
+            }
         },
         
         toggleMapFullscreen() {
@@ -6073,8 +6287,10 @@ createApp({
             // Add sites (unchanged)
             if (this.mapViewMode === 'sites' || this.mapViewMode === 'both') {
                 this.sites.forEach(site => {
-                    if (site.latitude && site.longitude) {
-                        const marker = L.marker([site.latitude, site.longitude], {
+                    const lat = parseFloat(site.latitude), lng = parseFloat(site.longitude);
+                    if (isFinite(lat) && isFinite(lng)) {
+                        site.latitude = lat; site.longitude = lng;
+                        const marker = L.marker([lat, lng], {
                             icon: L.divIcon({
                                 className: 'site-center-marker',
                                 html: '<div class="site-center-icon"><i class="fas fa-map-marker-alt" style="color: white;"></i></div>',
@@ -6106,7 +6322,11 @@ createApp({
             
             // Add plants with ultra-precise clustering
             if (this.mapViewMode === 'plants' || this.mapViewMode === 'both') {
-                const plantsWithGps = this.plants.filter(plant => plant.latitude && plant.longitude);
+                const plantsWithGps = this.plants.filter(plant => {
+                    const lat = parseFloat(plant.latitude);
+                    const lng = parseFloat(plant.longitude);
+                    return isFinite(lat) && isFinite(lng);
+                }).map(p => ({ ...p, latitude: parseFloat(p.latitude), longitude: parseFloat(p.longitude) }));
                 const currentZoom = this.generalMap.getZoom();
                 
                 // Determine clustering distance based on zoom level

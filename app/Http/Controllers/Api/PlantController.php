@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class PlantController extends Controller
@@ -302,6 +303,11 @@ class PlantController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        $lockKey = 'plant_store_' . Auth::id();
+        if (! Cache::lock($lockKey, 5)->get()) {
+            return response()->json(['message' => 'Requête déjà en cours, veuillez patienter.'], 429);
+        }
+
         $request->merge(array_map(fn ($v) => $v === '' ? null : $v, $request->all()));
 
         $data = $request->validate([

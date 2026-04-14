@@ -14,6 +14,66 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class PlantPhotoController extends Controller
 {
+    private const MAX_DIMENSION = 2048;
+    private const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 Mo après resize
+
+    /**
+     * Resize an image if it exceeds MAX_DIMENSION or MAX_FILE_SIZE.
+     * Overwrites the file in place and returns [width, height, fileSize].
+     */
+    private function resizeImageIfNeeded(string $absolutePath): array
+    {
+        $info = getimagesize($absolutePath);
+        if (! $info) {
+            return [null, null, filesize($absolutePath)];
+        }
+
+        [$w, $h, $type] = $info;
+
+        $needsResize = $w > self::MAX_DIMENSION || $h > self::MAX_DIMENSION || filesize($absolutePath) > self::MAX_FILE_SIZE;
+
+        if (! $needsResize) {
+            return [$w, $h, filesize($absolutePath)];
+        }
+
+        $src = match ($type) {
+            IMAGETYPE_JPEG => imagecreatefromjpeg($absolutePath),
+            IMAGETYPE_PNG  => imagecreatefrompng($absolutePath),
+            IMAGETYPE_WEBP => imagecreatefromwebp($absolutePath),
+            default        => null,
+        };
+
+        if (! $src) {
+            return [$w, $h, filesize($absolutePath)];
+        }
+
+        $ratio = min(self::MAX_DIMENSION / $w, self::MAX_DIMENSION / $h, 1.0);
+        $newW = (int) round($w * $ratio);
+        $newH = (int) round($h * $ratio);
+
+        $dst = imagecreatetruecolor($newW, $newH);
+
+        // Preserve transparency for PNG/WebP
+        if ($type === IMAGETYPE_PNG || $type === IMAGETYPE_WEBP) {
+            imagealphablending($dst, false);
+            imagesavealpha($dst, true);
+        }
+
+        imagecopyresampled($dst, $src, 0, 0, 0, 0, $newW, $newH, $w, $h);
+
+        match ($type) {
+            IMAGETYPE_JPEG => imagejpeg($dst, $absolutePath, 85),
+            IMAGETYPE_PNG  => imagepng($dst, $absolutePath, 6),
+            IMAGETYPE_WEBP => imagewebp($dst, $absolutePath, 85),
+            default        => null,
+        };
+
+        imagedestroy($src);
+        imagedestroy($dst);
+
+        return [$newW, $newH, filesize($absolutePath)];
+    }
+
     use Concerns\SanitizesOrdering;
     private function canManagePhoto(PlantPhoto $photo): bool
     {
@@ -143,7 +203,7 @@ class PlantPhotoController extends Controller
     {
         $data = $request->validate([
             'plant_id'      => ['required', 'exists:plants,id'],
-            'image'         => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+            'image'         => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:20480'],
             'title'         => ['nullable', 'string', 'max:255'],
             'description'   => ['nullable', 'string'],
             'photo_type'    => ['nullable', 'string', 'in:general,leaves,flowers,fruits,bark,habitat,detail'],
@@ -166,10 +226,9 @@ class PlantPhotoController extends Controller
         $file = $request->file('image');
         $path = $file->store("photos/plants/{$data['plant_id']}", 'local');
 
-        // Extract image dimensions
-        $imageInfo = getimagesize($file->getRealPath());
-        $width = $imageInfo[0] ?? null;
-        $height = $imageInfo[1] ?? null;
+        // Resize if too large (dimensions or file size)
+        $absolutePath = Storage::disk('local')->path($path);
+        [$width, $height, $fileSize] = $this->resizeImageIfNeeded($absolutePath);
 
         $photo = PlantPhoto::create([
             'plant_id'        => $data['plant_id'],
@@ -185,7 +244,7 @@ class PlantPhotoController extends Controller
             'iso'             => $data['iso'] ?? '',
             'width'           => $width,
             'height'          => $height,
-            'file_size'       => $file->getSize(),
+            'file_size'       => $fileSize,
             'is_main_photo'   => $data['is_main_photo'] ?? false,
             'display_order'   => $data['display_order'] ?? 0,
             'is_public'       => $data['is_public'] ?? true,

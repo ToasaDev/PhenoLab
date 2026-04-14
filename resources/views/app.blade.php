@@ -132,7 +132,7 @@
         <!-- Navigation -->
         <nav class="navbar navbar-expand-lg navbar-dark bg-success sticky-top">
             <div class="container">
-                <a class="navbar-brand" href="#">
+                <a class="navbar-brand" href="#dashboard" @click="currentView = 'dashboard'" style="cursor:pointer">
                     <i class="fas fa-seedling me-2"></i>
                     PhenoLab
                 </a>
@@ -142,11 +142,6 @@
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <!-- Primary Navigation -->
                     <ul class="navbar-nav me-auto">
-                        <li class="nav-item">
-                            <a class="nav-link" href="#dashboard" @click="currentView = 'dashboard'" :class="{active: currentView === 'dashboard'}" aria-label="Tableau de bord">
-                                <i class="fas fa-home me-1"></i>Accueil
-                            </a>
-                        </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#sites" @click="currentView = 'sites'" :class="{active: currentView === 'sites'}" aria-label="Sites">
                                 <i class="fas fa-map-marker-alt me-1"></i>Sites
@@ -655,9 +650,9 @@
                 <div v-if="sitesViewMode === 'list'">
                     <div class="card shadow-sm">
                         <div class="card-body p-0">
-                            <div class="table-responsive">
+                            <div class="table-responsive" style="max-height: 75vh; overflow-y: auto;">
                                 <table class="table table-sm table-hover align-middle mb-0">
-                                    <thead class="table-light sticky-top">
+                                    <thead class="table-light" style="position: sticky; top: 0; z-index: 2;">
                                         <tr>
                                             <th style="min-width: 180px;">Nom</th>
                                             <th style="min-width: 140px;">Environnement</th>
@@ -954,7 +949,7 @@
                                             </h5>
                                         </div>
                                         <div class="col-md-6 text-end">
-                                            <button class="btn btn-sm btn-primary" @click="openModal('plant')" v-if="user.isAuthenticated">
+                                            <button class="btn btn-sm btn-primary" @click="openModal('plant', { siteId: siteDetail.site?.id })" v-if="user.isAuthenticated">
                                                 <i class="fas fa-plus me-1"></i>Ajouter une plante
                                             </button>
                                         </div>
@@ -1015,15 +1010,15 @@
                                         <i class="fas fa-seedling fa-3x text-muted mb-3"></i>
                                         <h5>Aucune plante trouvée</h5>
                                         <p class="text-muted">Aucune plante ne correspond à vos critères de recherche.</p>
-                                        <button class="btn btn-primary" @click="openModal('plant')" v-if="user.isAuthenticated">
+                                        <button class="btn btn-primary" @click="openModal('plant', { siteId: siteDetail.site?.id })" v-if="user.isAuthenticated">
                                             <i class="fas fa-plus me-1"></i>Ajouter une plante
                                         </button>
                                     </div>
 
                                     <!-- Plants Table -->
-                                    <div v-else class="table-responsive">
+                                    <div v-else class="table-responsive" style="max-height: 75vh; overflow-y: auto;">
                                         <table class="table table-hover table-sm mb-0">
-                                            <thead class="table-light sticky-top">
+                                            <thead class="table-light" style="position: sticky; top: 0; z-index: 2;">
                                                 <tr>
                                                     <th @click="sortSitePlants('name')" style="cursor: pointer;">
                                                         Nom <i class="fas" :class="getSortIcon('name')"></i>
@@ -1328,9 +1323,9 @@
                 <!-- Plants Table -->
                 <div class="card shadow-sm">
                     <div class="card-body p-0">
-                        <div class="table-responsive">
+                        <div class="table-responsive" style="max-height: 75vh; overflow-y: auto;">
                             <table class="table table-sm table-hover align-middle mb-0">
-                                <thead class="table-light sticky-top">
+                                <thead class="table-light" style="position: sticky; top: 0; z-index: 2;">
                                     <tr>
                                         <th style="min-width: 150px; cursor: pointer;" @click="sortPlantsList('name')">
                                             Nom <i :class="getPlantsListSortIcon('name')"></i>
@@ -1833,9 +1828,9 @@
                 <!-- Observations Table -->
                 <div class="card shadow-sm">
                     <div class="card-body p-0">
-                        <div class="table-responsive">
+                        <div class="table-responsive" style="max-height: 75vh; overflow-y: auto;">
                             <table class="table table-sm table-hover align-middle mb-0">
-                                <thead class="table-light sticky-top">
+                                <thead class="table-light" style="position: sticky; top: 0; z-index: 2;">
                                     <tr>
                                         <th style="min-width: 100px; cursor: pointer;" @click="sortObservationsList('observation_date')">
                                             Date <i :class="getObservationsListSortIcon('observation_date')"></i>
@@ -1998,8 +1993,10 @@
                     <div class="col">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <button class="btn btn-outline-secondary btn-sm mb-2" @click="backToObservations">
-                                    <i class="fas fa-arrow-left me-1"></i>Retour aux observations
+                                <button class="btn btn-outline-secondary btn-sm mb-2" @click="backToObservations()">
+                                    <i class="fas fa-arrow-left me-1"></i>
+                                    <span v-if="observationReturnView === 'plant-detail'">Retour à la plante</span>
+                                    <span v-else>Retour aux observations</span>
                                 </button>
                                 <h2><i class="fas fa-eye me-2 text-info"></i>Détail de l'observation</h2>
                             </div>
@@ -2029,13 +2026,29 @@
                                 <div class="row mb-3">
                                     <div class="col-md-6">
                                         <h6 class="text-muted">Plante observée</h6>
-                                        <p class="mb-1"><strong v-text="currentObservation.plant ? currentObservation.plant.name : 'N/A'"></strong></p>
-                                        <p class="text-muted small" v-if="currentObservation.plant && currentObservation.plant.taxon">
-                                            <em v-text="currentObservation.plant.taxon.binomial_name"></em>
-                                        </p>
-                                        <p class="text-muted small" v-if="currentObservation.plant && currentObservation.plant.site">
-                                            <i class="fas fa-map-marker-alt me-1"></i><span v-text="currentObservation.plant.site.name"></span>
-                                        </p>
+                                        <div class="d-flex align-items-start gap-3" v-if="currentObservation.plant">
+                                            <img v-if="currentObservation.plant.main_photo"
+                                                 :src="currentObservation.plant.main_photo.image_url || currentObservation.plant.main_photo.image"
+                                                 :alt="currentObservation.plant.name"
+                                                 class="rounded shadow-sm"
+                                                 style="width: 64px; height: 64px; object-fit: cover; cursor: pointer;"
+                                                 @click="viewPlantDetail(currentObservation.plant.id)">
+                                            <div>
+                                                <p class="mb-1">
+                                                    <a href="#" class="text-decoration-none fw-bold"
+                                                       @click.prevent="viewPlantDetail(currentObservation.plant.id)">
+                                                        <i class="fas fa-leaf me-1 text-success"></i><span v-text="currentObservation.plant.name"></span>
+                                                    </a>
+                                                </p>
+                                                <p class="text-muted small mb-1" v-if="currentObservation.plant.taxon">
+                                                    <em v-text="currentObservation.plant.taxon.binomial_name"></em>
+                                                </p>
+                                                <p class="text-muted small mb-0" v-if="currentObservation.plant.site">
+                                                    <i class="fas fa-map-marker-alt me-1"></i><span v-text="currentObservation.plant.site.name"></span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <p v-else>N/A</p>
                                     </div>
                                     <div class="col-md-6">
                                         <h6 class="text-muted">Date d'observation</h6>
@@ -2116,9 +2129,24 @@
                                 <div class="row g-3">
                                     <div v-for="(photo, index) in observationPhotos" :key="photo.id" class="col-md-4 col-sm-6">
                                         <div class="card h-100 shadow-sm">
-                                            <img :src="photo.image_url || photo.image" :alt="photo.title || 'Photo observation'"
-                                                 class="card-img-top" style="height: 150px; object-fit: cover; cursor: pointer;"
-                                                 @click="openPhotoGallery(index)" title="Cliquer pour agrandir">
+                                            <div class="position-relative">
+                                                <img :src="photo.image_url || photo.image" :alt="photo.title || 'Photo observation'"
+                                                     class="card-img-top" style="height: 150px; object-fit: cover; cursor: pointer;"
+                                                     @click="openPhotoGallery(index)" title="Cliquer pour agrandir">
+                                                <div v-if="user.isAuthenticated && currentObservation.observer && (currentObservation.observer.name === user.username || user.isStaff)"
+                                                     class="position-absolute top-0 end-0 m-1 d-flex gap-1">
+                                                    <button class="btn btn-warning btn-sm"
+                                                            @click.stop="openEditPhotoModal(photo, 'observation')"
+                                                            title="Modifier les infos">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-danger btn-sm"
+                                                            @click.stop="deleteObservationPhoto(photo.id)"
+                                                            title="Supprimer cette photo">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
                                             <div class="card-body p-2">
                                                 <small v-if="photo.title" class="d-block text-truncate fw-bold" v-text="photo.title"></small>
                                                 <small class="text-muted d-block text-truncate" v-text="photo.photo_type"></small>
@@ -3865,12 +3893,34 @@
                                     Plante privée
                                 </label>
                             </div>
+
+                            <!-- Photo optionnelle -->
+                            <div class="mb-3">
+                                <label for="plantPhoto" class="form-label">
+                                    <i class="fas fa-camera me-1"></i>Photo <span class="text-muted">(optionnel)</span>
+                                </label>
+                                <input type="file"
+                                       class="form-control"
+                                       id="plantPhoto"
+                                       accept="image/jpeg,image/png,image/webp"
+                                       @change="handleNewPlantPhoto($event)">
+                                <div class="form-text">JPG, PNG ou WebP. Max 10 Mo.</div>
+                                <div v-if="newPlant._photoFile" class="mt-2">
+                                    <img :src="newPlant._photoPreview" class="rounded" style="max-height: 120px;" alt="Aperçu">
+                                    <button type="button" class="btn btn-sm btn-outline-danger ms-2" @click="clearNewPlantPhoto()">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </form>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" @click="closeModal()">Annuler</button>
-                        <button type="button" class="btn btn-primary" @click="addPlant">
-                            <i class="fas fa-save me-1"></i>Enregistrer
+                        <button type="button" class="btn btn-primary" @click="addPlant" :disabled="submitting.plant">
+                            <i class="fas fa-spinner fa-spin me-1" v-if="submitting.plant"></i>
+                            <i class="fas fa-save me-1" v-else></i>
+                            <span v-if="submitting.plant">Enregistrement...</span>
+                            <span v-else>Enregistrer</span>
                         </button>
                     </div>
                 </div>
@@ -4136,12 +4186,34 @@
                                     Observation publique
                                 </label>
                             </div>
+
+                            <!-- Photo optionnelle -->
+                            <div class="mb-3">
+                                <label for="obsPhoto" class="form-label">
+                                    <i class="fas fa-camera me-1"></i>Photo <span class="text-muted">(optionnel)</span>
+                                </label>
+                                <input type="file"
+                                       class="form-control"
+                                       id="obsPhoto"
+                                       accept="image/jpeg,image/png,image/webp"
+                                       @change="handleNewObservationPhoto($event)">
+                                <div class="form-text">JPG, PNG ou WebP. Max 10 Mo.</div>
+                                <div v-if="newObservation._photoFile" class="mt-2">
+                                    <img :src="newObservation._photoPreview" class="rounded" style="max-height: 120px;" alt="Aperçu">
+                                    <button type="button" class="btn btn-sm btn-outline-danger ms-2" @click="clearNewObservationPhoto()">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </form>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" @click="closeModal()">Annuler</button>
-                        <button type="button" class="btn btn-primary" @click="addObservation">
-                            <i class="fas fa-save me-1"></i>Enregistrer
+                        <button type="button" class="btn btn-primary" @click="addObservation" :disabled="submitting.observation">
+                            <i class="fas fa-spinner fa-spin me-1" v-if="submitting.observation"></i>
+                            <i class="fas fa-save me-1" v-else></i>
+                            <span v-if="submitting.observation">Enregistrement...</span>
+                            <span v-else>Enregistrer</span>
                         </button>
                     </div>
                 </div>
@@ -5433,13 +5505,22 @@
                             <div class="mb-3">
                                 <label for="editPhotoType" class="form-label">Type de photo</label>
                                 <select v-model="editPhoto.photo_type" class="form-select" id="editPhotoType">
-                                    <option value="general">Générale</option>
-                                    <option value="leaves">Feuillage</option>
-                                    <option value="flowers">Floraison</option>
-                                    <option value="fruits">Fructification</option>
-                                    <option value="bark">Écorce</option>
-                                    <option value="habitat">Habitat</option>
-                                    <option value="detail">Détail</option>
+                                    <template v-if="editPhoto._context === 'observation'">
+                                        <option value="phenological_state">État phénologique</option>
+                                        <option value="detail">Détail</option>
+                                        <option value="comparison">Comparaison</option>
+                                        <option value="context">Contexte</option>
+                                        <option value="measurement">Mesure</option>
+                                    </template>
+                                    <template v-else>
+                                        <option value="general">Générale</option>
+                                        <option value="leaves">Feuillage</option>
+                                        <option value="flowers">Floraison</option>
+                                        <option value="fruits">Fructification</option>
+                                        <option value="bark">Écorce</option>
+                                        <option value="habitat">Habitat</option>
+                                        <option value="detail">Détail</option>
+                                    </template>
                                 </select>
                             </div>
                             <div class="form-check mb-3">
@@ -6070,6 +6151,24 @@
                 </div>
             </div>
 
+            <!-- Hero photo principale -->
+            <div v-if="plantMainPhoto" class="card mb-4 overflow-hidden">
+                <div class="position-relative">
+                    <img :src="plantMainPhoto.image_url || plantMainPhoto.image"
+                         :alt="plantDetail.plant.name"
+                         class="w-100"
+                         style="max-height: 350px; object-fit: cover; cursor: pointer;"
+                         @click="openPhotoGallery(plantDetail.photos.indexOf(plantMainPhoto))">
+                    <div class="position-absolute bottom-0 start-0 end-0 p-3"
+                         style="background: linear-gradient(transparent, rgba(0,0,0,0.6));">
+                        <span class="text-white small">
+                            <i class="fas fa-camera me-1"></i>Photo principale
+                            <span v-if="plantMainPhoto.title"> — <span v-text="plantMainPhoto.title"></span></span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
             <div class="row">
                 <!-- Plant Information -->
                 <div class="col-xl-8 col-lg-7 mb-4">
@@ -6453,33 +6552,8 @@
                         </div>
                     </div>
 
-                    <!-- Recent Observations -->
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h6 class="card-title mb-0">
-                                <i class="fas fa-eye me-2"></i>Observations récentes
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div v-if="plantDetail.observations.length > 0">
-                                <div v-for="obs in plantDetail.observations.slice(0, 5)" :key="obs.id" 
-                                     class="d-flex justify-content-between align-items-center mb-2">
-                                    <div>
-                                        <small class="fw-bold" v-text="obs.phenological_stage?.stage_description || '-'"></small><br>
-                                        <small class="text-muted" v-text="formatDate(obs.observation_date)"></small>
-                                    </div>
-                                    <span class="badge bg-secondary" v-text="obs.phenological_stage?.stage_code || '-'"></span>
-                                </div>
-                            </div>
-                            <div v-else class="text-muted text-center">
-                                <i class="fas fa-eye-slash fa-2x mb-2"></i><br>
-                                Aucune observation
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- Quick Actions -->
-                    <div class="card">
+                    <div class="card mb-3">
                         <div class="card-header">
                             <h6 class="card-title mb-0">
                                 <i class="fas fa-tools me-2"></i>Actions rapides
@@ -6500,6 +6574,46 @@
                                     <i class="fas fa-chart-line me-2"></i>Voir statistiques
                                 </button>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Observations -->
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-eye me-2"></i>Observations
+                                <span class="badge bg-secondary ms-1" v-text="plantDetail.observations.length"></span>
+                            </h6>
+                            <button v-if="plantDetail.observations.length > 1"
+                                    class="btn btn-sm btn-outline-secondary py-0"
+                                    @click="plantDetail.observationSortAsc = !plantDetail.observationSortAsc"
+                                    :title="plantDetail.observationSortAsc ? 'Plus anciennes en premier' : 'Plus récentes en premier'">
+                                <i class="fas" :class="plantDetail.observationSortAsc ? 'fa-sort-amount-up' : 'fa-sort-amount-down'"></i>
+                            </button>
+                        </div>
+                        <div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;"
+                             v-if="plantDetail.observations.length > 0">
+                            <a v-for="obs in sortedPlantObservations" :key="obs.id"
+                               href="#"
+                               class="list-group-item list-group-item-action py-2 px-3"
+                               @click.prevent="viewObservationDetail(obs.id)">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="fw-bold small" v-text="obs.phenological_stage?.stage_description || '-'"></span>
+                                        <span class="badge bg-secondary ms-1 small" v-text="obs.phenological_stage?.stage_code || '-'"></span>
+                                        <br>
+                                        <small class="text-muted" v-text="formatDate(obs.observation_date)"></small>
+                                        <small v-if="obs.notes" class="text-muted ms-1">
+                                            — <span v-text="obs.notes.length > 40 ? obs.notes.substring(0, 40) + '…' : obs.notes"></span>
+                                        </small>
+                                    </div>
+                                    <i class="fas fa-chevron-right text-muted small"></i>
+                                </div>
+                            </a>
+                        </div>
+                        <div v-else class="card-body text-muted text-center">
+                            <i class="fas fa-eye-slash fa-2x mb-2"></i><br>
+                            Aucune observation
                         </div>
                     </div>
                 </div>

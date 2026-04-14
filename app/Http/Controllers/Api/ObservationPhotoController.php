@@ -14,6 +14,61 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ObservationPhotoController extends Controller
 {
+    private const MAX_DIMENSION = 2048;
+    private const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2 Mo après resize
+
+    private function resizeImageIfNeeded(string $absolutePath): array
+    {
+        $info = getimagesize($absolutePath);
+        if (! $info) {
+            return [null, null, filesize($absolutePath)];
+        }
+
+        [$w, $h, $type] = $info;
+
+        $needsResize = $w > self::MAX_DIMENSION || $h > self::MAX_DIMENSION || filesize($absolutePath) > self::MAX_FILE_SIZE;
+
+        if (! $needsResize) {
+            return [$w, $h, filesize($absolutePath)];
+        }
+
+        $src = match ($type) {
+            IMAGETYPE_JPEG => imagecreatefromjpeg($absolutePath),
+            IMAGETYPE_PNG  => imagecreatefrompng($absolutePath),
+            IMAGETYPE_WEBP => imagecreatefromwebp($absolutePath),
+            default        => null,
+        };
+
+        if (! $src) {
+            return [$w, $h, filesize($absolutePath)];
+        }
+
+        $ratio = min(self::MAX_DIMENSION / $w, self::MAX_DIMENSION / $h, 1.0);
+        $newW = (int) round($w * $ratio);
+        $newH = (int) round($h * $ratio);
+
+        $dst = imagecreatetruecolor($newW, $newH);
+
+        if ($type === IMAGETYPE_PNG || $type === IMAGETYPE_WEBP) {
+            imagealphablending($dst, false);
+            imagesavealpha($dst, true);
+        }
+
+        imagecopyresampled($dst, $src, 0, 0, 0, 0, $newW, $newH, $w, $h);
+
+        match ($type) {
+            IMAGETYPE_JPEG => imagejpeg($dst, $absolutePath, 85),
+            IMAGETYPE_PNG  => imagepng($dst, $absolutePath, 6),
+            IMAGETYPE_WEBP => imagewebp($dst, $absolutePath, 85),
+            default        => null,
+        };
+
+        imagedestroy($src);
+        imagedestroy($dst);
+
+        return [$newW, $newH, filesize($absolutePath)];
+    }
+
     private function canManagePhoto(ObservationPhoto $photo): bool
     {
         $user = Auth::user();
@@ -147,7 +202,7 @@ class ObservationPhotoController extends Controller
     {
         $data = $request->validate([
             'observation_id' => ['required', 'exists:observations,id'],
-            'image'          => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+            'image'          => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:20480'],
             'title'          => ['nullable', 'string', 'max:255'],
             'description'    => ['nullable', 'string'],
             'photo_type'     => ['nullable', 'string', 'in:phenological_state,detail,comparison,context,measurement'],
@@ -168,10 +223,9 @@ class ObservationPhotoController extends Controller
         $file = $request->file('image');
         $path = $file->store("photos/observations/{$data['observation_id']}", 'local');
 
-        // Extract image dimensions
-        $imageInfo = getimagesize($file->getRealPath());
-        $width = $imageInfo[0] ?? null;
-        $height = $imageInfo[1] ?? null;
+        // Resize if too large (dimensions or file size)
+        $absolutePath = Storage::disk('local')->path($path);
+        [$width, $height, $fileSize] = $this->resizeImageIfNeeded($absolutePath);
 
         $photo = ObservationPhoto::create([
             'observation_id'  => $data['observation_id'],
@@ -182,7 +236,7 @@ class ObservationPhotoController extends Controller
             'photographer_id' => Auth::id(),
             'width'           => $width,
             'height'          => $height,
-            'file_size'       => $file->getSize(),
+            'file_size'       => $fileSize,
             'display_order'   => $data['display_order'] ?? 0,
             'is_public'       => $data['is_public'] ?? true,
         ]);

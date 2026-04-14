@@ -168,6 +168,11 @@ class Plant extends Model
         return $this->hasMany(PlantPhoto::class);
     }
 
+    public function mainPhoto(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(PlantPhoto::class)->where('is_main_photo', true);
+    }
+
     public function replaces(): BelongsTo
     {
         return $this->belongsTo(self::class, 'replaces_id');
