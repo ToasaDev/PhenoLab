@@ -943,25 +943,27 @@ createApp({
     
     methods: {
         // Initialize application
-        initializeApp() {
+        async initializeApp() {
             // Check auth status first
-            this.checkAuthStatus()
-                .then(() => {
-                    return Promise.all([
-                        this.loadStatistics(),
-                        this.loadSites(),
-                        this.loadRecentActivities(),
-                        this.loadFormData(),
-                        this.loadODSChartData()  // Load ODS chart data for homepage
-                    ]);
-                })
-                .then(() => {
-                    this.initializeCharts();
-                })
-                .catch(error => {
-                    console.error('Error initializing app:', error);
-                    this.showAlert('Erreur lors du chargement de l\'application', 'danger');
-                });
+            await this.checkAuthStatus();
+
+            // Always load public data + form data
+            const publicLoads = [
+                this.loadSites().catch(e => console.warn('Sites load failed:', e)),
+                this.loadFormData().catch(e => console.warn('Form data load failed:', e)),
+                this.loadODSChartData().catch(e => console.warn('ODS data load failed:', e)),
+            ];
+
+            // Only load auth-required data if logged in
+            if (this.user.isAuthenticated) {
+                publicLoads.push(
+                    this.loadStatistics().catch(e => console.warn('Stats load failed:', e)),
+                    this.loadRecentActivities().catch(e => console.warn('Activities load failed:', e)),
+                );
+            }
+
+            await Promise.all(publicLoads);
+            this.initializeCharts();
         },
 
         extractCollection(payload) {

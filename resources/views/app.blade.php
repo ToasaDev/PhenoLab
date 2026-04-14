@@ -121,9 +121,176 @@
         .cursor-pointer {
             cursor: pointer;
         }
-        
+
         .cursor-pointer:hover {
             background-color: rgba(0, 123, 255, 0.1);
+        }
+
+        /* ===== MOBILE RESPONSIVE ===== */
+
+        /* Phase 1 — Global: tap targets, spacing, no horizontal overflow */
+        @media (max-width: 767.98px) {
+            body { overflow-x: hidden; }
+
+            /* Minimum tap target size */
+            .btn { min-height: 44px; }
+            .btn-sm { min-height: 38px; padding: .375rem .65rem; }
+            .btn-group .btn, .btn-group .btn-sm { min-height: 38px; }
+            .nav-link { min-height: 44px; display: flex; align-items: center; }
+            .form-select, .form-control { min-height: 44px; }
+
+            /* Page headers: stack title and buttons vertically */
+            .page-header-mobile {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 0.75rem !important;
+            }
+            .page-header-mobile .d-flex { flex-wrap: wrap; }
+
+            /* Container padding reduced */
+            .container-fluid { padding-left: 0.75rem; padding-right: 0.75rem; }
+            .container { padding-left: 0.75rem; padding-right: 0.75rem; }
+        }
+
+        /* Phase 2 — Tables: hide secondary columns on mobile, card-style rows */
+        @media (max-width: 767.98px) {
+            /* Hide secondary columns on mobile */
+            .d-mobile-none { display: none !important; }
+
+            /* Compact table cells */
+            .table td, .table th { padding: .4rem .5rem; font-size: 0.85rem; }
+
+            /* Table scroll container adjustments */
+            .table-responsive { max-height: 60vh !important; }
+        }
+
+        /* Phase 3 — Filters: collapsible on mobile */
+        @media (max-width: 767.98px) {
+            .filters-collapse .row > [class*="col-"] {
+                flex: 0 0 100%;
+                max-width: 100%;
+            }
+            .filters-collapse .form-label { margin-bottom: 0.25rem; font-size: 0.85rem; }
+        }
+
+        /* Phase 5 — Map: adaptive height */
+        @media (max-width: 767.98px) {
+            #generalMap { height: 55vh !important; }
+            .map-footer-legend { display: none; } /* hide verbose legend on mobile */
+        }
+
+        /* Phase 6 — Modals: better fit on mobile */
+        @media (max-width: 575.98px) {
+            .modal-dialog {
+                margin: 0.5rem !important;
+                max-width: calc(100% - 1rem) !important;
+            }
+            .modal-dialog.modal-lg,
+            .modal-dialog.modal-xl {
+                max-width: calc(100% - 1rem) !important;
+            }
+            .modal-dialog .modal-body {
+                overflow-y: auto;
+                max-height: 70vh;
+            }
+        }
+
+        /* Site map editor mobile */
+        @media (max-width: 767.98px) {
+            .site-editor-sidebar {
+                max-height: 35vh !important;
+                overflow-y: auto;
+            }
+        }
+
+        /* Map stats cards compact on mobile */
+        @media (max-width: 767.98px) {
+            .map-stat-card .card-body { padding: 0.5rem; }
+            .map-stat-card .card-title { font-size: 1rem; }
+            .map-stat-card .card-text { font-size: 0.75rem; }
+        }
+
+        /* Navbar action buttons — clean & uniform */
+        .navbar-actions .nav-link {
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+            padding: 0.5rem 0.65rem;
+            border-radius: 0.375rem;
+            transition: background 0.15s;
+        }
+        .navbar-actions .nav-link:hover {
+            background: rgba(255,255,255,0.12);
+        }
+        .navbar-avatar {
+            font-size: 1.25rem;
+            line-height: 1;
+        }
+        /* On mobile hamburger: stack actions vertically with clear labels */
+        @media (max-width: 991.98px) {
+            .navbar-actions {
+                border-top: 1px solid rgba(255,255,255,0.15);
+                padding-top: 0.5rem;
+                margin-top: 0.5rem;
+            }
+            .navbar-actions .nav-link {
+                padding: 0.6rem 0.75rem;
+                font-size: 0.95rem;
+            }
+            .nav-action-label { display: inline !important; }
+        }
+        /* On desktop: show labels inline */
+        @media (min-width: 992px) {
+            .nav-action-label { display: inline; }
+        }
+
+        /* Phase 7 — Mobile bottom navigation bar */
+        .mobile-bottom-nav {
+            display: none;
+        }
+        @media (max-width: 991.98px) {
+            .mobile-bottom-nav {
+                display: flex;
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                z-index: 1050;
+                background: #fff;
+                border-top: 1px solid #dee2e6;
+                box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+                justify-content: space-around;
+                padding: 0.25rem 0;
+                padding-bottom: calc(0.25rem + env(safe-area-inset-bottom, 0px));
+            }
+            .mobile-bottom-nav a {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                flex: 1;
+                padding: 0.35rem 0;
+                color: #6c757d;
+                text-decoration: none;
+                font-size: 0.65rem;
+                min-height: 50px;
+                transition: color 0.15s;
+            }
+            .mobile-bottom-nav a i {
+                font-size: 1.15rem;
+                margin-bottom: 0.15rem;
+            }
+            .mobile-bottom-nav a.active {
+                color: #198754;
+                font-weight: 600;
+            }
+            .mobile-bottom-nav a:active {
+                color: #198754;
+            }
+            /* Space at bottom so content isn't hidden behind the bar */
+            body { padding-bottom: 60px; }
+            /* Hide primary nav links from hamburger on mobile — they're in bottom bar */
+            .navbar-nav-primary { display: none !important; }
         }
     </style>
 </head>
@@ -140,8 +307,8 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
-                    <!-- Primary Navigation -->
-                    <ul class="navbar-nav me-auto">
+                    <!-- Primary Navigation (hidden on mobile, shown in bottom bar) -->
+                    <ul class="navbar-nav me-auto navbar-nav-primary">
                         <li class="nav-item">
                             <a class="nav-link" href="#sites" @click="currentView = 'sites'" :class="{active: currentView === 'sites'}" aria-label="Sites">
                                 <i class="fas fa-map-marker-alt me-1"></i>Sites
@@ -175,42 +342,45 @@
                     </ul>
 
                     <!-- Action Buttons -->
-                    <ul class="navbar-nav ms-auto">
-                        <!-- Add dropdown -->
-                        <li class="nav-item dropdown btn-action">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Ajouter des données">
-                                <i class="fas fa-plus me-1"></i>Ajouter
+                    <ul class="navbar-nav ms-auto navbar-actions">
+                        <!-- Create new (+ button) -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Nouveau">
+                                <i class="fas fa-plus-circle me-1"></i><span class="nav-action-label">Nouveau</span>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
+                                <li><h6 class="dropdown-header">Creer</h6></li>
                                 <li><a class="dropdown-item" href="#" @click.prevent="openModal('site')">
-                                    <i class="fas fa-map-marker-alt me-2"></i>Nouveau site
+                                    <i class="fas fa-map-marker-alt me-2 text-primary"></i>Site
                                 </a></li>
                                 <li><a class="dropdown-item" href="#" @click.prevent="openModal('plant')">
-                                    <i class="fas fa-leaf me-2"></i>Nouvelle plante
+                                    <i class="fas fa-leaf me-2 text-success"></i>Plante
                                 </a></li>
                                 <li><a class="dropdown-item" href="#" @click.prevent="openModal('observation')">
-                                    <i class="fas fa-eye me-2"></i>Nouvelle observation
+                                    <i class="fas fa-eye me-2 text-info"></i>Observation
                                 </a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="#" @click.prevent="openModal('photo')">
-                                    <i class="fas fa-camera me-2"></i>Nouvelle photo
+                                    <i class="fas fa-camera me-2 text-warning"></i>Photo
                                 </a></li>
                             </ul>
                         </li>
 
-                        <!-- Tools dropdown -->
+                        <!-- Search -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="#search" @click="currentView = 'search'" :class="{active: currentView === 'search'}" aria-label="Rechercher">
+                                <i class="fas fa-search"></i><span class="nav-action-label ms-1">Recherche</span>
+                            </a>
+                        </li>
+
+                        <!-- More (tools + admin) -->
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle icon-only" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Outils">
-                                <i class="fas fa-tools"></i>
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Plus">
+                                <i class="fas fa-ellipsis-h"></i><span class="nav-action-label ms-1">Plus</span>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><h6 class="dropdown-header">Outils</h6></li>
-                                <li><a class="dropdown-item" href="#search" @click="currentView = 'search'">
-                                    <i class="fas fa-search me-2"></i>Recherche Globale
-                                </a></li>
-                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="/observations-ods" target="_blank">
-                                    <i class="fas fa-database me-2"></i>Données ODS
+                                    <i class="fas fa-database me-2 text-secondary"></i>Donnees ODS
                                     <i class="fas fa-external-link-alt ms-1 text-muted" style="font-size: 0.75em;"></i>
                                 </a></li>
                                 <li v-if="user.isStaff || user.isSuperuser"><hr class="dropdown-divider"></li>
@@ -219,83 +389,81 @@
                                 </li>
                                 <li v-if="user.isStaff || user.isSuperuser">
                                     <a class="dropdown-item" href="#admin" @click="currentView = 'admin'">
-                                        <i class="fas fa-cogs me-2"></i>Gestion des données
+                                        <i class="fas fa-cogs me-2 text-secondary"></i>Gestion des donnees
                                     </a>
                                 </li>
                                 <li v-if="user.isStaff || user.isSuperuser">
                                     <a class="dropdown-item" href="/admin" target="_blank">
-                                        <i class="fas fa-shield-alt me-2"></i>Filament Admin
+                                        <i class="fas fa-shield-alt me-2 text-secondary"></i>Filament Admin
                                         <i class="fas fa-external-link-alt ms-1 text-muted" style="font-size: 0.75em;"></i>
                                     </a>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="#" @click.prevent="showHelpAlert()">
-                                    <i class="fas fa-question-circle me-2"></i>Aide
+                                    <i class="fas fa-question-circle me-2 text-muted"></i>Aide
                                 </a></li>
                             </ul>
                         </li>
 
-                        <!-- User menu -->
+                        <!-- User account -->
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu utilisateur">
-                                <i class="fas fa-user me-1"></i>
-                                <span class="d-none d-md-inline" v-text="user.username"></span>
-                                <span v-if="user.isAuthenticated && user.isStaff" class="badge bg-warning ms-1 d-none d-lg-inline">Staff</span>
-                                <span v-if="user.isAuthenticated && user.isSuperuser" class="badge bg-danger ms-1 d-none d-lg-inline">Admin</span>
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Mon compte">
+                                <template v-if="user.isAuthenticated">
+                                    <span class="navbar-avatar">
+                                        <i class="fas fa-user-circle"></i>
+                                    </span>
+                                    <span class="nav-action-label ms-1" v-text="user.username"></span>
+                                </template>
+                                <template v-else>
+                                    <i class="fas fa-sign-in-alt"></i>
+                                    <span class="nav-action-label ms-1">Connexion</span>
+                                </template>
                             </a>
-                            <ul class="dropdown-menu dropdown-menu-end user-menu">
-                                <!-- User not authenticated -->
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <!-- Not authenticated -->
                                 <template v-if="!user.isAuthenticated">
                                     <li>
-                                        <h6 class="dropdown-header">
-                                            <i class="fas fa-user-slash me-1"></i>Non connecté
-                                        </h6>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="#" @click.prevent="showLoginModal = true">
-                                            <i class="fas fa-sign-in-alt me-2"></i>Se connecter
+                                        <a class="dropdown-item fw-bold" href="#" @click.prevent="showLoginModal = true">
+                                            <i class="fas fa-sign-in-alt me-2 text-success"></i>Se connecter
                                         </a>
                                     </li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
                                         <small class="dropdown-item-text text-muted">
                                             <i class="fas fa-info-circle me-1"></i>
-                                            Connectez-vous pour enregistrer vos données
+                                            Connectez-vous pour enregistrer vos donnees
                                         </small>
                                     </li>
                                 </template>
 
-                                <!-- User authenticated -->
+                                <!-- Authenticated -->
                                 <template v-if="user.isAuthenticated">
                                     <li>
-                                        <h6 class="dropdown-header">
-                                            <i class="fas fa-user-check me-1"></i>
-                                            <span v-text="user.username"></span>
-                                            <span v-if="user.isStaff" class="badge bg-warning ms-1">Staff</span>
-                                            <span v-if="user.isSuperuser" class="badge bg-danger ms-1">Admin</span>
-                                        </h6>
-                                    </li>
-                                    <li v-if="user.email">
-                                        <span class="dropdown-item-text text-muted">
-                                            <i class="fas fa-envelope me-2"></i>
-                                            <span v-text="user.email"></span>
-                                        </span>
+                                        <div class="dropdown-item-text">
+                                            <div class="fw-bold" v-text="user.username"></div>
+                                            <small class="text-muted" v-if="user.email" v-text="user.email"></small>
+                                            <div class="mt-1" v-if="user.isStaff || user.isSuperuser">
+                                                <span v-if="user.isStaff" class="badge bg-warning">Staff</span>
+                                                <span v-if="user.isSuperuser" class="badge bg-danger ms-1">Admin</span>
+                                            </div>
+                                        </div>
                                     </li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
                                         <a class="dropdown-item" href="#" @click.prevent="">
-                                            <i class="fas fa-cog me-2"></i>Paramètres
+                                            <i class="fas fa-cog me-2 text-secondary"></i>Parametres
                                         </a>
                                     </li>
                                     <li v-if="user.isStaff">
                                         <a class="dropdown-item" href="/admin/" target="_blank">
-                                            <i class="fas fa-shield-alt me-2"></i>Administration
+                                            <i class="fas fa-shield-alt me-2 text-secondary"></i>Administration
+                                            <i class="fas fa-external-link-alt ms-1 text-muted" style="font-size: 0.75em;"></i>
                                         </a>
                                     </li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
                                         <a class="dropdown-item text-danger" href="#" @click.prevent="logout()">
-                                            <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
+                                            <i class="fas fa-sign-out-alt me-2"></i>Deconnexion
                                         </a>
                                     </li>
                                 </template>
@@ -316,9 +484,10 @@
                         <div class="card border-0 shadow-sm">
                             <div class="card-body p-4">
                                 <div class="mb-3">
-                                    <h1 class="h4 mb-2">
+                                    <h1 class="h5 h4-md mb-2">
                                         <i class="fas fa-chart-line text-success me-2"></i>
-                                        Observatoire National de Phénologie — Évolution depuis 2006
+                                        <span class="d-none d-md-inline">Observatoire National de Phénologie — Évolution depuis 2006</span>
+                                        <span class="d-md-none">Phénologie — Depuis 2006</span>
                                     </h1>
                                     <p class="text-muted mb-0">
                                         <span v-if="odsChartData.summary">
@@ -330,7 +499,7 @@
                                         </span>
                                     </p>
                                 </div>
-                                <div style="position: relative; height: 350px;">
+                                <div style="position: relative; height: 220px; max-height: 40vh;">
                                     <canvas id="odsEvolutionChart"></canvas>
                                 </div>
                                 <div class="mt-3 p-3 bg-light rounded">
@@ -354,16 +523,16 @@
                             Votre empreinte phénologique
                         </h2>
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-6 col-md-4 mb-3">
                         <div class="card border-success h-100">
                             <div class="card-body text-center">
                                 <i class="fas fa-eye fa-2x text-success mb-2"></i>
                                 <h3 class="mb-1" v-text="statistics.totalObservations || 0"></h3>
-                                <p class="text-muted mb-0 small">Observations enregistrées</p>
+                                <p class="text-muted mb-0 small">Observations</p>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-6 col-md-4 mb-3">
                         <div class="card border-success h-100">
                             <div class="card-body text-center">
                                 <i class="fas fa-leaf fa-2x text-success mb-2"></i>
@@ -372,7 +541,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4 mb-3">
+                    <div class="col-6 col-md-4 mb-3">
                         <div class="card border-success h-100">
                             <div class="card-body text-center">
                                 <i class="fas fa-map-marker-alt fa-2x text-success mb-2"></i>
@@ -498,18 +667,14 @@
 
             <!-- Sites View -->
             <div v-if="currentView === 'sites'" class="sites-view">
-                <div class="row mb-4">
-                    <div class="col-md-8">
-                        <h1 class="h3 mb-0">
-                            <i class="fas fa-map-marker-alt text-primary me-2"></i>
-                            Gestion des Sites
-                        </h1>
-                    </div>
-                    <div class="col-md-4 text-md-end">
-                        <button class="btn btn-primary" @click="openModal('site')">
-                            <i class="fas fa-plus me-1"></i>Ajouter un site
-                        </button>
-                    </div>
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2">
+                    <h1 class="h4 h3-md mb-0">
+                        <i class="fas fa-map-marker-alt text-primary me-2"></i>
+                        Gestion des Sites
+                    </h1>
+                    <button class="btn btn-primary" @click="openModal('site')">
+                        <i class="fas fa-plus me-1"></i>Ajouter un site
+                    </button>
                 </div>
 
                 <!-- Filter Controls -->
@@ -959,31 +1124,31 @@
                                 <!-- Filters -->
                                 <div class="card-body border-bottom">
                                     <div class="row g-3">
-                                        <div class="col-md-3">
+                                        <div class="col-md-3 col-12">
                                             <input type="text"
                                                    class="form-control form-control-sm"
                                                    v-model="siteDetail.filters.search"
                                                    @keyup.enter="applySiteDetailFilters"
                                                    placeholder="Rechercher...">
                                         </div>
-                                        <div class="col-md-2">
+                                        <div class="col-md-2 col-4">
                                             <select class="form-select form-select-sm" v-model="siteDetail.filters.category">
-                                                <option value="">Toutes catégories</option>
+                                                <option value="">Catégorie</option>
                                                 <option v-for="cat in categories" :key="cat.id" :value="cat.id" v-text="cat.name"></option>
                                             </select>
                                         </div>
-                                        <div class="col-md-2">
+                                        <div class="col-md-2 col-4">
                                             <select class="form-select form-select-sm" v-model="siteDetail.filters.status">
-                                                <option value="">Tous statuts</option>
+                                                <option value="">Statut</option>
                                                 <option value="alive">Vivante</option>
                                                 <option value="dead">Morte</option>
                                                 <option value="replaced">Remplacée</option>
                                                 <option value="removed">Retirée</option>
                                             </select>
                                         </div>
-                                        <div class="col-md-2">
+                                        <div class="col-md-2 col-4">
                                             <select class="form-select form-select-sm" v-model="siteDetail.filters.health_status">
-                                                <option value="">Toutes santés</option>
+                                                <option value="">Santé</option>
                                                 <option value="excellent">Excellente</option>
                                                 <option value="good">Bonne</option>
                                                 <option value="fair">Moyenne</option>
@@ -991,7 +1156,7 @@
                                                 <option value="dead">Morte</option>
                                             </select>
                                         </div>
-                                        <div class="col-md-3">
+                                        <div class="col-md-3 col-12">
                                             <div class="btn-group btn-group-sm w-100" role="group">
                                                 <button type="button" class="btn btn-outline-primary" @click="applySiteDetailFilters">
                                                     <i class="fas fa-filter me-1"></i>Filtrer
@@ -1023,25 +1188,25 @@
                                                     <th @click="sortSitePlants('name')" style="cursor: pointer;">
                                                         Nom <i class="fas" :class="getSortIcon('name')"></i>
                                                     </th>
-                                                    <th>Taxon</th>
-                                                    <th @click="sortSitePlants('category')" style="cursor: pointer;">
+                                                    <th class="d-mobile-none">Taxon</th>
+                                                    <th class="d-mobile-none" @click="sortSitePlants('category')" style="cursor: pointer;">
                                                         Catégorie <i class="fas" :class="getSortIcon('category')"></i>
                                                     </th>
                                                     <th @click="sortSitePlants('status')" style="cursor: pointer;">
                                                         Statut <i class="fas" :class="getSortIcon('status')"></i>
                                                     </th>
-                                                    <th @click="sortSitePlants('health_status')" style="cursor: pointer;">
+                                                    <th class="d-mobile-none" @click="sortSitePlants('health_status')" style="cursor: pointer;">
                                                         Santé <i class="fas" :class="getSortIcon('health_status')"></i>
                                                     </th>
-                                                    <th>Position</th>
-                                                    <th @click="sortSitePlants('planting_date')" style="cursor: pointer;">
+                                                    <th class="d-mobile-none">Position</th>
+                                                    <th class="d-mobile-none" @click="sortSitePlants('planting_date')" style="cursor: pointer;">
                                                         Plantation <i class="fas" :class="getSortIcon('planting_date')"></i>
                                                     </th>
-                                                    <th>Âge</th>
-                                                    <th @click="sortSitePlants('observations_count')" style="cursor: pointer;">
+                                                    <th class="d-mobile-none">Âge</th>
+                                                    <th class="d-mobile-none" @click="sortSitePlants('observations_count')" style="cursor: pointer;">
                                                         Obs. <i class="fas" :class="getSortIcon('observations_count')"></i>
                                                     </th>
-                                                    <th @click="sortSitePlants('photos_count')" style="cursor: pointer;">
+                                                    <th class="d-mobile-none" @click="sortSitePlants('photos_count')" style="cursor: pointer;">
                                                         Photos <i class="fas" :class="getSortIcon('photos_count')"></i>
                                                     </th>
                                                     <th>Actions</th>
@@ -1055,11 +1220,11 @@
                                                             <i class="fas fa-lock"></i>
                                                         </span>
                                                     </td>
-                                                    <td>
+                                                    <td class="d-mobile-none">
                                                         <em v-if="plant.taxon" v-text="plant.taxon.binomial_name" class="text-muted small"></em>
                                                         <span v-else class="text-muted">-</span>
                                                     </td>
-                                                    <td>
+                                                    <td class="d-mobile-none">
                                                         <span class="badge bg-secondary" v-text="plant.category ? plant.category.name : '-'"></span>
                                                     </td>
                                                     <td>
@@ -1072,7 +1237,7 @@
                                                               }"
                                                               v-text="getStatusLabel(plant.status)"></span>
                                                     </td>
-                                                    <td>
+                                                    <td class="d-mobile-none">
                                                         <span v-if="plant.health_status"
                                                               class="badge"
                                                               :class="{
@@ -1084,25 +1249,25 @@
                                                               v-text="getHealthLabel(plant.health_status)"></span>
                                                         <span v-else class="text-muted">-</span>
                                                     </td>
-                                                    <td>
+                                                    <td class="d-mobile-none">
                                                         <span v-if="plant.position && plant.position.label" class="small">
                                                             <i class="fas fa-map-pin me-1"></i>
                                                             <span v-text="plant.position.label"></span>
                                                         </span>
                                                         <span v-else class="text-muted">-</span>
                                                     </td>
-                                                    <td>
+                                                    <td class="d-mobile-none">
                                                         <span v-if="plant.planting_date" v-text="formatDate(plant.planting_date)" class="small"></span>
                                                         <span v-else class="text-muted">-</span>
                                                     </td>
-                                                    <td>
+                                                    <td class="d-mobile-none">
                                                         <span v-if="plant.planting_date || plant.age_years" class="small" v-text="computePlantAge(plant)"></span>
                                                         <span v-else class="text-muted">-</span>
                                                     </td>
-                                                    <td class="text-center">
+                                                    <td class="text-center d-mobile-none">
                                                         <span class="badge bg-info" v-text="plant.observations_count || 0"></span>
                                                     </td>
-                                                    <td class="text-center">
+                                                    <td class="text-center d-mobile-none">
                                                         <span class="badge bg-secondary" v-text="plant.photos_count || 0"></span>
                                                     </td>
                                                     <td>
@@ -1185,34 +1350,37 @@
             <!-- Plants View -->
             <div v-if="currentView === 'plants'">
                 <!-- Header -->
-                <div class="row align-items-center mb-4">
-                    <div class="col-md-8">
-                        <h2><i class="fas fa-leaf text-success me-2"></i>Gestion des Plantes</h2>
-                        <p class="text-muted mb-0">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2">
+                    <div>
+                        <h2 class="h4 h2-md"><i class="fas fa-leaf text-success me-2"></i>Gestion des Plantes</h2>
+                        <p class="text-muted mb-0 d-none d-md-block">
                             Découvrez et gérez votre collection botanique avec précision GPS
                         </p>
                     </div>
-                    <div class="col-md-4 text-end">
-                        <div class="d-flex gap-2 justify-content-end flex-wrap">
-                            <button class="btn btn-outline-primary btn-sm" @click="currentView = 'map'" title="Voir sur carte">
-                                <i class="fas fa-map me-1"></i>Carte
-                            </button>
-                            <button class="btn btn-success" @click="openModal('plant')">
-                                <i class="fas fa-plus me-1"></i>Ajouter
-                            </button>
-                        </div>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-outline-primary btn-sm" @click="currentView = 'map'" title="Voir sur carte">
+                            <i class="fas fa-map me-1"></i>Carte
+                        </button>
+                        <button class="btn btn-success" @click="openModal('plant')">
+                            <i class="fas fa-plus me-1"></i>Ajouter
+                        </button>
                     </div>
                 </div>
 
                 <!-- Filters Card -->
                 <div class="card mb-4 shadow-sm">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filtres de Recherche</h6>
+                        <h6 class="mb-0">
+                            <a class="text-decoration-none text-dark d-md-none" data-bs-toggle="collapse" href="#plantsFiltersCollapse" role="button" aria-expanded="false">
+                                <i class="fas fa-filter me-2"></i>Filtres <i class="fas fa-chevron-down ms-1 small"></i>
+                            </a>
+                            <span class="d-none d-md-inline"><i class="fas fa-filter me-2"></i>Filtres de Recherche</span>
+                        </h6>
                         <button class="btn btn-sm btn-outline-secondary" @click="resetPlantsFilters()" title="Réinitialiser les filtres">
                             <i class="fas fa-undo me-1"></i>Reset
                         </button>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body collapse d-md-block filters-collapse" id="plantsFiltersCollapse">
                         <div class="row g-3">
                             <!-- Search -->
                             <div class="col-md-4">
@@ -1230,7 +1398,7 @@
                             </div>
 
                             <!-- Site Filter -->
-                            <div class="col-md-3">
+                            <div class="col-md-3 col-6">
                                 <label class="form-label">Site</label>
                                 <select v-model="plantsList.filters.site" class="form-select" @change="applyPlantsFilters">
                                     <option value="">Tous les sites</option>
@@ -1239,7 +1407,7 @@
                             </div>
 
                             <!-- Category Filter -->
-                            <div class="col-md-2">
+                            <div class="col-md-2 col-6">
                                 <label class="form-label">Catégorie</label>
                                 <select v-model="plantsList.filters.category" class="form-select" @change="applyPlantsFilters">
                                     <option value="">Toutes</option>
@@ -1248,7 +1416,7 @@
                             </div>
 
                             <!-- Status Filter -->
-                            <div class="col-md-2">
+                            <div class="col-md-2 col-6">
                                 <label class="form-label">Statut</label>
                                 <select v-model="plantsList.filters.status" class="form-select" @change="applyPlantsFilters">
                                     <option value="">Tous</option>
@@ -1260,7 +1428,7 @@
                             </div>
 
                             <!-- Health Status Filter -->
-                            <div class="col-md-2">
+                            <div class="col-md-2 col-6">
                                 <label class="form-label">Santé</label>
                                 <select v-model="plantsList.filters.health_status" class="form-select" @change="applyPlantsFilters">
                                     <option value="">Tous</option>
@@ -1273,7 +1441,7 @@
                             </div>
 
                             <!-- Has Observations Filter -->
-                            <div class="col-md-3">
+                            <div class="col-md-3 col-6">
                                 <label class="form-label">Observations</label>
                                 <select v-model="plantsList.filters.has_observations" class="form-select" @change="applyPlantsFilters">
                                     <option :value="null">Toutes</option>
@@ -1283,7 +1451,7 @@
                             </div>
 
                             <!-- Has Photos Filter -->
-                            <div class="col-md-3">
+                            <div class="col-md-3 col-6">
                                 <label class="form-label">Photos</label>
                                 <select v-model="plantsList.filters.has_photos" class="form-select" @change="applyPlantsFilters">
                                     <option :value="null">Toutes</option>
@@ -1293,7 +1461,7 @@
                             </div>
 
                             <!-- Page Size -->
-                            <div class="col-md-2">
+                            <div class="col-md-2 col-6">
                                 <label class="form-label">Par page</label>
                                 <select v-model="plantsList.filters.page_size" class="form-select" @change="applyPlantsFilters">
                                     <option :value="25">25</option>
@@ -1330,21 +1498,21 @@
                                         <th style="min-width: 150px; cursor: pointer;" @click="sortPlantsList('name')">
                                             Nom <i :class="getPlantsListSortIcon('name')"></i>
                                         </th>
-                                        <th style="min-width: 180px;">Taxon</th>
+                                        <th style="min-width: 180px;" class="d-mobile-none">Taxon</th>
                                         <th style="min-width: 120px;">Site</th>
-                                        <th style="min-width: 100px;">Catégorie</th>
+                                        <th style="min-width: 100px;" class="d-mobile-none">Catégorie</th>
                                         <th style="min-width: 80px;">Statut</th>
-                                        <th style="min-width: 80px;">Santé</th>
-                                        <th style="min-width: 100px; cursor: pointer;" @click="sortPlantsList('planting_date')">
+                                        <th style="min-width: 80px;" class="d-mobile-none">Santé</th>
+                                        <th style="min-width: 100px; cursor: pointer;" class="d-mobile-none" @click="sortPlantsList('planting_date')">
                                             Planté <i :class="getPlantsListSortIcon('planting_date')"></i>
                                         </th>
-                                        <th class="text-center" style="width: 60px; cursor: pointer;" @click="sortPlantsList('observations_count')">
+                                        <th class="text-center d-mobile-none" style="width: 60px; cursor: pointer;" @click="sortPlantsList('observations_count')">
                                             Obs. <i :class="getPlantsListSortIcon('observations_count')"></i>
                                         </th>
-                                        <th style="min-width: 100px; cursor: pointer;" @click="sortPlantsList('last_observation_date')">
+                                        <th style="min-width: 100px; cursor: pointer;" class="d-mobile-none" @click="sortPlantsList('last_observation_date')">
                                             Dernière Obs. <i :class="getPlantsListSortIcon('last_observation_date')"></i>
                                         </th>
-                                        <th class="text-center" style="width: 60px; cursor: pointer;" @click="sortPlantsList('photos_count')">
+                                        <th class="text-center d-mobile-none" style="width: 60px; cursor: pointer;" @click="sortPlantsList('photos_count')">
                                             Photos <i :class="getPlantsListSortIcon('photos_count')"></i>
                                         </th>
                                         <th class="text-center" style="width: 100px;">Actions</th>
@@ -1390,7 +1558,7 @@
                                         </td>
 
                                         <!-- Taxon -->
-                                        <td>
+                                        <td class="d-mobile-none">
                                             <em class="text-primary" v-text="plant.taxon ? plant.taxon.binomial_name : '-'"></em><br>
                                             <small class="text-muted" v-text="plant.taxon ? (plant.taxon.common_name_fr || '') : ''"></small>
                                         </td>
@@ -1399,7 +1567,7 @@
                                         <td v-text="plant.site ? plant.site.name : '-'"></td>
 
                                         <!-- Catégorie -->
-                                        <td v-text="plant.category ? plant.category.name : '-'"></td>
+                                        <td class="d-mobile-none" v-text="plant.category ? plant.category.name : '-'"></td>
 
                                         <!-- Statut -->
                                         <td>
@@ -1412,7 +1580,7 @@
                                         </td>
 
                                         <!-- Santé -->
-                                        <td>
+                                        <td class="d-mobile-none">
                                             <span v-if="plant.health_status" class="badge" :class="{
                                                 'bg-success': plant.health_status === 'excellent',
                                                 'bg-primary': plant.health_status === 'good',
@@ -1423,24 +1591,24 @@
                                         </td>
 
                                         <!-- Planté -->
-                                        <td>
+                                        <td class="d-mobile-none">
                                             <span v-if="plant.planting_date" v-text="formatDate(plant.planting_date)"></span>
                                             <span v-else class="text-muted">-</span>
                                         </td>
 
                                         <!-- Observations Count -->
-                                        <td class="text-center">
+                                        <td class="text-center d-mobile-none">
                                             <span class="badge bg-info" v-text="plant.observations_count || 0"></span>
                                         </td>
 
                                         <!-- Dernière Observation -->
-                                        <td>
+                                        <td class="d-mobile-none">
                                             <span v-if="plant.last_observation_date" v-text="formatDate(plant.last_observation_date)"></span>
                                             <span v-else class="text-muted">-</span>
                                         </td>
 
                                         <!-- Photos Count -->
-                                        <td class="text-center">
+                                        <td class="text-center d-mobile-none">
                                             <span v-if="plant.photos_count > 0" class="badge bg-secondary">
                                                 <i class="fas fa-camera me-1"></i><span v-text="plant.photos_count"></span>
                                             </span>
@@ -1494,23 +1662,23 @@
             <!-- General Map View -->
             <div v-if="currentView === 'map'">
                 <!-- Header -->
-                <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2">
                     <div>
-                        <h2><i class="fas fa-globe text-primary me-2"></i>Carte Générale</h2>
-                        <p class="text-muted mb-0">
+                        <h2 class="h4 h2-md"><i class="fas fa-globe text-primary me-2"></i>Carte Générale</h2>
+                        <p class="text-muted mb-0 d-none d-md-block">
                             Visualisation interactive de tous les sites et plantes avec GPS
                         </p>
                     </div>
                     <div class="d-flex gap-2">
-                        <div class="btn-group" role="group">
+                        <div class="btn-group btn-group-sm" role="group">
                             <button type="button" class="btn" :class="mapViewMode === 'sites' ? 'btn-primary' : 'btn-outline-primary'" @click="mapViewMode = 'sites'">
-                                <i class="fas fa-map-marker-alt me-1"></i>Sites
+                                <i class="fas fa-map-marker-alt me-1"></i><span class="d-none d-sm-inline">Sites</span>
                             </button>
                             <button type="button" class="btn" :class="mapViewMode === 'plants' ? 'btn-primary' : 'btn-outline-primary'" @click="mapViewMode = 'plants'">
-                                <i class="fas fa-leaf me-1"></i>Plantes
+                                <i class="fas fa-leaf me-1"></i><span class="d-none d-sm-inline">Plantes</span>
                             </button>
                             <button type="button" class="btn" :class="mapViewMode === 'both' ? 'btn-primary' : 'btn-outline-primary'" @click="mapViewMode = 'both'">
-                                <i class="fas fa-layer-group me-1"></i>Tout
+                                <i class="fas fa-layer-group me-1"></i><span class="d-none d-sm-inline">Tout</span>
                             </button>
                         </div>
                     </div>
@@ -1518,47 +1686,47 @@
 
                 <!-- Map Statistics -->
                 <div class="row mb-4">
-                    <div class="col-md-3 mb-3">
-                        <div class="card border-primary">
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="card border-primary map-stat-card">
                             <div class="card-body text-center">
                                 <h5 class="card-title text-primary">
                                     <i class="fas fa-map-marker-alt me-1"></i>
                                     <span v-text="mapStats.sites || 0"></span>
                                 </h5>
-                                <p class="card-text small mb-0">Sites géolocalisés</p>
+                                <p class="card-text small mb-0">Sites GPS</p>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <div class="card border-success">
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="card border-success map-stat-card">
                             <div class="card-body text-center">
                                 <h5 class="card-title text-success">
                                     <i class="fas fa-leaf me-1"></i>
                                     <span v-text="mapStats.plants || 0"></span>
                                 </h5>
-                                <p class="card-text small mb-0">Plantes avec GPS</p>
+                                <p class="card-text small mb-0">Plantes GPS</p>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <div class="card border-info">
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="card border-info map-stat-card">
                             <div class="card-body text-center">
                                 <h5 class="card-title text-info">
                                     <i class="fas fa-crosshairs me-1"></i>
                                     <span v-text="mapStats.precision || '0'"></span>
                                 </h5>
-                                <p class="card-text small mb-0">Précision moy. (m)</p>
+                                <p class="card-text small mb-0">Précision (m)</p>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-3 mb-3">
-                        <div class="card border-warning">
+                    <div class="col-6 col-md-3 mb-3">
+                        <div class="card border-warning map-stat-card">
                             <div class="card-body text-center">
                                 <h5 class="card-title text-warning">
                                     <i class="fas fa-search me-1"></i>
                                     <span v-text="mapStats.visible || 0"></span>
                                 </h5>
-                                <p class="card-text small mb-0">Visible sur carte</p>
+                                <p class="card-text small mb-0">Visible</p>
                             </div>
                         </div>
                     </div>
@@ -1595,12 +1763,12 @@
                     </div>
                     <div class="card-footer">
                         <div class="row align-items-center">
-                            <div class="col-md-8">
+                            <div class="col-md-8 map-footer-legend">
                                 <small class="text-muted">
                                     <i class="fas fa-info-circle me-1"></i>
                                     <strong>Navigation:</strong> Molette = Zoom | Glisser = Déplacer | Clic = Détails
                                     <br>
-                                    <strong>Précision GPS:</strong> 
+                                    <strong>Précision GPS:</strong>
                                     <span class="precision-indicator ultra-high me-1"><i class="fas fa-circle"></i> &lt;1m</span>
                                     <span class="precision-indicator high me-1"><i class="fas fa-circle"></i> 1-5m</span>
                                     <span class="precision-indicator medium"><i class="fas fa-circle"></i> &gt;5m</span>
@@ -1690,16 +1858,16 @@
             <!-- Observations View (FULL IMPLEMENTATION) -->
             <div v-if="currentView === 'observations'" class="container-fluid py-4">
                 <!-- Header -->
-                <div class="row align-items-center mb-4">
-                    <div class="col-md-8">
-                        <h2><i class="fas fa-eye text-info me-2"></i>Mes Observations</h2>
-                        <p class="text-muted mb-0">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2">
+                    <div>
+                        <h2 class="h4 h2-md"><i class="fas fa-eye text-info me-2"></i>Mes Observations</h2>
+                        <p class="text-muted mb-0 d-none d-md-block">
                             Suivez l'évolution phénologique de vos plantes
                         </p>
                     </div>
-                    <div class="col-md-4 text-end">
+                    <div>
                         <button v-if="user.isAuthenticated" class="btn btn-primary" @click="showAddObservationModal = true">
-                            <i class="fas fa-plus me-2"></i>Nouvelle Observation
+                            <i class="fas fa-plus me-1"></i>Nouvelle Observation
                         </button>
                     </div>
                 </div>
@@ -1707,12 +1875,17 @@
                 <!-- Filters Card -->
                 <div class="card mb-4 shadow-sm">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filtres de Recherche</h6>
+                        <h6 class="mb-0">
+                            <a class="text-decoration-none text-dark d-md-none" data-bs-toggle="collapse" href="#obsFiltersCollapse" role="button" aria-expanded="false">
+                                <i class="fas fa-filter me-2"></i>Filtres <i class="fas fa-chevron-down ms-1 small"></i>
+                            </a>
+                            <span class="d-none d-md-inline"><i class="fas fa-filter me-2"></i>Filtres de Recherche</span>
+                        </h6>
                         <button class="btn btn-sm btn-outline-secondary" @click="resetObservationsFilters()" title="Réinitialiser les filtres">
                             <i class="fas fa-undo me-1"></i>Reset
                         </button>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body collapse d-md-block filters-collapse" id="obsFiltersCollapse">
                         <div class="row g-3">
                             <!-- Search -->
                             <div class="col-md-4">
@@ -1730,7 +1903,7 @@
                             </div>
 
                             <!-- Year Filter -->
-                            <div class="col-md-2">
+                            <div class="col-md-2 col-6">
                                 <label class="form-label">Année</label>
                                 <select v-model="observationsList.filters.year" class="form-select" @change="applyObservationsFilters">
                                     <option value="">Toutes</option>
@@ -1739,19 +1912,19 @@
                             </div>
 
                             <!-- Date From -->
-                            <div class="col-md-2">
-                                <label class="form-label">Date de début</label>
+                            <div class="col-md-2 col-6">
+                                <label class="form-label">Date début</label>
                                 <input type="date" v-model="observationsList.filters.date_from" class="form-control" @change="applyObservationsFilters">
                             </div>
 
                             <!-- Date To -->
-                            <div class="col-md-2">
-                                <label class="form-label">Date de fin</label>
+                            <div class="col-md-2 col-6">
+                                <label class="form-label">Date fin</label>
                                 <input type="date" v-model="observationsList.filters.date_to" class="form-control" @change="applyObservationsFilters">
                             </div>
 
                             <!-- Site Filter -->
-                            <div class="col-md-3">
+                            <div class="col-md-3 col-6">
                                 <label class="form-label">Site</label>
                                 <select v-model="observationsList.filters.site" class="form-select" @change="applyObservationsFilters">
                                     <option value="">Tous les sites</option>
@@ -1760,7 +1933,7 @@
                             </div>
 
                             <!-- Category Filter -->
-                            <div class="col-md-2">
+                            <div class="col-md-2 col-6">
                                 <label class="form-label">Catégorie</label>
                                 <select v-model="observationsList.filters.category" class="form-select" @change="applyObservationsFilters">
                                     <option value="">Toutes</option>
@@ -1769,7 +1942,7 @@
                             </div>
 
                             <!-- Stage Filter -->
-                            <div class="col-md-3">
+                            <div class="col-md-3 col-6">
                                 <label class="form-label">Stade</label>
                                 <select v-model="observationsList.filters.stage" class="form-select" @change="applyObservationsFilters">
                                     <option value="">Tous les stades</option>
@@ -1778,7 +1951,7 @@
                             </div>
 
                             <!-- Has Photos Filter -->
-                            <div class="col-md-2">
+                            <div class="col-md-2 col-6">
                                 <label class="form-label">Photos</label>
                                 <select v-model="observationsList.filters.has_photos" class="form-select" @change="applyObservationsFilters">
                                     <option :value="null">Toutes</option>
@@ -1788,7 +1961,7 @@
                             </div>
 
                             <!-- Is Validated Filter -->
-                            <div class="col-md-2">
+                            <div class="col-md-2 col-6">
                                 <label class="form-label">Validation</label>
                                 <select v-model="observationsList.filters.is_validated" class="form-select" @change="applyObservationsFilters">
                                     <option :value="null">Toutes</option>
@@ -1798,7 +1971,7 @@
                             </div>
 
                             <!-- Page Size -->
-                            <div class="col-md-2">
+                            <div class="col-md-2 col-6">
                                 <label class="form-label">Par page</label>
                                 <select v-model="observationsList.filters.page_size" class="form-select" @change="applyObservationsFilters">
                                     <option :value="25">25</option>
@@ -1836,13 +2009,13 @@
                                             Date <i :class="getObservationsListSortIcon('observation_date')"></i>
                                         </th>
                                         <th style="min-width: 150px;">Plante</th>
-                                        <th style="min-width: 120px;">Site</th>
-                                        <th style="min-width: 180px;">Stade phénologique</th>
-                                        <th style="min-width: 80px;">Intensité</th>
-                                        <th style="min-width: 100px;">Météo</th>
-                                        <th class="text-center" style="width: 60px;">Photos</th>
-                                        <th class="text-center" style="width: 80px;">Validée</th>
-                                        <th class="text-center" style="width: 80px;">Public</th>
+                                        <th style="min-width: 120px;" class="d-mobile-none">Site</th>
+                                        <th style="min-width: 180px;" class="d-mobile-none">Stade phénologique</th>
+                                        <th style="min-width: 80px;" class="d-mobile-none">Intensité</th>
+                                        <th style="min-width: 100px;" class="d-mobile-none">Météo</th>
+                                        <th class="text-center d-mobile-none" style="width: 60px;">Photos</th>
+                                        <th class="text-center d-mobile-none" style="width: 80px;">Validée</th>
+                                        <th class="text-center d-mobile-none" style="width: 80px;">Public</th>
                                         <th class="text-center" style="width: 100px;">Actions</th>
                                     </tr>
                                 </thead>
@@ -1886,16 +2059,16 @@
                                         </td>
 
                                         <!-- Site -->
-                                        <td v-text="obs.plant && obs.plant.site ? obs.plant.site.name : '-'"></td>
+                                        <td class="d-mobile-none" v-text="obs.plant && obs.plant.site ? obs.plant.site.name : '-'"></td>
 
                                         <!-- Stade phénologique -->
-                                        <td>
+                                        <td class="d-mobile-none">
                                             <span class="badge bg-info me-1" v-text="obs.phenological_stage ? obs.phenological_stage.stage_code : '-'"></span>
                                             <span v-text="obs.phenological_stage ? obs.phenological_stage.stage_description : '-'"></span>
                                         </td>
 
                                         <!-- Intensité -->
-                                        <td>
+                                        <td class="d-mobile-none">
                                             <div v-if="obs.intensity" class="progress" style="width: 80px; height: 20px;">
                                                 <div class="progress-bar" :style="{ width: (obs.intensity * 20) + '%' }"
                                                      :class="getIntensityClass(obs.intensity)">
@@ -1906,7 +2079,7 @@
                                         </td>
 
                                         <!-- Météo -->
-                                        <td>
+                                        <td class="d-mobile-none">
                                             <span v-if="obs.weather_condition">
                                                 <i :class="getWeatherIcon(obs.weather_condition)"></i>
                                                 <span v-text="obs.weather_condition"></span>
@@ -1917,7 +2090,7 @@
                                         </td>
 
                                         <!-- Photos Count -->
-                                        <td class="text-center">
+                                        <td class="text-center d-mobile-none">
                                             <span v-if="obs.photos_count > 0" class="badge bg-secondary">
                                                 <i class="fas fa-camera me-1"></i><span v-text="obs.photos_count"></span>
                                             </span>
@@ -1925,7 +2098,7 @@
                                         </td>
 
                                         <!-- Validée -->
-                                        <td class="text-center">
+                                        <td class="text-center d-mobile-none">
                                             <span v-if="obs.is_validated" class="badge bg-success" title="Validée">
                                                 <i class="fas fa-check"></i>
                                             </span>
@@ -1935,7 +2108,7 @@
                                         </td>
 
                                         <!-- Public -->
-                                        <td class="text-center">
+                                        <td class="text-center d-mobile-none">
                                             <span v-if="obs.is_public" class="badge bg-success" title="Public">
                                                 <i class="fas fa-globe"></i>
                                             </span>
@@ -4700,7 +4873,7 @@
                 <div class="container-fluid h-100">
                     <div class="row h-100">
                                 <!-- Left Sidebar - Plants List -->
-                                <div class="col-md-3 bg-light border-end p-3" style="overflow-y: auto;">
+                                <div class="col-md-3 bg-light border-end p-3 site-editor-sidebar" style="overflow-y: auto;">
                                     <h6 class="fw-bold mb-3">
                                         <i class="fas fa-list me-2"></i>Plantes
                                         <span class="badge bg-secondary ms-2" v-text="siteMapEditor.plants.length"></span>
@@ -6629,6 +6802,34 @@
                 </div>
             </div>
         </div>
+
+        <!-- Mobile Bottom Navigation Bar -->
+        <nav class="mobile-bottom-nav" aria-label="Navigation mobile">
+            <a href="#dashboard" @click.prevent="currentView = 'dashboard'" :class="{active: currentView === 'dashboard'}">
+                <i class="fas fa-home"></i>
+                <span>Accueil</span>
+            </a>
+            <a href="#sites" @click.prevent="currentView = 'sites'" :class="{active: currentView === 'sites' || currentView === 'site-detail'}">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>Sites</span>
+            </a>
+            <a href="#plants" @click.prevent="currentView = 'plants'" :class="{active: currentView === 'plants' || currentView === 'plant-detail'}">
+                <i class="fas fa-leaf"></i>
+                <span>Plantes</span>
+            </a>
+            <a href="#observations" @click.prevent="currentView = 'observations'" :class="{active: currentView === 'observations' || currentView === 'observation-detail'}">
+                <i class="fas fa-eye"></i>
+                <span>Obs.</span>
+            </a>
+            <a href="#map" @click.prevent="currentView = 'map'" :class="{active: currentView === 'map'}">
+                <i class="fas fa-globe"></i>
+                <span>Carte</span>
+            </a>
+            <a href="#analysis" @click.prevent="currentView = 'analysis'" :class="{active: currentView === 'analysis'}">
+                <i class="fas fa-chart-line"></i>
+                <span>Stats</span>
+            </a>
+        </nav>
     </div>
 
 </body>
