@@ -5647,6 +5647,31 @@ createApp({
         },
         
         // Get health status label
+        getCategoryIcon(plant) {
+            if (plant?.category?.icon) {
+                return 'fas ' + plant.category.icon;
+            }
+            const fallback = {
+                'trees': 'fas fa-tree',
+                'shrubs': 'fas fa-leaf',
+                'plants': 'fas fa-seedling',
+                'animals': 'fas fa-paw',
+                'insects': 'fas fa-bug',
+            };
+            return fallback[plant?.category?.category_type] || 'fas fa-seedling';
+        },
+
+        getCategoryColor(plant) {
+            const colors = {
+                'trees': 'text-success',
+                'shrubs': 'text-info',
+                'plants': 'text-primary',
+                'animals': 'text-warning',
+                'insects': 'text-danger',
+            };
+            return colors[plant?.category?.category_type] || 'text-success';
+        },
+
         getStatusLabel(status) {
             const labels = {
                 'alive': 'Vivant',

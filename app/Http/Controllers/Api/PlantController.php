@@ -139,9 +139,10 @@ class PlantController extends Controller
     {
         $query = $this->visiblePlantsQuery()->with(
             'taxon:id,binomial_name,common_name_fr,genus,species,family',
-            'category:id,name,category_type',
+            'category:id,name,icon,category_type',
             'site:id,name',
-            'owner:id,name'
+            'owner:id,name',
+            'mainPhoto:id,plant_id,image,is_main_photo'
         )
         ->withCount('observations', 'photos')
         ->addSelect([
@@ -261,7 +262,7 @@ class PlantController extends Controller
     {
         $plant = $this->visiblePlantsQuery()->with(
             'taxon',
-            'category:id,name,category_type',
+            'category:id,name,icon,category_type',
             'site:id,name,latitude,longitude',
             'owner:id,name',
             'position:id,label,site_id'
@@ -350,7 +351,7 @@ class PlantController extends Controller
         $plant = Plant::create($data);
 
         return response()->json(
-            $plant->load('taxon:id,binomial_name,common_name_fr', 'category:id,name', 'site:id,name'),
+            $plant->load('taxon:id,binomial_name,common_name_fr', 'category:id,name,icon,category_type', 'site:id,name'),
             201
         );
     }
@@ -402,7 +403,7 @@ class PlantController extends Controller
 
         $plant->update($data);
 
-        return response()->json($plant->load('taxon:id,binomial_name,common_name_fr', 'category:id,name', 'site:id,name'));
+        return response()->json($plant->load('taxon:id,binomial_name,common_name_fr', 'category:id,name,icon,category_type', 'site:id,name'));
     }
 
     /**
@@ -427,7 +428,7 @@ class PlantController extends Controller
     public function myPlants(Request $request): JsonResponse
     {
         $plants = Plant::where('owner_id', Auth::id())
-            ->with('taxon:id,binomial_name,common_name_fr', 'category:id,name', 'site:id,name')
+            ->with('taxon:id,binomial_name,common_name_fr', 'category:id,name,icon,category_type', 'site:id,name', 'mainPhoto:id,plant_id,image,is_main_photo')
             ->withCount('observations', 'photos')
             ->orderBy('name')
             ->paginate(min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 100));
@@ -441,7 +442,7 @@ class PlantController extends Controller
     public function byCategory(): JsonResponse
     {
         $plants = $this->visiblePlantsQuery()
-            ->with('taxon:id,binomial_name,common_name_fr', 'category:id,name,category_type')
+            ->with('taxon:id,binomial_name,common_name_fr', 'category:id,name,icon,category_type')
             ->withCount('observations')
             ->orderBy('name')
             ->get()
@@ -638,7 +639,7 @@ class PlantController extends Controller
 
         $query = $this->visiblePlantsQuery()
             ->where('site_id', $siteId)
-            ->with('taxon:id,binomial_name,common_name_fr', 'category:id,name')
+            ->with('taxon:id,binomial_name,common_name_fr', 'category:id,name,icon,category_type', 'mainPhoto:id,plant_id,image,is_main_photo')
             ->select('id', 'name', 'latitude', 'longitude', 'taxon_id', 'category_id', 'site_id', 'status', 'health_status', 'map_position_x', 'map_position_y', 'layer_id');
 
         $plants = $query->get();
@@ -741,7 +742,7 @@ class PlantController extends Controller
 
         $query = $this->visiblePlantsQuery()->with([
             'taxon:id,binomial_name,common_name_fr,family,genus,species',
-            'category:id,name',
+            'category:id,name,icon,category_type',
             'site:id,name',
             'observations' => function ($q) use ($user) {
                 $q->with('phenologicalStage:id,stage_code,stage_description')
@@ -807,7 +808,7 @@ class PlantController extends Controller
             'death_notes'   => $data['death_notes'] ?? null,
         ]);
 
-        $plant->load('taxon:id,binomial_name,common_name_fr', 'category:id,name', 'site:id,name', 'owner:id,name');
+        $plant->load('taxon:id,binomial_name,common_name_fr', 'category:id,name,icon,category_type', 'site:id,name', 'owner:id,name');
 
         return response()->json([
             'message' => "Plante \"{$plant->name}\" marquée comme morte",
@@ -916,7 +917,7 @@ class PlantController extends Controller
             );
         }
 
-        $newPlant->load('taxon:id,binomial_name,common_name_fr', 'category:id,name', 'site:id,name');
+        $newPlant->load('taxon:id,binomial_name,common_name_fr', 'category:id,name,icon,category_type', 'site:id,name');
 
         return response()->json([
             'message'   => "Plante remplacée avec succès. Nouvelle plante: {$newPlant->name}",

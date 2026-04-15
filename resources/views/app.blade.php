@@ -1215,10 +1215,21 @@
                                             <tbody>
                                                 <tr v-for="plant in siteDetail.plants" :key="plant.id">
                                                     <td>
-                                                        <strong v-text="plant.name"></strong>
-                                                        <span v-if="plant.is_private" class="badge bg-warning badge-sm ms-1" title="Privé">
-                                                            <i class="fas fa-lock"></i>
-                                                        </span>
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <img v-if="plant.main_photo" :src="plant.main_photo.image_url"
+                                                                 :alt="plant.name" class="rounded"
+                                                                 style="width: 36px; height: 36px; object-fit: cover;">
+                                                            <span v-else class="d-inline-flex align-items-center justify-content-center rounded"
+                                                                  style="width: 36px; height: 36px; background: #f0f4f0;">
+                                                                <i :class="[getCategoryIcon(plant), getCategoryColor(plant)]"></i>
+                                                            </span>
+                                                            <div>
+                                                                <strong v-text="plant.name"></strong>
+                                                                <span v-if="plant.is_private" class="badge bg-warning badge-sm ms-1" title="Privé">
+                                                                    <i class="fas fa-lock"></i>
+                                                                </span>
+                                                            </div>
+                                                        </div>
                                                     </td>
                                                     <td class="d-mobile-none">
                                                         <em v-if="plant.taxon" v-text="plant.taxon.binomial_name" class="text-muted small"></em>
@@ -1554,7 +1565,19 @@
 
                                         <!-- Nom -->
                                         <td>
-                                            <strong v-text="plant.name"></strong>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <img v-if="plant.main_photo" :src="plant.main_photo.image_url"
+                                                     :alt="plant.name" class="rounded"
+                                                     style="width: 40px; height: 40px; object-fit: cover;">
+                                                <span v-else class="d-inline-flex align-items-center justify-content-center rounded"
+                                                      style="width: 40px; height: 40px; background: #f0f4f0;">
+                                                    <i :class="[getCategoryIcon(plant), getCategoryColor(plant)]"></i>
+                                                </span>
+                                                <div>
+                                                    <strong v-text="plant.name"></strong><br>
+                                                    <small class="text-muted d-md-none" v-if="plant.taxon" v-text="plant.taxon.common_name_fr || plant.taxon.binomial_name"></small>
+                                                </div>
+                                            </div>
                                         </td>
 
                                         <!-- Taxon -->
@@ -6263,9 +6286,9 @@
                                 <p><strong>Légende :</strong></p>
                                 <ul class="ps-3 mb-0">
                                     <li>🏛️ Centre du site</li>
-                                    <li>🌳 Arbres</li>
-                                    <li>🌿 Arbustes</li>
-                                    <li>🌱 Plantes</li>
+                                    <li><i class="fas fa-tree text-success me-1"></i>Arbres</li>
+                                    <li><i class="fas fa-leaf text-info me-1"></i>Arbustes</li>
+                                    <li><i class="fas fa-seedling text-primary me-1"></i>Plantes</li>
                                 </ul>
                                 
                                 <div class="mt-2 p-2 bg-light rounded">
@@ -6285,9 +6308,7 @@
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
                 <div class="mb-2 mb-md-0">
                     <h1 class="h3 mb-0">
-                        <span v-if="plantDetail.plant.category?.category_type === 'trees'">🌳</span>
-                        <span v-else-if="plantDetail.plant.category?.category_type === 'shrubs'">🌿</span>
-                        <span v-else>🌱</span>
+                        <i :class="[getCategoryIcon(plantDetail.plant), getCategoryColor(plantDetail.plant)]"></i>
                         <span v-text="plantDetail.plant.name"></span>
                     </h1>
                     <p class="text-muted mb-0">
@@ -6324,27 +6345,28 @@
                 </div>
             </div>
 
-            <!-- Hero photo principale -->
-            <div v-if="plantMainPhoto" class="card mb-4 overflow-hidden">
-                <div class="position-relative">
-                    <img :src="plantMainPhoto.image_url || plantMainPhoto.image"
-                         :alt="plantDetail.plant.name"
-                         class="w-100"
-                         style="max-height: 350px; object-fit: cover; cursor: pointer;"
-                         @click="openPhotoGallery(plantDetail.photos.indexOf(plantMainPhoto))">
-                    <div class="position-absolute bottom-0 start-0 end-0 p-3"
-                         style="background: linear-gradient(transparent, rgba(0,0,0,0.6));">
-                        <span class="text-white small">
-                            <i class="fas fa-camera me-1"></i>Photo principale
-                            <span v-if="plantMainPhoto.title"> — <span v-text="plantMainPhoto.title"></span></span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-
             <div class="row">
                 <!-- Plant Information -->
                 <div class="col-xl-8 col-lg-7 mb-4">
+
+                    <!-- Photo principale — carte portrait -->
+                    <div v-if="plantMainPhoto" class="card mb-4 shadow-sm">
+                        <div class="text-center p-3" style="background: #f0f4f0;">
+                            <img :src="plantMainPhoto.image_url || plantMainPhoto.image"
+                                 :alt="plantDetail.plant.name"
+                                 style="max-height: 480px; max-width: 100%; object-fit: contain; border-radius: 0.5rem; cursor: pointer;"
+                                 @click="openPhotoGallery(plantDetail.photos.indexOf(plantMainPhoto))">
+                        </div>
+                        <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <i class="fas fa-camera me-1"></i>Photo principale
+                                <span v-if="plantMainPhoto.title"> — <span v-text="plantMainPhoto.title"></span></span>
+                            </small>
+                            <small class="text-muted" v-if="plantMainPhoto.taken_at || plantMainPhoto.created_at">
+                                <i class="fas fa-calendar-alt me-1"></i><span v-text="formatDate(plantMainPhoto.taken_at || plantMainPhoto.created_at)"></span>
+                            </small>
+                        </div>
+                    </div>
                     <!-- Basic Info Card -->
                     <div class="card mb-4">
                         <div class="card-header">
