@@ -20,6 +20,7 @@ class Site extends Model
         'longitude',
         'altitude',
         'environment',
+        'site_category_id',
         'is_private',
         'owner_id',
         'soil_type',
@@ -48,14 +49,51 @@ class Site extends Model
     /**
      * Environment type options.
      */
+    /**
+     * Environment / site type options.
+     *
+     * Two semantic groups (visually shown via <optgroup> in the SPA):
+     *  - Environnements naturels  : urban..agricultural
+     *  - Types de site amenages   : botanical_garden..other
+     */
     public const ENVIRONMENT_TYPES = [
-        'urban'        => 'Urbain',
-        'suburban'     => 'Periurbain',
-        'rural'        => 'Rural',
-        'forest'       => 'Foret',
-        'garden'       => 'Jardin/Parc',
-        'natural'      => 'Naturel',
-        'agricultural' => 'Agricole',
+        // Environnements naturels
+        'urban'             => 'Urbain',
+        'suburban'          => 'Periurbain',
+        'rural'             => 'Rural',
+        'forest'            => 'Foret',
+        'garden'            => 'Jardin/Parc',
+        'natural'           => 'Naturel',
+        'agricultural'      => 'Agricole',
+        // Types de site amenages
+        'botanical_garden'  => 'Jardin botanique',
+        'arboretum'         => 'Arboretum',
+        'nursery'           => 'Pepiniere',
+        'orchard'           => 'Verger',
+        'vegetable_garden'  => 'Potager',
+        'park'              => 'Parc public',
+        'private_garden'    => 'Jardin prive',
+        'school_garden'     => 'Jardin pedagogique',
+        'community_garden'  => 'Jardin partage',
+        'experimental'      => 'Parcelle experimentale',
+        'natural_reserve'   => 'Reserve naturelle',
+        'other'             => 'Autre',
+    ];
+
+    /**
+     * Subset of ENVIRONMENT_TYPES considered "natural environment".
+     */
+    public const ENVIRONMENT_NATURAL = [
+        'urban', 'suburban', 'rural', 'forest', 'garden', 'natural', 'agricultural',
+    ];
+
+    /**
+     * Subset of ENVIRONMENT_TYPES considered "managed site type".
+     */
+    public const ENVIRONMENT_MANAGED = [
+        'botanical_garden', 'arboretum', 'nursery', 'orchard', 'vegetable_garden',
+        'park', 'private_garden', 'school_garden', 'community_garden',
+        'experimental', 'natural_reserve', 'other',
     ];
 
     /**
@@ -87,6 +125,11 @@ class Site extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    public function siteCategory(): BelongsTo
+    {
+        return $this->belongsTo(SiteCategory::class, 'site_category_id');
     }
 
     public function plants(): HasMany

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\ExportController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ComparisonController;
@@ -10,9 +11,13 @@ use App\Http\Controllers\Api\ObservationController;
 use App\Http\Controllers\Api\ObservationPhotoController;
 use App\Http\Controllers\Api\ODSController;
 use App\Http\Controllers\Api\PhenologicalStageController;
+use App\Http\Controllers\Api\PlantActionController;
+use App\Http\Controllers\Api\PlantActionTypeController;
 use App\Http\Controllers\Api\PlantController;
+use App\Http\Controllers\Api\PlantCultivationProfileController;
 use App\Http\Controllers\Api\PlantPhotoController;
 use App\Http\Controllers\Api\PlantPositionController;
+use App\Http\Controllers\Api\SiteCategoryController;
 use App\Http\Controllers\Api\SiteController;
 use App\Http\Controllers\Api\StatisticsController;
 use App\Http\Controllers\Api\TaxonController;
@@ -38,6 +43,13 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('phenological-stages/by-event', [PhenologicalStageController::class, 'byEvent']);
     Route::apiResource('phenological-stages', PhenologicalStageController::class)->only(['index', 'show']);
     Route::apiResource('phenological-stages', PhenologicalStageController::class)->only(['store', 'update', 'destroy'])->middleware(['auth:sanctum', 'staff']);
+
+    // ── Site Categories ──────────────────────────────────
+    Route::get('site-categories/tree', [SiteCategoryController::class, 'tree']);
+    Route::apiResource('site-categories', SiteCategoryController::class)->only(['index', 'show']);
+    Route::apiResource('site-categories', SiteCategoryController::class)
+        ->only(['store', 'update', 'destroy'])
+        ->middleware(['auth:sanctum', 'staff']);
 
     // ── Sites ────────────────────────────────────────────
     Route::get('sites/geojson', [SiteController::class, 'geojson']);
@@ -82,6 +94,21 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::post('plants/{plant}/replace', [PlantController::class, 'replace'])->middleware('auth:sanctum');
     Route::apiResource('plants', PlantController::class)->only(['index', 'show']);
     Route::apiResource('plants', PlantController::class)->only(['store', 'update', 'destroy'])->middleware('auth:sanctum');
+
+    // ── Plant Cultivation Profile (1:1) ──────────────────
+    Route::get('plants/{plant}/cultivation-profile', [PlantCultivationProfileController::class, 'show']);
+    Route::put('plants/{plant}/cultivation-profile', [PlantCultivationProfileController::class, 'upsert'])->middleware('auth:sanctum');
+    Route::delete('plants/{plant}/cultivation-profile', [PlantCultivationProfileController::class, 'destroy'])->middleware('auth:sanctum');
+
+    // ── Plant Action Types ──────────────────────────────
+    Route::get('plant-action-types', [PlantActionTypeController::class, 'index']);
+    Route::get('plant-action-types/by-category', [PlantActionTypeController::class, 'byCategory']);
+
+    // ── Plant Actions ───────────────────────────────────
+    Route::get('plant-actions/years-available', [PlantActionController::class, 'yearsAvailable']);
+    Route::get('plants/{plant}/actions', [PlantActionController::class, 'forPlant']);
+    Route::apiResource('plant-actions', PlantActionController::class)->only(['index', 'show']);
+    Route::apiResource('plant-actions', PlantActionController::class)->only(['store', 'update', 'destroy'])->middleware('auth:sanctum');
 
     // ── Observations ─────────────────────────────────────
     Route::get('observations/my-observations', [ObservationController::class, 'myObservations'])->middleware('auth:sanctum');
@@ -136,6 +163,9 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::post('seed-stages', [AdminController::class, 'seedPhenologicalStages']);
         Route::post('seed-categories', [AdminController::class, 'seedCategories']);
     });
+
+    // ── Export ───────────────────────────────────────────
+    Route::get('export', [ExportController::class, 'download'])->middleware('auth:sanctum');
 
     // ── Activity Log (authenticated users only) ──────────
     Route::get('activity', [ActivityLogController::class, 'index'])->middleware('auth:sanctum');

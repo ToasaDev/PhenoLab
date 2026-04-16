@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Observation;
 use App\Models\Plant;
 use App\Models\Site;
+use App\Models\SiteCategory;
 use App\Models\SitePlanLayer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -47,19 +48,7 @@ class SiteController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = $this->visibleSitesQuery()
-            ->with('owner:id,name')
-            ->withCount('plants');
-
-        // Count observations via plants relationship
-        $query->withCount(['plants as observations_count' => function ($q) {
-            $q->select(DB::raw('count(*)'))
-              ->from('observations')
-              ->whereColumn('observations.plant_id', 'plants.id');
-        }]);
-
-        // Actually we need a subquery for observations_count
-        $query = $this->visibleSitesQuery()
-            ->with('owner:id,name')
+            ->with('owner:id,name', 'siteCategory:id,name,slug,parent_id,icon,color')
             ->withCount('plants')
             ->addSelect([
                 'observations_count' => Observation::selectRaw('count(*)')
@@ -69,6 +58,11 @@ class SiteController extends Controller
 
         if ($env = $request->query('environment')) {
             $query->where('environment', $env);
+        }
+
+        if ($catId = $request->query('site_category_id')) {
+            $ids = $this->categoryAndDescendantIds((int) $catId);
+            $query->whereIn('site_category_id', $ids);
         }
 
         if ($request->has('is_private')) {
@@ -87,7 +81,7 @@ class SiteController extends Controller
 
         [$column, $direction] = $this->parseOrdering(
             $request->query('ordering', 'name'),
-            ['name', 'created_at', 'environment', 'altitude', 'id'],
+            ['name', 'created_at', 'environment', 'site_category_id', 'altitude', 'id'],
             'name'
         );
         $query->orderBy($column, $direction);
@@ -98,12 +92,27 @@ class SiteController extends Controller
     }
 
     /**
+     * Resolve a site category and all its descendants for hierarchical filtering.
+     * Returns [$id] if not found (so the query yields no results).
+     */
+    private function categoryAndDescendantIds(int $categoryId): array
+    {
+        $category = SiteCategory::with('children.children.children')->find($categoryId);
+
+        if (! $category) {
+            return [$categoryId];
+        }
+
+        return $category->descendantIds();
+    }
+
+    /**
      * Show a single site with full details.
      */
     public function show(int $id): JsonResponse
     {
         $site = $this->visibleSitesQuery()
-            ->with('owner:id,name', 'layers')
+            ->with('owner:id,name', 'layers', 'siteCategory:id,name,slug,parent_id,icon,color')
             ->withCount('plants')
             ->addSelect([
                 'observations_count' => Observation::selectRaw('count(*)')
@@ -128,7 +137,8 @@ class SiteController extends Controller
             'latitude'          => ['required', 'numeric', 'between:-90,90'],
             'longitude'         => ['required', 'numeric', 'between:-180,180'],
             'altitude'          => ['nullable', 'numeric'],
-            'environment'       => ['required', 'string', 'in:urban,suburban,rural,forest,garden,natural,agricultural'],
+            'environment'       => ['required', 'string', 'in:'.implode(',', array_keys(Site::ENVIRONMENT_TYPES))],
+            'site_category_id'  => ['nullable', 'integer', 'exists:site_categories,id'],
             'is_private'        => ['nullable', 'boolean'],
             'soil_type'         => ['nullable', 'string', 'max:100'],
             'exposure'          => ['nullable', 'string', 'in:nord,nord-est,est,sud-est,sud,sud-ouest,ouest,nord-ouest'],
@@ -142,7 +152,7 @@ class SiteController extends Controller
 
         $site = Site::create($data);
 
-        return response()->json($site->load('owner:id,name'), 201);
+        return response()->json($site->load('owner:id,name', 'siteCategory:id,name,slug,parent_id,icon,color'), 201);
     }
 
     /**
@@ -164,7 +174,8 @@ class SiteController extends Controller
             'latitude'          => ['sometimes', 'required', 'numeric', 'between:-90,90'],
             'longitude'         => ['sometimes', 'required', 'numeric', 'between:-180,180'],
             'altitude'          => ['nullable', 'numeric'],
-            'environment'       => ['sometimes', 'required', 'string', 'in:urban,suburban,rural,forest,garden,natural,agricultural'],
+            'environment'       => ['sometimes', 'required', 'string', 'in:'.implode(',', array_keys(Site::ENVIRONMENT_TYPES))],
+            'site_category_id'  => ['nullable', 'integer', 'exists:site_categories,id'],
             'is_private'        => ['nullable', 'boolean'],
             'soil_type'         => ['nullable', 'string', 'max:100'],
             'exposure'          => ['nullable', 'string', 'in:nord,nord-est,est,sud-est,sud,sud-ouest,ouest,nord-ouest'],
@@ -176,7 +187,7 @@ class SiteController extends Controller
 
         $site->update($data);
 
-        return response()->json($site->load('owner:id,name'));
+        return response()->json($site->load('owner:id,name', 'siteCategory:id,name,slug,parent_id,icon,color'));
     }
 
     /**
@@ -201,7 +212,8 @@ class SiteController extends Controller
     public function geojson(): JsonResponse
     {
         $sites = $this->visibleSitesQuery()
-            ->select('id', 'name', 'latitude', 'longitude', 'environment', 'altitude', 'is_private', 'owner_id')
+            ->select('id', 'name', 'latitude', 'longitude', 'environment', 'site_category_id', 'altitude', 'is_private', 'owner_id')
+            ->with('siteCategory:id,name,slug,parent_id,icon,color')
             ->withCount('plants')
             ->get();
 
@@ -213,12 +225,18 @@ class SiteController extends Controller
                     'coordinates' => [(float) $site->longitude, (float) $site->latitude],
                 ],
                 'properties' => [
-                    'id'           => $site->id,
-                    'name'         => $site->name,
-                    'environment'  => $site->environment,
-                    'altitude'     => $site->altitude,
-                    'is_private'   => $site->is_private,
-                    'plants_count' => $site->plants_count,
+                    'id'                => $site->id,
+                    'name'              => $site->name,
+                    'environment'       => $site->environment,
+                    'site_category_id'  => $site->site_category_id,
+                    'site_category'     => $site->siteCategory ? [
+                        'id'   => $site->siteCategory->id,
+                        'name' => $site->siteCategory->name,
+                        'slug' => $site->siteCategory->slug,
+                    ] : null,
+                    'altitude'          => $site->altitude,
+                    'is_private'        => $site->is_private,
+                    'plants_count'      => $site->plants_count,
                 ],
             ];
         });
@@ -274,7 +292,7 @@ class SiteController extends Controller
         $user = Auth::user();
 
         $query = Plant::where('site_id', $site->id)
-            ->with('taxon:id,binomial_name,common_name_fr,genus,species,family', 'category:id,name,category_type', 'position:id,label,site_id')
+            ->with('taxon:id,binomial_name,common_name_fr,genus,species,family', 'category:id,name,icon,category_type', 'position:id,label,site_id', 'mainPhoto:id,plant_id,image,is_main_photo')
             ->withCount('observations', 'photos')
             ->addSelect([
                 'last_observation_date' => Observation::select('observation_date')

@@ -8,6 +8,7 @@ use App\Models\Plant;
 use App\Models\PlantPosition;
 use App\Models\PlantPhoto;
 use App\Models\Site;
+use App\Models\SiteCategory;
 use App\Models\SitePlanLayer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -144,11 +145,15 @@ class PlantController extends Controller
             'owner:id,name',
             'mainPhoto:id,plant_id,image,is_main_photo'
         )
-        ->withCount('observations', 'photos')
+        ->withCount('observations', 'photos', 'actions')
         ->addSelect([
             'last_observation_date' => Observation::select('observation_date')
                 ->whereColumn('plant_id', 'plants.id')
                 ->orderByDesc('observation_date')
+                ->limit(1),
+            'last_action_date' => \App\Models\PlantAction::select('action_date')
+                ->whereColumn('plant_id', 'plants.id')
+                ->orderByDesc('action_date')
                 ->limit(1),
         ]);
 
@@ -175,6 +180,11 @@ class PlantController extends Controller
         if ($v = $request->query('owner'))          $query->where('owner_id', $v);
         if ($v = $request->query('taxon'))          $query->where('taxon_id', $v);
         if ($v = $request->query('layer'))          $query->where('layer_id', $v);
+        if ($v = $request->query('site_category_id')) {
+            $category = SiteCategory::with('children.children.children')->find((int) $v);
+            $ids      = $category ? $category->descendantIds() : [(int) $v];
+            $query->whereHas('site', fn (Builder $s) => $s->whereIn('site_category_id', $ids));
+        }
 
         if ($request->has('is_private')) {
             $query->where('is_private', $request->boolean('is_private'));
@@ -226,11 +236,36 @@ class PlantController extends Controller
                 ? $query->whereNotNull('replaces_id')
                 : $query->whereNull('replaces_id');
         }
+        if ($request->has('has_actions')) {
+            $request->boolean('has_actions')
+                ? $query->has('actions')
+                : $query->doesntHave('actions');
+        }
+        if ($request->filled('action_type_id')) {
+            $query->whereHas('actions', fn (Builder $a) => $a->where('action_type_id', $request->integer('action_type_id')));
+        }
+
+        // --- Cultivation profile filters ---
+        if ($v = $request->query('cultivation_exposure')) {
+            $query->whereHas('cultivationProfile', fn (Builder $cp) => $cp->where('exposure', $v));
+        }
+        if ($v = $request->query('cultivation_difficulty')) {
+            $query->whereHas('cultivationProfile', fn (Builder $cp) => $cp->where('cultivation_difficulty', $v));
+        }
+        if ($v = $request->query('cultivation_usda_zone')) {
+            $query->whereHas('cultivationProfile', fn (Builder $cp) => $cp->where('usda_zone', $v));
+        }
+        if ($v = $request->query('cultivation_suitable_environment')) {
+            $query->whereHas('cultivationProfile', fn (Builder $cp) => $cp->where('suitable_environments', 'like', '%"'.$v.'"%'));
+        }
+        if ($v = $request->query('cultivation_usage_type')) {
+            $query->whereHas('cultivationProfile', fn (Builder $cp) => $cp->where('usage_types', 'like', '%"'.$v.'"%'));
+        }
 
         // --- Ordering ---
         [$column, $direction] = $this->parseOrdering(
             $request->query('ordering', 'name'),
-            ['name', 'created_at', 'planting_date', 'health_status', 'status', 'id'],
+            ['name', 'created_at', 'planting_date', 'health_status', 'status', 'id', 'actions_count'],
             'name'
         );
         $query->orderBy($column, $direction);
@@ -265,12 +300,27 @@ class PlantController extends Controller
             'category:id,name,icon,category_type',
             'site:id,name,latitude,longitude',
             'owner:id,name',
-            'position:id,label,site_id'
+            'position:id,label,site_id',
+            'cultivationProfile'
         )
-        ->withCount('observations', 'photos')
+        ->withCount('observations', 'photos', 'actions')
         ->findOrFail($id);
 
         $data = $plant->toArray();
+        $data['cultivation_profile'] = $plant->cultivationProfile;
+
+        // Add last action summary
+        $lastAction = $plant->actions()
+            ->with('actionType:id,name,slug,icon,color')
+            ->orderByDesc('action_date')
+            ->first();
+        $data['last_action'] = $lastAction ? [
+            'id'          => $lastAction->id,
+            'action_date' => $lastAction->action_date->format('Y-m-d'),
+            'type'        => $lastAction->actionType?->name,
+            'icon'        => $lastAction->actionType?->icon,
+            'color'       => $lastAction->actionType?->color,
+        ] : null;
 
         // Add last observation
         $lastObs = $this->visibleObservationsForPlant($plant)

@@ -158,6 +158,11 @@ class Plant extends Model
         return $this->belongsTo(User::class, 'owner_id');
     }
 
+    public function actions(): HasMany
+    {
+        return $this->hasMany(PlantAction::class);
+    }
+
     public function observations(): HasMany
     {
         return $this->hasMany(Observation::class);
@@ -181,6 +186,11 @@ class Plant extends Model
     public function replacedBy(): HasOne
     {
         return $this->hasOne(self::class, 'replaces_id');
+    }
+
+    public function cultivationProfile(): HasOne
+    {
+        return $this->hasOne(PlantCultivationProfile::class);
     }
 
     // ── Scopes ──────────────────────────────────────────────────────

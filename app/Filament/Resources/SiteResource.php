@@ -36,15 +36,26 @@ class SiteResource extends Resource
                     Forms\Components\Select::make('owner_id')->label('Proprietaire')->relationship('owner', 'name'),
                     Forms\Components\Textarea::make('description')->label('Description')->rows(3)->columnSpanFull(),
                     Forms\Components\Select::make('environment')
-                        ->label('Environnement')
-                        ->options([
-                            'urban' => 'Urbain',
-                            'suburban' => 'Periurbain',
-                            'rural' => 'Rural',
-                            'forest' => 'Foret',
-                            'mountain' => 'Montagne',
-                            'coastal' => 'Littoral',
-                            'wetland' => 'Zone humide',
+                        ->label('Environnement / Type de site')
+                        ->options(self::groupedEnvironmentOptions())
+                        ->searchable()
+                        ->required(),
+                    Forms\Components\Select::make('site_category_id')
+                        ->label('Categorie (definie par l\'utilisateur)')
+                        ->relationship('siteCategory', 'name')
+                        ->getOptionLabelFromRecordUsing(fn ($record) => $record->breadcrumb())
+                        ->searchable()
+                        ->preload()
+                        ->nullable()
+                        ->createOptionForm([
+                            Forms\Components\TextInput::make('name')->label('Nom')->required()->maxLength(150),
+                            Forms\Components\Select::make('parent_id')
+                                ->label('Parent (optionnel)')
+                                ->relationship('parent', 'name')
+                                ->getOptionLabelFromRecordUsing(fn ($record) => $record->breadcrumb())
+                                ->searchable()
+                                ->nullable(),
+                            Forms\Components\Textarea::make('description')->rows(2),
                         ]),
                     Forms\Components\Toggle::make('is_private')->label('Prive'),
                 ]),
@@ -84,20 +95,24 @@ class SiteResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')->label('Nom')->searchable()->sortable(),
                 Tables\Columns\TextColumn::make('owner.name')->label('Proprietaire')->sortable(),
-                Tables\Columns\TextColumn::make('environment')->label('Environnement')->badge()->sortable(),
+                Tables\Columns\TextColumn::make('environment')->label('Environnement')
+                    ->formatStateUsing(fn (?string $state) => $state ? (Site::ENVIRONMENT_TYPES[$state] ?? $state) : '—')
+                    ->badge()->sortable(),
+                Tables\Columns\TextColumn::make('siteCategory.name')->label('Categorie')
+                    ->formatStateUsing(fn ($record) => $record->siteCategory?->breadcrumb() ?? '—')
+                    ->badge()->color('info')->sortable(),
                 Tables\Columns\TextColumn::make('altitude')->label('Altitude')->suffix(' m')->sortable(),
                 Tables\Columns\TextColumn::make('plants_count')->label('Plantes')->counts('plants')->sortable(),
                 Tables\Columns\IconColumn::make('is_private')->label('Prive')->boolean(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('environment')->label('Environnement')
-                    ->options([
-                        'urban' => 'Urbain',
-                        'suburban' => 'Periurbain',
-                        'rural' => 'Rural',
-                        'forest' => 'Foret',
-                        'mountain' => 'Montagne',
-                    ]),
+                Tables\Filters\SelectFilter::make('environment')->label('Environnement / Type')
+                    ->options(self::groupedEnvironmentOptions()),
+                Tables\Filters\SelectFilter::make('site_category_id')->label('Categorie')
+                    ->relationship('siteCategory', 'name')
+                    ->getOptionLabelFromRecordUsing(fn ($record) => $record->breadcrumb())
+                    ->searchable()
+                    ->preload(),
                 Tables\Filters\TernaryFilter::make('is_private')->label('Prive'),
             ])
             ->actions([
@@ -115,6 +130,25 @@ class SiteResource extends Resource
             'index' => Pages\ListSites::route('/'),
             'create' => Pages\CreateSite::route('/create'),
             'edit' => Pages\EditSite::route('/{record}/edit'),
+        ];
+    }
+
+    /**
+     * Return ENVIRONMENT_TYPES keyed by visual group for <optgroup>-style selects.
+     */
+    protected static function groupedEnvironmentOptions(): array
+    {
+        $natural = collect(Site::ENVIRONMENT_NATURAL)
+            ->mapWithKeys(fn (string $key) => [$key => Site::ENVIRONMENT_TYPES[$key]])
+            ->all();
+
+        $managed = collect(Site::ENVIRONMENT_MANAGED)
+            ->mapWithKeys(fn (string $key) => [$key => Site::ENVIRONMENT_TYPES[$key]])
+            ->all();
+
+        return [
+            'Environnements naturels'   => $natural,
+            'Types de site amenages'    => $managed,
         ];
     }
 }

@@ -26,8 +26,36 @@ createApp({
                 loading: false,
                 observations: [],
                 photos: [],
+                actions: [],
                 statistics: null,
                 observationSortAsc: false, // false = newest first
+                actionSortAsc: false,
+                actionFilterType: '',
+                actionFilterQ: '',
+            },
+            // Plant action types catalog
+            plantActionTypes: [],
+            // Action form modal state
+            actionForm: {
+                show: false,
+                editing: null,
+                loading: false,
+                error: '',
+                data: {
+                    plant_id: null,
+                    action_type_id: '',
+                    action_date: '',
+                    title: '',
+                    notes: '',
+                    product_name: '',
+                    quantity: '',
+                    unit: '',
+                    dosage: '',
+                    method: '',
+                    performer_name: '',
+                    cost: '',
+                    weather_conditions: '',
+                },
             },
             
             // User data
@@ -58,7 +86,23 @@ createApp({
             siteFilters: {
                 search: '',
                 environment: '',
+                site_category_id: '',
                 showPrivate: false
+            },
+
+            // Site categories (user-managed, hierarchical)
+            siteCategories: [],            // flat list with breadcrumb + depth
+            siteCategoriesLoading: false,
+            adminSiteCategoryForm: {
+                id: null,
+                name: '',
+                slug: '',
+                description: '',
+                icon: '',
+                color: '',
+                parent_id: null,
+                sort_order: 0,
+                is_active: true,
             },
             
             // Site detail data
@@ -76,12 +120,15 @@ createApp({
                     total_pages: 1
                 },
                 filters: {
-                    search: '',
+                    q: '',
+                    site: '',
+                    site_category_id: '',
                     category: '',
                     status: '',
                     health_status: '',
                     has_observations: null,
                     has_photos: null,
+                    has_actions: null,
                     planting_date_after: '',
                     planting_date_before: '',
                     ordering: 'name',
@@ -150,6 +197,7 @@ createApp({
                     health_status: '',
                     has_observations: null,
                     has_photos: null,
+                    has_actions: null,
                     ordering: 'name',
                     page_size: 25
                 }
@@ -172,6 +220,15 @@ createApp({
             // Modal states
             showAddSiteModal: false,
             showEditSiteModal: false,
+            showAddTaxonModal: false,
+            showGbifSyncModal: false,
+            showGbifImportFamilyModal: false,
+            gbifModal: {
+                loading: false,
+                results: null,
+                sync: { mode: 'backbone_match', query: '', limit: 20, strict: false, fetchVernacular: true },
+                importFamily: { family: '', limit: 100, acceptedOnly: true, dryRun: false }
+            },
             showAddPlantModal: false,
             showEditPlantModal: false,
             showAddObservationModal: false,
@@ -197,6 +254,115 @@ createApp({
             showMarkDeadModal: false,
             showReplacePlantModal: false,
             showSiteMapEditorModal: false,
+            showCultivationModal: false,
+            cultivationFormSaving: false,
+            cultivationForm: {
+                plantId: null,
+                plantName: '',
+                planting_months: [],
+                sowing_months: [],
+                harvest_months: [],
+                flowering_months: [],
+                exposure: null,
+                hardiness_min: '',
+                usda_zone: '',
+                suitable_environments: [],
+                soil_types: [],
+                soil_ph: '',
+                soil_drainage: null,
+                soil_fertility: null,
+                mature_height_min: null,
+                mature_height_max: null,
+                mature_spread_min: null,
+                mature_spread_max: null,
+                watering_needs: null,
+                watering_notes: '',
+                fertilizing_frequency: '',
+                fertilizing_notes: '',
+                pruning_period: '',
+                pruning_notes: '',
+                mulching: '',
+                winter_protection: '',
+                pest_susceptibility: '',
+                disease_susceptibility: '',
+                companion_plants: [],
+                avoid_near: [],
+                propagation_methods: '',
+                cultivation_difficulty: null,
+                usage_types: [],
+                is_edible: false,
+                is_toxic: false,
+                notes: '',
+                source: ''
+            },
+            monthOptions: [
+                { value: 1, label: 'Janv' }, { value: 2, label: 'Févr' },
+                { value: 3, label: 'Mars' }, { value: 4, label: 'Avr' },
+                { value: 5, label: 'Mai' }, { value: 6, label: 'Juin' },
+                { value: 7, label: 'Juil' }, { value: 8, label: 'Août' },
+                { value: 9, label: 'Sept' }, { value: 10, label: 'Oct' },
+                { value: 11, label: 'Nov' }, { value: 12, label: 'Déc' },
+            ],
+            exposureOptions: {
+                full_sun: 'Plein soleil',
+                partial_shade: 'Mi-ombre',
+                shade: 'Ombre',
+                full_shade: 'Ombre dense',
+            },
+            wateringNeedsOptions: {
+                low: 'Faible',
+                moderate: 'Modéré',
+                regular: 'Régulier',
+                high: 'Élevé',
+            },
+            difficultyOptions: {
+                easy: 'Facile',
+                medium: 'Moyen',
+                hard: 'Difficile',
+                expert: 'Expert',
+            },
+            soilTypeOptions: {
+                clay: 'Argileux',
+                sandy: 'Sableux',
+                loam: 'Limoneux',
+                chalky: 'Calcaire',
+                peaty: 'Tourbeux',
+                silty: 'Limono-argileux',
+            },
+            soilDrainageOptions: {
+                well_drained: 'Bien drainé',
+                moist: 'Frais / humide',
+                wet: 'Mouillé',
+                dry: 'Sec',
+            },
+            soilFertilityOptions: {
+                poor: 'Pauvre',
+                average: 'Moyen',
+                rich: 'Riche',
+            },
+            usageTypeOptions: {
+                ornamental: 'Ornemental',
+                edible: 'Comestible',
+                medicinal: 'Médicinal',
+                hedging: 'Haie / brise-vent',
+                shade: 'Ombrage',
+                fragrance: 'Parfum',
+                wildlife: 'Faune / pollinisateurs',
+                erosion: 'Anti-érosion',
+                timber: "Bois d'œuvre",
+                fodder: 'Fourrage',
+            },
+            environmentOptionsFlat: {
+                urban: 'Urbain', suburban: 'Périurbain', rural: 'Rural',
+                forest: 'Forêt', garden: 'Jardin/Parc', natural: 'Naturel',
+                agricultural: 'Agricole',
+                botanical_garden: 'Jardin botanique', arboretum: 'Arboretum',
+                nursery: 'Pépinière', orchard: 'Verger', vegetable_garden: 'Potager',
+                park: 'Parc public', private_garden: 'Jardin privé',
+                school_garden: 'Jardin pédagogique', community_garden: 'Jardin partagé',
+                experimental: 'Parcelle expérimentale', natural_reserve: 'Réserve naturelle',
+                other: 'Autre',
+            },
 
             // Form data
             newSite: {
@@ -206,13 +372,14 @@ createApp({
                 longitude: null,
                 altitude: null,
                 environment: 'garden',
+                site_category_id: null,
                 soil_type: '',
                 exposure: '',
                 climate_zone: '',
                 is_private: false
             },
-            
-            // Edit site form data  
+
+            // Edit site form data
             editSite: {
                 id: null,
                 name: '',
@@ -221,6 +388,7 @@ createApp({
                 longitude: null,
                 altitude: null,
                 environment: 'garden',
+                site_category_id: null,
                 soil_type: '',
                 exposure: '',
                 climate_zone: '',
@@ -313,6 +481,7 @@ createApp({
             
             newTaxon: {
                 taxon_id: '',
+                binomial_name: '',
                 genus: '',
                 species: '',
                 kingdom: 'Plantae',
@@ -429,6 +598,21 @@ createApp({
                 uniqueSites: 0,
                 validatedCount: 0,
                 withPhotosCount: 0
+            },
+
+            // Export
+            exportFilters: {
+                year: 'all',
+                site_id: '',
+                category: '',
+                status: '',
+                taxon: '',
+                format: 'full',
+            },
+            exportState: {
+                loading: false,
+                success: false,
+                error: '',
             },
 
             // Login form
@@ -593,11 +777,21 @@ createApp({
                 error: null,
                 hasSearched: false,
                 selectedIndex: 0,
+                showCultivationFilters: false,
                 filters: {
                     type: 'all',
                     mine: false,
                     date_from: null,
-                    date_to: null
+                    date_to: null,
+                    cult_exposure: '',
+                    cult_difficulty: '',
+                    cult_watering: '',
+                    cult_soil_type: '',
+                    cult_soil_drainage: '',
+                    cult_usage_type: '',
+                    cult_usda_zone: '',
+                    cult_is_edible: false,
+                    cult_is_toxic: false,
                 },
                 history: []
             },
@@ -666,6 +860,27 @@ createApp({
             });
         },
 
+        filteredPlantActions() {
+            let actions = [...(this.plantDetail.actions || [])];
+            if (this.plantDetail.actionFilterType) {
+                actions = actions.filter(a => a.action_type_id == this.plantDetail.actionFilterType);
+            }
+            if (this.plantDetail.actionFilterQ) {
+                const q = this.plantDetail.actionFilterQ.toLowerCase();
+                actions = actions.filter(a =>
+                    (a.title || '').toLowerCase().includes(q) ||
+                    (a.notes || '').toLowerCase().includes(q) ||
+                    (a.product_name || '').toLowerCase().includes(q) ||
+                    (a.action_type?.name || '').toLowerCase().includes(q)
+                );
+            }
+            actions.sort((a, b) => {
+                const cmp = new Date(a.action_date) - new Date(b.action_date);
+                return this.plantDetail.actionSortAsc ? cmp : -cmp;
+            });
+            return actions;
+        },
+
         // Year range for analysis selector (from database)
         yearRange() {
             if (this.availableYears.length > 0) {
@@ -695,11 +910,19 @@ createApp({
             
             // Environment filter
             if (this.siteFilters.environment) {
-                filtered = filtered.filter(site => 
+                filtered = filtered.filter(site =>
                     site.environment === this.siteFilters.environment
                 );
             }
-            
+
+            // Site category filter (hierarchical: include descendants)
+            if (this.siteFilters.site_category_id) {
+                const targetIds = this.siteCategoryDescendantIds(parseInt(this.siteFilters.site_category_id, 10));
+                filtered = filtered.filter(site =>
+                    site.site_category_id != null && targetIds.includes(site.site_category_id)
+                );
+            }
+
             // Privacy filter
             if (!this.siteFilters.showPrivate) {
                 filtered = filtered.filter(site => !site.is_private);
@@ -950,6 +1173,7 @@ createApp({
             // Always load public data + form data
             const publicLoads = [
                 this.loadSites().catch(e => console.warn('Sites load failed:', e)),
+                this.loadSiteCategories().catch(e => console.warn('Site categories load failed:', e)),
                 this.loadFormData().catch(e => console.warn('Form data load failed:', e)),
                 this.loadODSChartData().catch(e => console.warn('ODS data load failed:', e)),
             ];
@@ -1463,12 +1687,35 @@ createApp({
 
         // ========== Dedicated Search Page Methods ==========
 
+        // True when at least one cultivation filter is active
+        hasActiveCultivationFilters() {
+            const f = this.searchPage.filters;
+            return !!(f.cult_exposure || f.cult_difficulty || f.cult_watering ||
+                f.cult_soil_type || f.cult_soil_drainage || f.cult_usage_type ||
+                f.cult_usda_zone || f.cult_is_edible || f.cult_is_toxic);
+        },
+
+        // Reset cultivation filters
+        resetCultivationFilters() {
+            const f = this.searchPage.filters;
+            f.cult_exposure = '';
+            f.cult_difficulty = '';
+            f.cult_watering = '';
+            f.cult_soil_type = '';
+            f.cult_soil_drainage = '';
+            f.cult_usage_type = '';
+            f.cult_usda_zone = '';
+            f.cult_is_edible = false;
+            f.cult_is_toxic = false;
+        },
+
         // Perform search on dedicated Search page
         async performSearchPageSearch() {
             const query = this.searchPage.query.trim();
+            const hasCult = this.hasActiveCultivationFilters();
 
-            if (query.length < 2) {
-                this.showAlert('Veuillez entrer au moins 2 caractères', 'warning');
+            if (query.length < 2 && !hasCult) {
+                this.showAlert('Entrez au moins 2 caractères ou activez un filtre de culture', 'warning');
                 return;
             }
 
@@ -1494,6 +1741,20 @@ createApp({
                     params.date_to = this.searchPage.filters.date_to;
                 }
 
+                // Cultivation filters (only those with values)
+                const cultMap = {
+                    cult_exposure: this.searchPage.filters.cult_exposure,
+                    cult_difficulty: this.searchPage.filters.cult_difficulty,
+                    cult_watering: this.searchPage.filters.cult_watering,
+                    cult_soil_type: this.searchPage.filters.cult_soil_type,
+                    cult_soil_drainage: this.searchPage.filters.cult_soil_drainage,
+                    cult_usage_type: this.searchPage.filters.cult_usage_type,
+                    cult_usda_zone: this.searchPage.filters.cult_usda_zone,
+                };
+                Object.entries(cultMap).forEach(([k, v]) => { if (v) params[k] = v; });
+                if (this.searchPage.filters.cult_is_edible) params.cult_is_edible = 1;
+                if (this.searchPage.filters.cult_is_toxic) params.cult_is_toxic = 1;
+
                 const response = await axios.get('/api/v1/search', { params });
                 const data = response.data;
 
@@ -1506,7 +1767,8 @@ createApp({
                         entity: 'plant',
                         title: p.name,
                         snippet: [p.binomial_name, p.common_name, p.site_name ? `Site: ${p.site_name}` : null].filter(Boolean).join(' — '),
-                        status: p.status
+                        status: p.status,
+                        cultivation: p.cultivation || null,
                     }));
                 }
                 if (data.sites) {
@@ -1800,6 +2062,7 @@ createApp({
                 if (filters.health_status) params.append('health_status', filters.health_status);
                 if (filters.has_observations !== null) params.append('has_observations', filters.has_observations);
                 if (filters.has_photos !== null) params.append('has_photos', filters.has_photos);
+                if (filters.has_actions !== null) params.append('has_actions', filters.has_actions);
                 if (filters.planting_date_after) params.append('planting_date_after', filters.planting_date_after);
                 if (filters.planting_date_before) params.append('planting_date_before', filters.planting_date_before);
                 if (filters.ordering) params.append('ordering', filters.ordering);
@@ -2565,11 +2828,13 @@ createApp({
                 // Add filters to query params
                 if (filters.q) params.append('search', filters.q);
                 if (filters.site) params.append('site', filters.site);
+                if (filters.site_category_id) params.append('site_category_id', filters.site_category_id);
                 if (filters.category) params.append('category', filters.category);
                 if (filters.status) params.append('status', filters.status);
                 if (filters.health_status) params.append('health_status', filters.health_status);
                 if (filters.has_observations !== null) params.append('has_observations', filters.has_observations);
                 if (filters.has_photos !== null) params.append('has_photos', filters.has_photos);
+                if (filters.has_actions !== null) params.append('has_actions', filters.has_actions);
                 if (filters.ordering) params.append('ordering', filters.ordering);
                 params.append('page_size', filters.page_size);
                 params.append('page', page);
@@ -2602,11 +2867,13 @@ createApp({
             this.plantsList.filters = {
                 q: '',
                 site: '',
+                site_category_id: '',
                 category: '',
                 status: '',
                 health_status: '',
                 has_observations: null,
                 has_photos: null,
+                has_actions: null,
                 ordering: 'name',
                 page_size: 25
             };
@@ -2766,6 +3033,7 @@ createApp({
                 longitude: site.longitude,
                 altitude: site.altitude,
                 environment: site.environment,
+                site_category_id: site.site_category_id || null,
                 soil_type: site.soil_type || '',
                 exposure: site.exposure || '',
                 climate_zone: site.climate_zone || '',
@@ -2777,10 +3045,95 @@ createApp({
         },
         
         // Add new site
+        async addTaxon() {
+            try {
+                if (!this.newTaxon.genus || !this.newTaxon.species) {
+                    this.showAlert('Le genre et l\'espece sont obligatoires', 'warning');
+                    return;
+                }
+                // Auto-generate taxon_id if empty
+                if (!this.newTaxon.taxon_id) {
+                    this.newTaxon.taxon_id = (this.newTaxon.genus.substring(0, 3) + this.newTaxon.species.substring(0, 3) + Date.now() % 100000).toUpperCase();
+                }
+                const payload = {};
+                for (const [key, value] of Object.entries(this.newTaxon)) {
+                    payload[key] = (value === '' || value === null) ? null : value;
+                }
+                payload.kingdom = payload.kingdom || 'Plantae';
+                const response = await axios.post('/api/v1/taxons', payload);
+                this.closeModal();
+                this.showAlert('Taxon "' + (response.data.binomial_name || response.data.genus + ' ' + response.data.species) + '" cree avec succes', 'success');
+            } catch (error) {
+                console.error('Error adding taxon:', error);
+                if (error.response?.data?.errors) {
+                    const msgs = Object.values(error.response.data.errors).flat().join(', ');
+                    this.showAlert(msgs, 'danger');
+                } else {
+                    this.showAlert(error.response?.data?.message || 'Erreur lors de la creation du taxon', 'danger');
+                }
+            }
+        },
+
+        async syncGbifFromModal() {
+            const s = this.gbifModal.sync;
+            if (!s.query || s.query.length < 2) {
+                this.showAlert('Saisissez au moins 2 caracteres', 'warning');
+                return;
+            }
+            this.gbifModal.loading = true;
+            this.gbifModal.results = null;
+            try {
+                await this.ensureCsrf();
+                const { data } = await axios.post('/api/v1/taxons/sync-gbif', {
+                    sync_mode: s.mode,
+                    search_query: s.query,
+                    import_limit: s.limit,
+                    strict_mode: s.strict,
+                    fetch_vernacular: s.fetchVernacular
+                });
+                this.gbifModal.results = data;
+                if (data.synced_count > 0) {
+                    this.showAlert(`${data.synced_count} taxon(s) synchronise(s) depuis GBIF`, 'success');
+                } else if (data.error_count > 0) {
+                    this.showAlert(`Erreurs: ${data.errors[0]}`, 'warning');
+                } else {
+                    this.showAlert('Aucun resultat trouve', 'info');
+                }
+            } catch (e) {
+                this.showAlert(e.response?.data?.message || 'Erreur lors de la synchronisation GBIF', 'danger');
+            }
+            this.gbifModal.loading = false;
+        },
+
+        async importFamilyFromModal() {
+            const f = this.gbifModal.importFamily;
+            if (!f.family || f.family.length < 2) {
+                this.showAlert('Saisissez un nom de famille', 'warning');
+                return;
+            }
+            this.gbifModal.loading = true;
+            this.gbifModal.results = null;
+            try {
+                await this.ensureCsrf();
+                const { data } = await axios.post('/api/v1/taxons/import-family', {
+                    family_name: f.family,
+                    accepted_only: f.acceptedOnly,
+                    import_limit: f.limit,
+                    dry_run: f.dryRun
+                });
+                this.gbifModal.results = data;
+                const prefix = f.dryRun ? '[SIMULATION] ' : '';
+                this.showAlert(`${prefix}Import famille termine: ${data.imported_count || 0} taxon(s)`, 'success');
+            } catch (e) {
+                this.showAlert(e.response?.data?.message || 'Erreur lors de l\'import de famille', 'danger');
+            }
+            this.gbifModal.loading = false;
+        },
+
         async addSite() {
             try {
                 // Validate form
-                if (!this.newSite.name || !this.newSite.environment || 
+                if (!this.newSite.name || !this.newSite.environment ||
                     !this.newSite.latitude || !this.newSite.longitude) {
                     this.showAlert('Veuillez remplir tous les champs obligatoires', 'warning');
                     return;
@@ -2960,6 +3313,28 @@ createApp({
                     break;
                 case 'editSite':
                     this.showEditSiteModal = true;
+                    break;
+                case 'taxon':
+                    this.newTaxon = {
+                        taxon_id: '', binomial_name: '', genus: '', species: '', kingdom: 'Plantae',
+                        phylum: '', class_name: '', order: '', family: '',
+                        subspecies: '', variety: '', cultivar: '',
+                        common_name_fr: '', common_name_it: '', common_name_en: '',
+                        author: '', publication_year: null
+                    };
+                    this.showAddTaxonModal = true;
+                    break;
+                case 'gbifSync':
+                    this.gbifModal.sync = { mode: 'backbone_match', query: '', limit: 20, strict: false, fetchVernacular: true };
+                    this.gbifModal.results = null;
+                    this.gbifModal.loading = false;
+                    this.showGbifSyncModal = true;
+                    break;
+                case 'gbifImportFamily':
+                    this.gbifModal.importFamily = { family: '', limit: 100, acceptedOnly: true, dryRun: false };
+                    this.gbifModal.results = null;
+                    this.gbifModal.loading = false;
+                    this.showGbifImportFamilyModal = true;
                     break;
                 case 'plant':
                     if (context && context.siteId) {
@@ -3273,10 +3648,12 @@ createApp({
             // Only flip the modal flag that is actually true — flipping
             // already-false flags still triggers Vue patches and can corrupt the DOM.
             const modalFlags = [
-                'showAddSiteModal', 'showEditSiteModal', 'showAddPlantModal', 'showEditPlantModal',
+                'showAddSiteModal', 'showEditSiteModal', 'showAddTaxonModal', 'showGbifSyncModal', 'showGbifImportFamilyModal',
+                'showAddPlantModal', 'showEditPlantModal',
                 'showAddObservationModal', 'showEditObservationModal', 'showDeleteObservationModal',
                 'showDeletePlantModal', 'showEditPhotoModal', 'showLoginModal', 'showTestSiteModal',
                 'showMarkDeadModal', 'showReplacePlantModal',
+                'showCultivationModal',
             ];
             for (const flag of modalFlags) {
                 if (this[flag]) this[flag] = false;
@@ -3655,12 +4032,24 @@ createApp({
                         this.plantDetail.photos = Array.isArray(photosData) ? photosData : (photosData.photos || []);
                     }
 
+                    // Load plant actions
+                    const actionsResponse = await fetch(`/api/v1/plants/${plantId}/actions`);
+                    if (actionsResponse.ok) {
+                        const actionsData = await actionsResponse.json();
+                        this.plantDetail.actions = Array.isArray(actionsData) ? actionsData : [];
+                    }
+
                     // Load plant statistics
                     const statsResponse = await fetch(`/api/v1/plants/${plantId}/statistics`);
                     if (statsResponse.ok) {
                         this.plantDetail.statistics = await statsResponse.json();
                     }
-                    
+
+                    // Load action types if not loaded yet
+                    if (this.plantActionTypes.length === 0) {
+                        this.loadPlantActionTypes();
+                    }
+
                     console.log('🌱 Plant detail loaded:', this.plantDetail.plant);
                 } else {
                     console.error('Plant not found');
@@ -3679,8 +4068,122 @@ createApp({
             this.currentView = 'plants';
             this.currentPlant = null;
             this.plantDetail.plant = null;
+            this.plantDetail.actions = [];
+            this.plantDetail.actionFilterType = '';
+            this.plantDetail.actionFilterQ = '';
         },
         
+        // ===== PLANT ACTIONS CRUD =====
+        async loadPlantActionTypes() {
+            try {
+                const resp = await fetch('/api/v1/plant-action-types');
+                if (resp.ok) {
+                    this.plantActionTypes = await resp.json();
+                }
+            } catch (e) { console.error('Error loading action types:', e); }
+        },
+
+        getActionCategoryLabel(cat) {
+            const labels = {
+                maintenance: 'Entretien', treatment: 'Traitement', fertilization: 'Fertilisation',
+                irrigation: 'Irrigation', harvest: 'Récolte', planting: 'Plantation',
+                protection: 'Protection', other: 'Autre'
+            };
+            return labels[cat] || cat;
+        },
+
+        openActionForm(action = null) {
+            this.actionForm.editing = action;
+            this.actionForm.error = '';
+            if (action) {
+                this.actionForm.data = {
+                    plant_id: action.plant_id,
+                    action_type_id: action.action_type_id,
+                    action_date: action.action_date?.substring(0, 10) || '',
+                    title: action.title || '',
+                    notes: action.notes || '',
+                    product_name: action.product_name || '',
+                    quantity: action.quantity || '',
+                    unit: action.unit || '',
+                    dosage: action.dosage || '',
+                    method: action.method || '',
+                    performer_name: action.performer_name || '',
+                    cost: action.cost || '',
+                    weather_conditions: action.weather_conditions || '',
+                };
+            } else {
+                this.actionForm.data = {
+                    plant_id: this.currentPlant,
+                    action_type_id: '',
+                    action_date: new Date().toISOString().substring(0, 10),
+                    title: '', notes: '', product_name: '', quantity: '',
+                    unit: '', dosage: '', method: '', performer_name: '',
+                    cost: '', weather_conditions: '',
+                };
+            }
+            this.actionForm.show = true;
+        },
+
+        closeActionForm() {
+            this.actionForm.show = false;
+            this.actionForm.editing = null;
+            this.actionForm.error = '';
+        },
+
+        async saveAction() {
+            this.actionForm.loading = true;
+            this.actionForm.error = '';
+            try {
+                const payload = { ...this.actionForm.data };
+                // Clean empty strings to null
+                Object.keys(payload).forEach(k => {
+                    if (payload[k] === '') payload[k] = null;
+                });
+                payload.plant_id = this.currentPlant;
+
+                let resp;
+                if (this.actionForm.editing) {
+                    resp = await axios.put(`/api/v1/plant-actions/${this.actionForm.editing.id}`, payload);
+                } else {
+                    resp = await axios.post('/api/v1/plant-actions', payload);
+                }
+
+                if (resp.status === 200 || resp.status === 201) {
+                    this.closeActionForm();
+                    // Reload actions
+                    const actResp = await fetch(`/api/v1/plants/${this.currentPlant}/actions`);
+                    if (actResp.ok) {
+                        this.plantDetail.actions = await actResp.json();
+                    }
+                    // Refresh plant data to get updated counts
+                    const plantResp = await fetch(`/api/v1/plants/${this.currentPlant}`);
+                    if (plantResp.ok) {
+                        this.plantDetail.plant = await plantResp.json();
+                    }
+                }
+            } catch (err) {
+                const msg = err.response?.data?.message || err.response?.data?.errors;
+                this.actionForm.error = typeof msg === 'object' ? Object.values(msg).flat().join(', ') : (msg || 'Erreur lors de la sauvegarde');
+            } finally {
+                this.actionForm.loading = false;
+            }
+        },
+
+        async deleteAction(actionId) {
+            if (!confirm('Supprimer cette action ?')) return;
+            try {
+                await axios.delete(`/api/v1/plant-actions/${actionId}`);
+                this.plantDetail.actions = this.plantDetail.actions.filter(a => a.id !== actionId);
+                // Refresh plant counts
+                const plantResp = await fetch(`/api/v1/plants/${this.currentPlant}`);
+                if (plantResp.ok) {
+                    this.plantDetail.plant = await plantResp.json();
+                }
+            } catch (err) {
+                alert(err.response?.data?.message || 'Erreur lors de la suppression');
+            }
+        },
+
         // Search for plants by name or scientific name
         async searchPlants(query) {
             try {
@@ -5538,9 +6041,53 @@ createApp({
             }
         },
         
-        // Help alert method
+        // Export
+        async launchExport() {
+            this.exportState = { loading: true, success: false, error: '' };
+
+            try {
+                const params = new URLSearchParams();
+                params.append('format', this.exportFilters.format);
+                params.append('year', this.exportFilters.year || this.analysisYear);
+
+                if (this.exportFilters.site_id) params.append('site_id', this.exportFilters.site_id);
+                if (this.exportFilters.category) params.append('category', this.exportFilters.category);
+                if (this.exportFilters.status) params.append('status', this.exportFilters.status);
+                if (this.exportFilters.taxon) params.append('taxon', this.exportFilters.taxon);
+
+                const response = await axios.get(`/api/v1/export?${params.toString()}`, {
+                    responseType: 'blob',
+                    timeout: 300000, // 5 minutes max
+                });
+
+                // Trigger download
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                const disposition = response.headers['content-disposition'];
+                const filename = disposition
+                    ? disposition.split('filename=')[1]?.replace(/"/g, '')
+                    : `phenolab_export_${new Date().toISOString().slice(0,16).replace('T','_')}.zip`;
+                link.setAttribute('download', filename);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(url);
+
+                this.exportState.success = true;
+                this.exportState.loading = false;
+            } catch (error) {
+                console.error('Export failed:', error);
+                this.exportState.error = error.response?.status === 401
+                    ? 'Vous devez etre connecte pour exporter.'
+                    : 'Erreur lors de l\'export. Veuillez reessayer.';
+                this.exportState.loading = false;
+            }
+        },
+
+        // Help alert method (kept for backward compat)
         showHelpAlert() {
-            this.showAlert('💡 Cliquez sur "Ajouter" pour créer du contenu. Connectez-vous avec admin/admin123 pour enregistrer réellement.', 'info');
+            this.currentView = 'help';
         },
         
         // Test site form methods
@@ -5599,20 +6146,282 @@ createApp({
             return new Intl.NumberFormat('fr-FR').format(num);
         },
         
-        // Get environment label in French
+        // Get environment label in French (merged: 7 natural + 12 managed)
         getEnvironmentLabel(environment) {
             const labels = {
+                // Environnements naturels
                 'urban': 'Urbain',
-                'suburban': 'Périurbain', 
+                'suburban': 'Périurbain',
                 'rural': 'Rural',
                 'forest': 'Forêt',
                 'garden': 'Jardin/Parc',
                 'natural': 'Naturel',
-                'agricultural': 'Agricole'
+                'agricultural': 'Agricole',
+                // Types de site amenages
+                'botanical_garden': 'Jardin botanique',
+                'arboretum': 'Arboretum',
+                'nursery': 'Pepiniere',
+                'orchard': 'Verger',
+                'vegetable_garden': 'Potager',
+                'park': 'Parc public',
+                'private_garden': 'Jardin prive',
+                'school_garden': 'Jardin pedagogique',
+                'community_garden': 'Jardin partage',
+                'experimental': 'Parcelle experimentale',
+                'natural_reserve': 'Reserve naturelle',
+                'other': 'Autre'
             };
             return labels[environment] || environment;
         },
-        
+
+        // ===== CULTIVATION PROFILE HELPERS =====
+        getExposureLabel(key) { return this.exposureOptions[key] || key; },
+        getWateringLabel(key) { return this.wateringNeedsOptions[key] || key; },
+        getDifficultyLabel(key) { return this.difficultyOptions[key] || key; },
+        getSoilTypeLabel(key) { return this.soilTypeOptions[key] || key; },
+        getSoilDrainageLabel(key) { return this.soilDrainageOptions[key] || key; },
+        getSoilFertilityLabel(key) { return this.soilFertilityOptions[key] || key; },
+        getUsageTypeLabel(key) { return this.usageTypeOptions[key] || key; },
+
+        formatMonths(months) {
+            if (!Array.isArray(months) || months.length === 0) return '';
+            const sorted = months.slice().map(Number).sort((a, b) => a - b);
+            return sorted.map(m => this.monthOptions.find(opt => opt.value === m)?.label || m).join(', ');
+        },
+
+        formatRange(min, max, unit) {
+            const parts = [];
+            if (min != null && min !== '') parts.push(min);
+            if (max != null && max !== '' && max !== min) parts.push(max);
+            if (parts.length === 0) return '';
+            return parts.join('–') + (unit ? ' ' + unit : '');
+        },
+
+        parseTagList(value) {
+            if (!value) return [];
+            return value.split(',').map(s => s.trim()).filter(Boolean);
+        },
+
+        cultivationHasWhenData(p) {
+            if (!p) return false;
+            return ['planting_months', 'sowing_months', 'flowering_months', 'harvest_months']
+                .some(k => Array.isArray(p[k]) && p[k].length > 0);
+        },
+        cultivationHasWhereData(p) {
+            if (!p) return false;
+            const keys = ['exposure', 'hardiness_min', 'usda_zone', 'soil_ph', 'soil_drainage',
+                'soil_fertility', 'mature_height_min', 'mature_height_max',
+                'mature_spread_min', 'mature_spread_max'];
+            if (keys.some(k => p[k] != null && p[k] !== '')) return true;
+            return ['suitable_environments', 'soil_types'].some(k => Array.isArray(p[k]) && p[k].length > 0);
+        },
+        cultivationHasCareData(p) {
+            if (!p) return false;
+            const keys = ['watering_needs', 'cultivation_difficulty', 'fertilizing_frequency',
+                'pruning_period', 'mulching', 'winter_protection', 'propagation_methods',
+                'watering_notes', 'fertilizing_notes', 'pruning_notes',
+                'pest_susceptibility', 'disease_susceptibility'];
+            if (keys.some(k => p[k] != null && p[k] !== '')) return true;
+            if (['companion_plants', 'avoid_near', 'usage_types'].some(k => Array.isArray(p[k]) && p[k].length > 0)) return true;
+            return p.is_edible || p.is_toxic;
+        },
+
+        openCultivationModal(plant) {
+            if (!plant) return;
+            const existing = plant.cultivation_profile || {};
+            this.cultivationForm = {
+                plantId: plant.id,
+                plantName: plant.name || '',
+                planting_months: Array.isArray(existing.planting_months) ? existing.planting_months.map(Number) : [],
+                sowing_months: Array.isArray(existing.sowing_months) ? existing.sowing_months.map(Number) : [],
+                harvest_months: Array.isArray(existing.harvest_months) ? existing.harvest_months.map(Number) : [],
+                flowering_months: Array.isArray(existing.flowering_months) ? existing.flowering_months.map(Number) : [],
+                exposure: existing.exposure || null,
+                hardiness_min: existing.hardiness_min || '',
+                usda_zone: existing.usda_zone || '',
+                suitable_environments: Array.isArray(existing.suitable_environments) ? existing.suitable_environments : [],
+                soil_types: Array.isArray(existing.soil_types) ? existing.soil_types : [],
+                soil_ph: existing.soil_ph || '',
+                soil_drainage: existing.soil_drainage || null,
+                soil_fertility: existing.soil_fertility || null,
+                mature_height_min: existing.mature_height_min ?? null,
+                mature_height_max: existing.mature_height_max ?? null,
+                mature_spread_min: existing.mature_spread_min ?? null,
+                mature_spread_max: existing.mature_spread_max ?? null,
+                watering_needs: existing.watering_needs || null,
+                watering_notes: existing.watering_notes || '',
+                fertilizing_frequency: existing.fertilizing_frequency || '',
+                fertilizing_notes: existing.fertilizing_notes || '',
+                pruning_period: existing.pruning_period || '',
+                pruning_notes: existing.pruning_notes || '',
+                mulching: existing.mulching || '',
+                winter_protection: existing.winter_protection || '',
+                pest_susceptibility: existing.pest_susceptibility || '',
+                disease_susceptibility: existing.disease_susceptibility || '',
+                companion_plants: Array.isArray(existing.companion_plants) ? existing.companion_plants : [],
+                avoid_near: Array.isArray(existing.avoid_near) ? existing.avoid_near : [],
+                propagation_methods: existing.propagation_methods || '',
+                cultivation_difficulty: existing.cultivation_difficulty || null,
+                usage_types: Array.isArray(existing.usage_types) ? existing.usage_types : [],
+                is_edible: !!existing.is_edible,
+                is_toxic: !!existing.is_toxic,
+                notes: existing.notes || '',
+                source: existing.source || '',
+            };
+            this.showCultivationModal = true;
+        },
+
+        async submitCultivationProfile() {
+            if (!this.cultivationForm.plantId) return;
+            this.cultivationFormSaving = true;
+            try {
+                const payload = { ...this.cultivationForm };
+                delete payload.plantId;
+                delete payload.plantName;
+                // strip empty strings to allow backend nullable validation
+                Object.keys(payload).forEach(k => {
+                    if (payload[k] === '') payload[k] = null;
+                });
+                const response = await axios.put(`/api/v1/plants/${this.cultivationForm.plantId}/cultivation-profile`, payload);
+                if (this.plantDetail.plant && this.plantDetail.plant.id === this.cultivationForm.plantId) {
+                    this.plantDetail.plant.cultivation_profile = response.data;
+                }
+                this.showAlert('Conditions de culture enregistrées', 'success');
+                this.showCultivationModal = false;
+            } catch (error) {
+                const msg = error.response?.data?.message
+                    || (error.response?.data?.errors ? Object.values(error.response.data.errors).flat().join(', ') : null)
+                    || 'Erreur lors de l\'enregistrement';
+                this.showAlert(msg, 'danger');
+            } finally {
+                this.cultivationFormSaving = false;
+            }
+        },
+
+        async deleteCultivationProfile(plant) {
+            if (!plant?.id) return;
+            if (!confirm('Supprimer les conditions de culture pour cette plante ?')) return;
+            try {
+                await axios.delete(`/api/v1/plants/${plant.id}/cultivation-profile`);
+                if (this.plantDetail.plant && this.plantDetail.plant.id === plant.id) {
+                    this.plantDetail.plant.cultivation_profile = null;
+                }
+                this.showAlert('Conditions de culture supprimées', 'success');
+            } catch (error) {
+                this.showAlert(error.response?.data?.message || 'Erreur lors de la suppression', 'danger');
+            }
+        },
+
+        // Resolve a user-defined SiteCategory by id from the loaded list.
+        getSiteCategoryById(id) {
+            if (id == null) return null;
+            const intId = typeof id === 'string' ? parseInt(id, 10) : id;
+            return this.siteCategories.find(c => c.id === intId) || null;
+        },
+
+        // Display label for a site category id (uses breadcrumb if available).
+        getSiteCategoryLabel(id) {
+            const cat = this.getSiteCategoryById(id);
+            return cat ? (cat.breadcrumb || cat.name) : '';
+        },
+
+        // Return [id, ...descendantIds] for hierarchical filtering.
+        siteCategoryDescendantIds(rootId) {
+            const ids = [rootId];
+            const queue = [rootId];
+            while (queue.length) {
+                const current = queue.shift();
+                this.siteCategories
+                    .filter(c => c.parent_id === current)
+                    .forEach(child => {
+                        if (!ids.includes(child.id)) {
+                            ids.push(child.id);
+                            queue.push(child.id);
+                        }
+                    });
+            }
+            return ids;
+        },
+
+        // ── Site Categories: load + CRUD ────────────────────────────
+        async loadSiteCategories() {
+            this.siteCategoriesLoading = true;
+            try {
+                const response = await axios.get('/api/v1/site-categories', {
+                    params: { ordering: 'sort_order' }
+                });
+                const data = response.data;
+                this.siteCategories = Array.isArray(data) ? data : (data?.data || []);
+            } catch (error) {
+                console.error('loadSiteCategories failed', error);
+                this.siteCategories = [];
+            } finally {
+                this.siteCategoriesLoading = false;
+            }
+        },
+
+        resetAdminSiteCategoryForm() {
+            this.adminSiteCategoryForm = {
+                id: null, name: '', slug: '', description: '',
+                icon: '', color: '', parent_id: null, sort_order: 0, is_active: true,
+            };
+        },
+
+        editAdminSiteCategory(cat) {
+            this.adminSiteCategoryForm = {
+                id: cat.id,
+                name: cat.name || '',
+                slug: cat.slug || '',
+                description: cat.description || '',
+                icon: cat.icon || '',
+                color: cat.color || '',
+                parent_id: cat.parent_id || null,
+                sort_order: cat.sort_order || 0,
+                is_active: cat.is_active !== false,
+            };
+        },
+
+        async submitAdminSiteCategory() {
+            const payload = { ...this.adminSiteCategoryForm };
+            const id = payload.id;
+            delete payload.id;
+
+            // Drop empty slug so the server auto-generates it.
+            if (!payload.slug) delete payload.slug;
+
+            try {
+                if (id) {
+                    await axios.put(`/api/v1/site-categories/${id}`, payload);
+                    this.showAlert('Lieu mis a jour.', 'success');
+                } else {
+                    await axios.post('/api/v1/site-categories', payload);
+                    this.showAlert('Lieu cree.', 'success');
+                }
+                this.resetAdminSiteCategoryForm();
+                await this.loadSiteCategories();
+            } catch (error) {
+                console.error('submitAdminSiteCategory failed', error);
+                if (error.response?.data?.errors) {
+                    const msgs = Object.values(error.response.data.errors).flat().join(', ');
+                    this.showAlert(msgs, 'danger');
+                } else {
+                    this.showAlert(error.response?.data?.message || 'Erreur lors de l\'enregistrement.', 'danger');
+                }
+            }
+        },
+
+        async deleteAdminSiteCategory(cat) {
+            if (!confirm(`Supprimer le lieu "${cat.name}" ?`)) return;
+            try {
+                await axios.delete(`/api/v1/site-categories/${cat.id}`);
+                this.showAlert('Lieu supprime.', 'success');
+                await this.loadSiteCategories();
+            } catch (error) {
+                console.error('deleteAdminSiteCategory failed', error);
+                this.showAlert(error.response?.data?.message || 'Suppression impossible.', 'danger');
+            }
+        },
+
         // Handle URL hash changes for navigation
         handleHashChange() {
             const hash = window.location.hash.replace('#', '');

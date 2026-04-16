@@ -345,8 +345,8 @@
                     <ul class="navbar-nav ms-auto navbar-actions">
                         <!-- Create new (+ button) -->
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Nouveau">
-                                <i class="fas fa-plus-circle me-1"></i><span class="nav-action-label">Nouveau</span>
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Créer">
+                                <i class="fas fa-circle-plus me-1"></i><span class="nav-action-label">Créer</span>
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><h6 class="dropdown-header">Creer</h6></li>
@@ -363,6 +363,16 @@
                                 <li><a class="dropdown-item" href="#" @click.prevent="openModal('photo')">
                                     <i class="fas fa-camera me-2 text-warning"></i>Photo
                                 </a></li>
+                                <template v-if="user.isStaff || user.isSuperuser">
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><h6 class="dropdown-header">Taxons</h6></li>
+                                    <li><a class="dropdown-item" href="#" @click.prevent="openModal('gbifSync')">
+                                        <i class="fas fa-sync me-2 text-success"></i>Synchroniser depuis GBIF
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" @click.prevent="openModal('gbifImportFamily')">
+                                        <i class="fas fa-sitemap me-2 text-primary"></i>Importer une famille GBIF
+                                    </a></li>
+                                </template>
                             </ul>
                         </li>
 
@@ -380,27 +390,18 @@
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="/observations-ods" target="_blank">
-                                    <i class="fas fa-database me-2 text-secondary"></i>Donnees ODS
+                                    <i class="fas fa-database me-2 text-info"></i>Donnees ODS
                                     <i class="fas fa-external-link-alt ms-1 text-muted" style="font-size: 0.75em;"></i>
                                 </a></li>
                                 <li v-if="user.isStaff || user.isSuperuser"><hr class="dropdown-divider"></li>
-                                <li v-if="user.isStaff || user.isSuperuser">
-                                    <h6 class="dropdown-header">Administration</h6>
-                                </li>
                                 <li v-if="user.isStaff || user.isSuperuser">
                                     <a class="dropdown-item" href="#admin" @click="currentView = 'admin'">
                                         <i class="fas fa-cogs me-2 text-secondary"></i>Gestion des donnees
                                     </a>
                                 </li>
-                                <li v-if="user.isStaff || user.isSuperuser">
-                                    <a class="dropdown-item" href="/admin" target="_blank">
-                                        <i class="fas fa-shield-alt me-2 text-secondary"></i>Filament Admin
-                                        <i class="fas fa-external-link-alt ms-1 text-muted" style="font-size: 0.75em;"></i>
-                                    </a>
-                                </li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="#" @click.prevent="showHelpAlert()">
-                                    <i class="fas fa-question-circle me-2 text-muted"></i>Aide
+                                <li><a class="dropdown-item" href="#help" @click="currentView = 'help'">
+                                    <i class="fas fa-question-circle me-2 text-primary"></i>Aide et documentation
                                 </a></li>
                             </ul>
                         </li>
@@ -678,20 +679,42 @@
                 </div>
 
                 <!-- Filter Controls -->
-                <div class="row mb-4">
-                    <div class="col-md-4">
+                <div class="row mb-4 g-2">
+                    <div class="col-md-3">
                         <input v-model="siteFilters.search" type="text" class="form-control" placeholder="Rechercher un site...">
                     </div>
                     <div class="col-md-3">
                         <select v-model="siteFilters.environment" class="form-select">
                             <option value="">Tous les environnements</option>
-                            <option value="urban">Urbain</option>
-                            <option value="suburban">Périurbain</option>
-                            <option value="rural">Rural</option>
-                            <option value="forest">Forêt</option>
-                            <option value="garden">Jardin/Parc</option>
-                            <option value="natural">Naturel</option>
-                            <option value="agricultural">Agricole</option>
+                            <optgroup label="Environnements naturels">
+                                <option value="urban">Urbain</option>
+                                <option value="suburban">Périurbain</option>
+                                <option value="rural">Rural</option>
+                                <option value="forest">Forêt</option>
+                                <option value="garden">Jardin/Parc</option>
+                                <option value="natural">Naturel</option>
+                                <option value="agricultural">Agricole</option>
+                            </optgroup>
+                            <optgroup label="Types de site aménagés">
+                                <option value="botanical_garden">Jardin botanique</option>
+                                <option value="arboretum">Arboretum</option>
+                                <option value="nursery">Pépinière</option>
+                                <option value="orchard">Verger</option>
+                                <option value="vegetable_garden">Potager</option>
+                                <option value="park">Parc public</option>
+                                <option value="private_garden">Jardin privé</option>
+                                <option value="school_garden">Jardin pédagogique</option>
+                                <option value="community_garden">Jardin partagé</option>
+                                <option value="experimental">Parcelle expérimentale</option>
+                                <option value="natural_reserve">Réserve naturelle</option>
+                                <option value="other">Autre</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select v-model="siteFilters.site_category_id" class="form-select">
+                            <option value="">Tous les lieux</option>
+                            <option v-for="cat in siteCategories" :key="cat.id" :value="cat.id" v-text="cat.breadcrumb || cat.name"></option>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -758,7 +781,13 @@
                                     </span>
                                 </div>
                                 <p class="card-text text-muted" v-text="site.description || 'Aucune description'"></p>
-                                
+
+                                <!-- Environment & Category badges -->
+                                <div class="mb-2">
+                                    <span class="badge bg-secondary me-1" v-if="site.environment" v-text="getEnvironmentLabel(site.environment)"></span>
+                                    <span class="badge bg-info me-1" v-if="site.site_category_id" v-text="getSiteCategoryLabel(site.site_category_id)"></span>
+                                </div>
+
                                 <!-- Site Statistics -->
                                 <div class="row text-center mb-3">
                                     <div class="col-4">
@@ -1000,6 +1029,7 @@
                                         <div class="col-4"><strong>Environnement:</strong></div>
                                         <div class="col-8">
                                             <span class="badge bg-secondary" v-text="getEnvironmentLabel(siteDetail.site.environment)"></span>
+                                            <span class="badge bg-info ms-1" v-if="siteDetail.site.site_category_id" v-text="getSiteCategoryLabel(siteDetail.site.site_category_id)"></span>
                                         </div>
                                     </div>
                                     <div class="row mb-2" v-if="siteDetail.site.soil_type">
@@ -1417,6 +1447,15 @@
                                 </select>
                             </div>
 
+                            <!-- Site Category Filter (user-managed, hierarchical) -->
+                            <div class="col-md-3 col-6">
+                                <label class="form-label">Lieu</label>
+                                <select v-model="plantsList.filters.site_category_id" class="form-select" @change="applyPlantsFilters">
+                                    <option value="">Toutes</option>
+                                    <option v-for="cat in siteCategories" :key="cat.id" :value="cat.id" v-text="cat.breadcrumb || cat.name"></option>
+                                </select>
+                            </div>
+
                             <!-- Category Filter -->
                             <div class="col-md-2 col-6">
                                 <label class="form-label">Catégorie</label>
@@ -1468,6 +1507,16 @@
                                     <option :value="null">Toutes</option>
                                     <option :value="true">Avec photos</option>
                                     <option :value="false">Sans photos</option>
+                                </select>
+                            </div>
+
+                            <!-- Has Actions Filter -->
+                            <div class="col-md-3 col-6">
+                                <label class="form-label">Actions</label>
+                                <select v-model="plantsList.filters.has_actions" class="form-select" @change="applyPlantsFilters">
+                                    <option :value="null">Toutes</option>
+                                    <option :value="true">Avec actions</option>
+                                    <option :value="false">Sans actions</option>
                                 </select>
                             </div>
 
@@ -1526,13 +1575,16 @@
                                         <th class="text-center d-mobile-none" style="width: 60px; cursor: pointer;" @click="sortPlantsList('photos_count')">
                                             Photos <i :class="getPlantsListSortIcon('photos_count')"></i>
                                         </th>
+                                        <th class="text-center d-mobile-none" style="width: 60px; cursor: pointer;" @click="sortPlantsList('actions_count')">
+                                            Act. <i :class="getPlantsListSortIcon('actions_count')"></i>
+                                        </th>
                                         <th class="text-center" style="width: 100px;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <!-- Loading State -->
                                     <tr v-if="plantsList.loading">
-                                        <td colspan="11" class="text-center py-5">
+                                        <td colspan="12" class="text-center py-5">
                                             <div class="spinner-border text-success" role="status">
                                                 <span class="visually-hidden">Chargement...</span>
                                             </div>
@@ -1542,7 +1594,7 @@
 
                                     <!-- Empty State -->
                                     <tr v-else-if="plantsList.items.length === 0">
-                                        <td colspan="11" class="text-center py-5">
+                                        <td colspan="12" class="text-center py-5">
                                             <i class="fas fa-seedling fa-3x text-muted mb-3"></i>
                                             <h5 class="text-muted">Aucune plante trouvée</h5>
                                             <p class="text-muted mb-3">
@@ -1634,6 +1686,14 @@
                                         <td class="text-center d-mobile-none">
                                             <span v-if="plant.photos_count > 0" class="badge bg-secondary">
                                                 <i class="fas fa-camera me-1"></i><span v-text="plant.photos_count"></span>
+                                            </span>
+                                            <span v-else class="text-muted">0</span>
+                                        </td>
+
+                                        <!-- Actions Count -->
+                                        <td class="text-center d-mobile-none">
+                                            <span v-if="plant.actions_count > 0" class="badge bg-info">
+                                                <i class="fas fa-tools me-1"></i><span v-text="plant.actions_count"></span>
                                             </span>
                                             <span v-else class="text-muted">0</span>
                                         </td>
@@ -2761,6 +2821,102 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Export Section -->
+                <div class="card mt-4 border-primary">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-download me-2"></i>Exporter les donnees</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-3">
+                            Exportez les donnees correspondant aux filtres ci-dessous.
+                            L'export respecte vos droits d'acces.
+                        </p>
+
+                        <!-- Export filters summary -->
+                        <div class="alert alert-light border mb-3">
+                            <strong><i class="fas fa-filter me-1"></i>Filtres actifs :</strong>
+                            <span class="badge bg-primary ms-2">
+                                Annee : <span v-text="exportFilters.year === 'all' ? 'Toutes' : exportFilters.year || analysisYear"></span>
+                            </span>
+                            <span v-if="exportFilters.site_id" class="badge bg-info ms-1">
+                                Site : <span v-text="sites.find(s => s.id == exportFilters.site_id)?.name || exportFilters.site_id"></span>
+                            </span>
+                            <span v-if="exportFilters.category" class="badge bg-success ms-1">
+                                Categorie : <span v-text="categories.find(c => c.id == exportFilters.category)?.name || exportFilters.category"></span>
+                            </span>
+                            <span v-if="exportFilters.taxon" class="badge bg-warning text-dark ms-1">
+                                Taxon : <span v-text="exportFilters.taxon"></span>
+                            </span>
+                        </div>
+
+                        <!-- Export filters -->
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-2">
+                                <label class="form-label small">Annee</label>
+                                <select v-model="exportFilters.year" class="form-select form-select-sm">
+                                    <option value="all">Toutes les annees</option>
+                                    <option v-for="y in yearRange" :key="y" :value="y" v-text="y"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">Site</label>
+                                <select v-model="exportFilters.site_id" class="form-select form-select-sm">
+                                    <option value="">Tous les sites</option>
+                                    <option v-for="site in sites" :key="site.id" :value="site.id" v-text="site.name"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">Categorie</label>
+                                <select v-model="exportFilters.category" class="form-select form-select-sm">
+                                    <option value="">Toutes</option>
+                                    <option v-for="cat in categories" :key="cat.id" :value="cat.id" v-text="cat.name"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label small">Statut plante</label>
+                                <select v-model="exportFilters.status" class="form-select form-select-sm">
+                                    <option value="">Tous</option>
+                                    <option value="alive">Vivant</option>
+                                    <option value="dead">Mort</option>
+                                    <option value="replaced">Remplace</option>
+                                    <option value="removed">Retire</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small">Format d'export</label>
+                                <select v-model="exportFilters.format" class="form-select form-select-sm">
+                                    <option value="full">Complet (CSV + JSON + images + DB)</option>
+                                    <option value="csv">CSV uniquement</option>
+                                    <option value="json">JSON uniquement</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Export buttons -->
+                        <div class="d-flex flex-wrap gap-2 align-items-center">
+                            <button class="btn btn-primary" @click="launchExport()" :disabled="exportState.loading">
+                                <span v-if="exportState.loading">
+                                    <span class="spinner-border spinner-border-sm me-1"></span>Preparation en cours...
+                                </span>
+                                <span v-else>
+                                    <i class="fas fa-download me-1"></i>Telecharger l'export
+                                </span>
+                            </button>
+                            <small class="text-muted" v-if="!exportState.loading">
+                                <i class="fas fa-info-circle me-1"></i>L'export peut prendre quelques secondes selon le volume de donnees et photos.
+                            </small>
+                        </div>
+
+                        <!-- Export result -->
+                        <div v-if="exportState.success" class="alert alert-success mt-3 mb-0">
+                            <i class="fas fa-check-circle me-1"></i>Export termine avec succes !
+                        </div>
+                        <div v-if="exportState.error" class="alert alert-danger mt-3 mb-0">
+                            <i class="fas fa-exclamation-triangle me-1"></i><span v-text="exportState.error"></span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
 
@@ -2782,17 +2938,43 @@
                                     <input v-model="newSite.name" type="text" class="form-control" id="siteName" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="siteEnvironment" class="form-label">Environnement *</label>
+                                    <label for="siteEnvironment" class="form-label">Environnement / Type *</label>
                                     <select v-model="newSite.environment" class="form-select" id="siteEnvironment" required>
                                         <option value="">Sélectionner...</option>
-                                        <option value="urban">Urbain</option>
-                                        <option value="suburban">Périurbain</option>
-                                        <option value="rural">Rural</option>
-                                        <option value="forest">Forêt</option>
-                                        <option value="garden">Jardin/Parc</option>
-                                        <option value="natural">Naturel</option>
-                                        <option value="agricultural">Agricole</option>
+                                        <optgroup label="Environnements naturels">
+                                            <option value="urban">Urbain</option>
+                                            <option value="suburban">Périurbain</option>
+                                            <option value="rural">Rural</option>
+                                            <option value="forest">Forêt</option>
+                                            <option value="garden">Jardin/Parc</option>
+                                            <option value="natural">Naturel</option>
+                                            <option value="agricultural">Agricole</option>
+                                        </optgroup>
+                                        <optgroup label="Types de site aménagés">
+                                            <option value="botanical_garden">Jardin botanique</option>
+                                            <option value="arboretum">Arboretum</option>
+                                            <option value="nursery">Pépinière</option>
+                                            <option value="orchard">Verger</option>
+                                            <option value="vegetable_garden">Potager</option>
+                                            <option value="park">Parc public</option>
+                                            <option value="private_garden">Jardin privé</option>
+                                            <option value="school_garden">Jardin pédagogique</option>
+                                            <option value="community_garden">Jardin partagé</option>
+                                            <option value="experimental">Parcelle expérimentale</option>
+                                            <option value="natural_reserve">Réserve naturelle</option>
+                                            <option value="other">Autre</option>
+                                        </optgroup>
                                     </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="siteCat" class="form-label">Lieu</label>
+                                    <select v-model="newSite.site_category_id" class="form-select" id="siteCat">
+                                        <option :value="null">Non spécifiée</option>
+                                        <option v-for="cat in siteCategories" :key="cat.id" :value="cat.id" v-text="cat.breadcrumb || cat.name"></option>
+                                    </select>
+                                    <small class="text-muted">Géré dans Admin → Lieux.</small>
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -2898,20 +3080,510 @@
             </div>
         </div>
 
+        <!-- Add Taxon Modal -->
+        <div class="modal fade" :class="{ 'show': showAddTaxonModal }" id="addTaxonModal" tabindex="-1" v-show="showAddTaxonModal" @click.self="closeModal()" :style="{ display: showAddTaxonModal ? 'block' : 'none' }">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-dna me-2 text-secondary"></i>Nouveau taxon
+                        </h5>
+                        <button type="button" class="btn-close" @click="closeModal()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Section: Identification -->
+                        <h6 class="text-muted mb-3"><i class="fas fa-fingerprint me-1"></i>Identification</h6>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">ID Taxon</label>
+                                <input type="text" class="form-control" v-model="newTaxon.taxon_id" placeholder="Auto-genere si vide" maxlength="20">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Nom binomial</label>
+                                <input type="text" class="form-control" v-model="newTaxon.binomial_name" placeholder="Ex: Araucaria columnaris">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Genre <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" v-model="newTaxon.genus" placeholder="Ex: Araucaria" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Espece <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" v-model="newTaxon.species" placeholder="Ex: columnaris" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Sous-espece</label>
+                                <input type="text" class="form-control" v-model="newTaxon.subspecies">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Variete</label>
+                                <input type="text" class="form-control" v-model="newTaxon.variety">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Cultivar</label>
+                                <input type="text" class="form-control" v-model="newTaxon.cultivar">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Auteur</label>
+                                <input type="text" class="form-control" v-model="newTaxon.author" placeholder="Ex: R.Br.">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Annee de publication</label>
+                                <input type="number" class="form-control" v-model="newTaxon.publication_year">
+                            </div>
+                        </div>
+
+                        <!-- Section: Classification -->
+                        <h6 class="text-muted mb-3"><i class="fas fa-sitemap me-1"></i>Classification</h6>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label">Regne</label>
+                                <input type="text" class="form-control" v-model="newTaxon.kingdom" placeholder="Plantae">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Phylum</label>
+                                <input type="text" class="form-control" v-model="newTaxon.phylum">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Classe</label>
+                                <input type="text" class="form-control" v-model="newTaxon.class_name">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Ordre</label>
+                                <input type="text" class="form-control" v-model="newTaxon.order">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Famille</label>
+                                <input type="text" class="form-control" v-model="newTaxon.family" placeholder="Ex: Araucariaceae">
+                            </div>
+                        </div>
+
+                        <!-- Section: Noms communs -->
+                        <h6 class="text-muted mb-3"><i class="fas fa-language me-1"></i>Noms communs</h6>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Nom commun (FR)</label>
+                                <input type="text" class="form-control" v-model="newTaxon.common_name_fr" placeholder="Ex: Pin colonnaire">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Nom commun (EN)</label>
+                                <input type="text" class="form-control" v-model="newTaxon.common_name_en">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Nom commun (IT)</label>
+                                <input type="text" class="form-control" v-model="newTaxon.common_name_it">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @click="closeModal()">Annuler</button>
+                        <button type="button" class="btn btn-primary" @click="addTaxon()" :disabled="!newTaxon.genus || !newTaxon.species">
+                            <i class="fas fa-save me-1"></i>Enregistrer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GBIF Sync Modal -->
+        <div class="modal fade" :class="{ 'show': showGbifSyncModal }" tabindex="-1" v-show="showGbifSyncModal" @click.self="closeModal()" :style="{ display: showGbifSyncModal ? 'block' : 'none' }">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title">
+                            <i class="fas fa-sync me-2"></i>Synchroniser depuis GBIF
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" @click="closeModal()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Mode de recherche</label>
+                                <select class="form-select" v-model="gbifModal.sync.mode">
+                                    <option value="backbone_match">Correspondance exacte (Backbone)</option>
+                                    <option value="search">Recherche large</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Nom scientifique ou recherche <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" v-model="gbifModal.sync.query" placeholder="Ex: Quercus robur" @keydown.enter.prevent="syncGbifFromModal()">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Limite</label>
+                                <input type="number" class="form-control" v-model.number="gbifModal.sync.limit" min="1" max="500">
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" v-model="gbifModal.sync.strict" id="gbifModalStrict">
+                                    <label class="form-check-label" for="gbifModalStrict">Mode strict</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" v-model="gbifModal.sync.fetchVernacular" id="gbifModalVernacular">
+                                    <label class="form-check-label" for="gbifModalVernacular">Noms vernaculaires</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Results -->
+                        <div v-if="gbifModal.results" class="mt-4">
+                            <div class="d-flex gap-2 mb-2">
+                                <span class="badge bg-success" v-if="gbifModal.results.synced_count">@{{ gbifModal.results.synced_count }} synchronise(s)</span>
+                                <span class="badge bg-danger" v-if="gbifModal.results.error_count">@{{ gbifModal.results.error_count }} erreur(s)</span>
+                            </div>
+                            <div v-if="gbifModal.results.synced && gbifModal.results.synced.length" class="mb-3">
+                                <h6 class="text-success small"><i class="fas fa-check me-1"></i>Taxons synchronises</h6>
+                                <ul class="list-group list-group-flush small">
+                                    <li class="list-group-item d-flex justify-content-between py-1" v-for="t in gbifModal.results.synced" :key="t.taxon_id">
+                                        <span v-text="t.name"></span>
+                                        <span class="badge" :class="t.created ? 'bg-success' : 'bg-info'" v-text="t.created ? 'Cree' : 'Mis a jour'"></span>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div v-if="gbifModal.results.errors && gbifModal.results.errors.length">
+                                <h6 class="text-danger small"><i class="fas fa-exclamation-triangle me-1"></i>Erreurs</h6>
+                                <ul class="list-group list-group-flush small">
+                                    <li class="list-group-item text-danger py-1" v-for="(err, i) in gbifModal.results.errors" :key="i" v-text="err"></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @click="closeModal()">Fermer</button>
+                        <button type="button" class="btn btn-success" @click="syncGbifFromModal()" :disabled="gbifModal.loading || !gbifModal.sync.query">
+                            <span v-if="gbifModal.loading" class="spinner-border spinner-border-sm me-1"></span>
+                            <i v-else class="fas fa-sync me-1"></i>Synchroniser
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div v-if="showGbifSyncModal" class="modal-backdrop fade show"></div>
+
+        <!-- GBIF Import Family Modal -->
+        <div class="modal fade" :class="{ 'show': showGbifImportFamilyModal }" tabindex="-1" v-show="showGbifImportFamilyModal" @click.self="closeModal()" :style="{ display: showGbifImportFamilyModal ? 'block' : 'none' }">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">
+                            <i class="fas fa-sitemap me-2"></i>Importer une famille GBIF
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" @click="closeModal()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nom de la famille <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" v-model="gbifModal.importFamily.family" placeholder="Ex: Fagaceae" @keydown.enter.prevent="importFamilyFromModal()">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Limite d'import</label>
+                                <input type="number" class="form-control" v-model.number="gbifModal.importFamily.limit" min="1" max="5000">
+                            </div>
+                            <div class="col-md-6 d-flex align-items-center">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" v-model="gbifModal.importFamily.acceptedOnly" id="gbifFamilyAccepted">
+                                    <label class="form-check-label" for="gbifFamilyAccepted">Taxons acceptes uniquement</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-center">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" v-model="gbifModal.importFamily.dryRun" id="gbifFamilyDryRun">
+                                    <label class="form-check-label" for="gbifFamilyDryRun">
+                                        <i class="fas fa-flask me-1 text-warning"></i>Simulation (dry run)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-muted small mt-3 mb-0"><i class="fas fa-info-circle me-1"></i>Importe toutes les especes acceptees d'une famille depuis GBIF Backbone.</p>
+
+                        <!-- Results -->
+                        <div v-if="gbifModal.results" class="mt-4">
+                            <div class="alert" :class="gbifModal.results.error_count > 0 ? 'alert-warning' : 'alert-success'">
+                                <strong v-if="gbifModal.importFamily.dryRun">[SIMULATION] </strong>
+                                Crees: @{{ gbifModal.results.created_count || 0 }},
+                                Mis a jour: @{{ gbifModal.results.updated_count || 0 }},
+                                Ignores: @{{ gbifModal.results.skipped_count || 0 }},
+                                Erreurs: @{{ gbifModal.results.error_count || 0 }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @click="closeModal()">Fermer</button>
+                        <button type="button" class="btn btn-primary" @click="importFamilyFromModal()" :disabled="gbifModal.loading || !gbifModal.importFamily.family">
+                            <span v-if="gbifModal.loading" class="spinner-border spinner-border-sm me-1"></span>
+                            <i v-else class="fas fa-download me-1"></i>Importer la famille
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div v-if="showGbifImportFamilyModal" class="modal-backdrop fade show"></div>
+
+        <!-- Help View -->
+        <div v-if="currentView === 'help'" class="container py-4">
+            <div class="row justify-content-center">
+                <div class="col-lg-9">
+                    <h1 class="h3 mb-4"><i class="fas fa-question-circle text-primary me-2"></i>Aide et documentation</h1>
+
+                    <!-- Getting started -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0"><i class="fas fa-rocket me-2"></i>Premiers pas</h5>
+                        </div>
+                        <div class="card-body">
+                            <p>PhenoLab est une application de suivi phenologique des plantes. Elle permet de :</p>
+                            <ul class="mb-3">
+                                <li>Gerer des <strong>sites</strong> d'observation (jardins, parcs, forets...)</li>
+                                <li>Enregistrer des <strong>plantes</strong> avec leur position GPS precise</li>
+                                <li>Suivre leur evolution avec des <strong>observations</strong> regulieres</li>
+                                <li>Documenter visuellement avec des <strong>photos</strong></li>
+                                <li>Analyser les donnees avec des <strong>graphiques</strong> et statistiques</li>
+                            </ul>
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-user-plus me-2"></i>
+                                Connectez-vous pour pouvoir creer et enregistrer vos propres donnees. En mode visiteur, vous pouvez consulter les donnees publiques.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Navigation -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-compass me-2"></i>Navigation</h5>
+                        </div>
+                        <div class="card-body p-0">
+                            <table class="table table-hover mb-0">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-center" style="width:50px"><i class="fas fa-home text-success"></i></td>
+                                        <td><strong>Accueil</strong></td>
+                                        <td>Tableau de bord avec les statistiques generales et l'activite recente</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-center"><i class="fas fa-map-marker-alt text-primary"></i></td>
+                                        <td><strong>Sites</strong></td>
+                                        <td>Liste et gestion des sites d'observation. Cliquez sur un site pour voir ses plantes et sa carte</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-center"><i class="fas fa-leaf text-success"></i></td>
+                                        <td><strong>Plantes</strong></td>
+                                        <td>Catalogue de toutes les plantes. Filtrez par site, categorie, statut ou sante</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-center"><i class="fas fa-eye text-info"></i></td>
+                                        <td><strong>Observations</strong></td>
+                                        <td>Historique des observations phenologiques avec stades BBCH et photos</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-center"><i class="fas fa-globe text-primary"></i></td>
+                                        <td><strong>Carte</strong></td>
+                                        <td>Vue geographique de tous les sites et plantes sur fond satellite</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-center"><i class="fas fa-chart-line text-warning"></i></td>
+                                        <td><strong>Analyses</strong></td>
+                                        <td>Graphiques interactifs : calendrier phenologique, repartition par espece, evolution mensuelle</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- How to use -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-book me-2"></i>Guide d'utilisation</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="accordion" id="helpAccordion">
+                                <!-- Sites -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#helpSites">
+                                            <i class="fas fa-map-marker-alt me-2 text-primary"></i>Creer et gerer un site
+                                        </button>
+                                    </h2>
+                                    <div id="helpSites" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                                        <div class="accordion-body">
+                                            <ol>
+                                                <li>Cliquez sur <strong>Nouveau &gt; Site</strong> dans la barre de navigation</li>
+                                                <li>Renseignez le nom, la description et le type d'environnement</li>
+                                                <li>Indiquez les coordonnees GPS (latitude/longitude) ou utilisez la geolocalisation automatique</li>
+                                                <li>Un site peut etre <strong>prive</strong> (visible uniquement par vous et les administrateurs)</li>
+                                            </ol>
+                                            <p class="mb-0 text-muted"><i class="fas fa-lightbulb me-1"></i>Depuis la fiche d'un site, vous pouvez voir ses plantes sur une carte satellite et ajouter directement de nouvelles plantes.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Plants -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#helpPlants">
+                                            <i class="fas fa-leaf me-2 text-success"></i>Ajouter une plante
+                                        </button>
+                                    </h2>
+                                    <div id="helpPlants" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                                        <div class="accordion-body">
+                                            <ol>
+                                                <li>Cliquez sur <strong>Nouveau &gt; Plante</strong> ou sur le bouton <strong>Ajouter</strong> depuis un site</li>
+                                                <li>Selectionnez le site, le taxon (nom scientifique) et la categorie</li>
+                                                <li>Precisez la position GPS pour la localiser sur la carte</li>
+                                                <li>Ajoutez une <strong>photo principale</strong> pour l'identifier facilement dans les listes</li>
+                                            </ol>
+                                            <p class="text-muted mb-2"><i class="fas fa-lightbulb me-1"></i>Les categories determinent l'icone affichee :</p>
+                                            <div class="d-flex flex-wrap gap-3 mb-0">
+                                                <span><i class="fas fa-tree text-success me-1"></i>Arbres</span>
+                                                <span><i class="fas fa-leaf text-info me-1"></i>Arbustes</span>
+                                                <span><i class="fas fa-seedling text-primary me-1"></i>Plantes herbacees</span>
+                                                <span><i class="fas fa-paw text-warning me-1"></i>Animaux</span>
+                                                <span><i class="fas fa-bug text-danger me-1"></i>Insectes</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Observations -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#helpObs">
+                                            <i class="fas fa-eye me-2 text-info"></i>Enregistrer une observation
+                                        </button>
+                                    </h2>
+                                    <div id="helpObs" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                                        <div class="accordion-body">
+                                            <ol>
+                                                <li>Cliquez sur <strong>Nouveau &gt; Observation</strong></li>
+                                                <li>Selectionnez la plante concernee et la date d'observation</li>
+                                                <li>Choisissez le <strong>stade phenologique BBCH</strong> observe (bourgeonnement, floraison, fructification...)</li>
+                                                <li>Ajoutez des notes et des photos pour documenter l'etat de la plante</li>
+                                            </ol>
+                                            <p class="mb-0 text-muted"><i class="fas fa-lightbulb me-1"></i>Les observations regulieres permettent de construire un calendrier phenologique et de suivre l'evolution au fil des saisons.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Photos -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#helpPhotos">
+                                            <i class="fas fa-camera me-2 text-warning"></i>Gestion des photos
+                                        </button>
+                                    </h2>
+                                    <div id="helpPhotos" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                                        <div class="accordion-body">
+                                            <ul>
+                                                <li><strong>Photo principale</strong> : definissez une photo comme principale pour qu'elle apparaisse en miniature dans les listes et en grand dans la fiche</li>
+                                                <li><strong>Photos d'observation</strong> : documentez chaque observation avec des photos du stade phenologique observe</li>
+                                                <li>Les photos sont automatiquement redimensionnees (max 2048px) pour optimiser le stockage</li>
+                                                <li>Formats acceptes : JPG, PNG, WebP</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Map -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#helpMap">
+                                            <i class="fas fa-globe me-2 text-primary"></i>Utiliser les cartes
+                                        </button>
+                                    </h2>
+                                    <div id="helpMap" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                                        <div class="accordion-body">
+                                            <ul>
+                                                <li><strong>Carte generale</strong> : visualisez tous les sites et plantes. Basculez entre les modes Sites, Plantes ou Tout</li>
+                                                <li><strong>Carte du site</strong> : depuis la fiche d'un site, explorez les plantes sur fond satellite haute resolution</li>
+                                                <li>Cliquez sur un marqueur pour voir les informations de la plante</li>
+                                                <li>Utilisez la molette pour zoomer et le glisser-deposer pour naviguer</li>
+                                            </ul>
+                                            <p class="mb-0 text-muted"><i class="fas fa-lightbulb me-1"></i>La precision de localisation depend de votre equipement : smartphone (±3-5m), GPS professionnel (±1m).</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Keyboard shortcuts / tips -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Astuces</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-start gap-2">
+                                        <i class="fas fa-search text-primary mt-1"></i>
+                                        <div>
+                                            <strong>Recherche globale</strong>
+                                            <p class="text-muted mb-0 small">Utilisez la recherche pour trouver rapidement une plante, un site ou une observation par nom ou mot-cle</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-start gap-2">
+                                        <i class="fas fa-filter text-info mt-1"></i>
+                                        <div>
+                                            <strong>Filtres combines</strong>
+                                            <p class="text-muted mb-0 small">Combinez plusieurs filtres (site + categorie + statut) pour affiner vos recherches</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-start gap-2">
+                                        <i class="fas fa-exchange-alt text-warning mt-1"></i>
+                                        <div>
+                                            <strong>Remplacement de plante</strong>
+                                            <p class="text-muted mb-0 small">Quand une plante meurt, utilisez "Remplacer" pour garder l'historique et lier la nouvelle plante a l'ancienne</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-start gap-2">
+                                        <i class="fas fa-download text-success mt-1"></i>
+                                        <div>
+                                            <strong>Export des donnees</strong>
+                                            <p class="text-muted mb-0 small">Exportez vos observations au format CSV ou JSON depuis la page Analyses pour les exploiter dans un tableur</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- About -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>A propos</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>PhenoLab</strong> est un outil de suivi phenologique developpe pour faciliter l'observation et la documentation de la vegetation au fil des saisons.</p>
+                            <p class="mb-0 text-muted small">Version 1.0 &middot; Propulse par Laravel &amp; Vue.js &middot; Cartographie Leaflet &amp; OpenStreetMap</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Search View (Dedicated Search Page) -->
         <div v-if="currentView === 'search'" class="container-fluid py-4">
             <div class="row">
                 <div class="col-12">
-                    <!-- Search Header -->
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h1 class="h3 mb-0">
-                            <i class="fas fa-search text-success me-2"></i>
-                            Recherche Globale
-                        </h1>
+                    <!-- Hero Header -->
+                    <div class="card border-0 shadow-sm mb-4 overflow-hidden">
+                        <div class="card-body p-4 position-relative" style="background: linear-gradient(135deg, #1e7e34 0%, #28a745 60%, #6cc24a 100%); color:#fff;">
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <span class="display-5"><i class="fas fa-magnifying-glass"></i></span>
+                                <div>
+                                    <h1 class="h3 mb-1 text-white">Recherche</h1>
+                                    <p class="mb-0 small opacity-90">
+                                        Trouvez vos plantes, sites, observations, taxons — ou explorez par <strong>conditions de culture</strong>.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Search Input and Filters -->
-                    <div class="card shadow-sm mb-4">
+                    <div class="card shadow-sm mb-4 border-0">
                         <div class="card-body">
                             <div class="row g-3">
                                 <!-- Search Input -->
@@ -2927,7 +3599,7 @@
                                             @keydown.enter.prevent="searchPage.results.length > 0 && searchPage.selectedIndex >= 0 ? navigateToSearchResult(searchPage.results[searchPage.selectedIndex]) : performSearchPageSearch()"
                                             @keydown.down.prevent="searchPage.selectedIndex = Math.min(searchPage.selectedIndex + 1, searchPage.results.length - 1)"
                                             @keydown.up.prevent="searchPage.selectedIndex = Math.max(searchPage.selectedIndex - 1, 0)"
-                                            placeholder="Rechercher des plantes, sites, observations, taxons..."
+                                            placeholder="Nom, espèce, site, taxon... (ou laisser vide + filtres de culture)"
                                             ref="searchPageInput"
                                         />
                                         <button
@@ -2937,20 +3609,21 @@
                                             :disabled="searchPage.loading"
                                         >
                                             <i class="fas" :class="searchPage.loading ? 'fa-spinner fa-spin' : 'fa-search'"></i>
-                                            Rechercher
+                                            <span class="d-none d-sm-inline ms-1">Rechercher</span>
                                         </button>
                                         <button
                                             v-if="searchPage.query"
                                             class="btn btn-outline-secondary"
                                             type="button"
                                             @click="clearSearchPage()"
+                                            title="Effacer le texte"
                                         >
                                             <i class="fas fa-times"></i>
                                         </button>
                                     </div>
                                     <small class="text-muted">
                                         <i class="fas fa-keyboard me-1"></i>
-                                        Utilisez les flèches ↑↓ pour naviguer, Entrée pour ouvrir
+                                        Flèches ↑↓ pour naviguer, Entrée pour ouvrir
                                     </small>
                                 </div>
 
@@ -2960,27 +3633,27 @@
                                     <select
                                         class="form-select"
                                         v-model="searchPage.filters.type"
-                                        @change="searchPage.query.trim().length >= 2 && performSearchPageSearch()"
+                                        @change="(searchPage.query.trim().length >= 2 || hasActiveCultivationFilters()) && performSearchPageSearch()"
                                     >
                                         <option value="all">Tous les types</option>
-                                        <option value="plants">Plantes</option>
-                                        <option value="sites">Sites</option>
-                                        <option value="observations">Observations</option>
-                                        <option value="taxons">Taxons</option>
+                                        <option value="plants">🌱 Plantes</option>
+                                        <option value="sites">📍 Sites</option>
+                                        <option value="observations">👁 Observations</option>
+                                        <option value="taxons">🔬 Taxons</option>
                                     </select>
                                 </div>
                             </div>
 
-                            <!-- Advanced Filters (Future-ready stub) -->
+                            <!-- Common filters (mine + dates) -->
                             <div class="mt-3 pt-3 border-top" v-if="user.isAuthenticated">
-                                <div class="row g-3">
+                                <div class="row g-3 align-items-end">
                                     <div class="col-md-3">
                                         <div class="form-check">
                                             <input
                                                 class="form-check-input"
                                                 type="checkbox"
                                                 v-model="searchPage.filters.mine"
-                                                @change="searchPage.query.trim().length >= 2 && performSearchPageSearch()"
+                                                @change="(searchPage.query.trim().length >= 2 || hasActiveCultivationFilters()) && performSearchPageSearch()"
                                                 id="searchFilterMine"
                                             >
                                             <label class="form-check-label" for="searchFilterMine">
@@ -2994,7 +3667,7 @@
                                             type="date"
                                             class="form-control form-control-sm"
                                             v-model="searchPage.filters.date_from"
-                                            @change="searchPage.query.trim().length >= 2 && performSearchPageSearch()"
+                                            @change="(searchPage.query.trim().length >= 2 || hasActiveCultivationFilters()) && performSearchPageSearch()"
                                         />
                                     </div>
                                     <div class="col-md-4" v-if="searchPage.filters.type === 'observations' || searchPage.filters.type === 'all'">
@@ -3003,8 +3676,124 @@
                                             type="date"
                                             class="form-control form-control-sm"
                                             v-model="searchPage.filters.date_to"
-                                            @change="searchPage.query.trim().length >= 2 && performSearchPageSearch()"
+                                            @change="(searchPage.query.trim().length >= 2 || hasActiveCultivationFilters()) && performSearchPageSearch()"
                                         />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Cultivation Filters (collapsible) -->
+                            <div class="mt-3 pt-3 border-top">
+                                <button
+                                    type="button"
+                                    class="btn btn-link text-decoration-none p-0 d-flex align-items-center gap-2"
+                                    @click="searchPage.showCultivationFilters = !searchPage.showCultivationFilters"
+                                >
+                                    <i class="fas" :class="searchPage.showCultivationFilters ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                                    <i class="fas fa-seedling text-success"></i>
+                                    <span class="fw-semibold">Filtres de culture</span>
+                                    <span v-if="hasActiveCultivationFilters()" class="badge bg-success ms-1">actifs</span>
+                                    <span class="text-muted small ms-2">— sécheresse, sol, exposition, usages…</span>
+                                </button>
+
+                                <div v-show="searchPage.showCultivationFilters" class="mt-3">
+                                    <div class="alert alert-light border small mb-3 py-2">
+                                        <i class="fas fa-info-circle text-success me-1"></i>
+                                        Ces filtres ne s'appliquent qu'aux <strong>plantes</strong> ayant des conditions de culture renseignées.
+                                    </div>
+                                    <div class="row g-2">
+                                        <div class="col-md-3 col-sm-6">
+                                            <label class="form-label small text-muted mb-1"><i class="fas fa-sun me-1"></i>Exposition</label>
+                                            <select class="form-select form-select-sm" v-model="searchPage.filters.cult_exposure" @change="performSearchPageSearch()">
+                                                <option value="">Toutes</option>
+                                                <option value="full_sun">Plein soleil</option>
+                                                <option value="partial_shade">Mi-ombre</option>
+                                                <option value="shade">Ombre</option>
+                                                <option value="full_shade">Ombre dense</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 col-sm-6">
+                                            <label class="form-label small text-muted mb-1"><i class="fas fa-tint me-1"></i>Arrosage</label>
+                                            <select class="form-select form-select-sm" v-model="searchPage.filters.cult_watering" @change="performSearchPageSearch()">
+                                                <option value="">Tous</option>
+                                                <option value="low">Faible (résiste à la sécheresse)</option>
+                                                <option value="moderate">Modéré</option>
+                                                <option value="regular">Régulier</option>
+                                                <option value="high">Élevé</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 col-sm-6">
+                                            <label class="form-label small text-muted mb-1"><i class="fas fa-mountain me-1"></i>Type de sol</label>
+                                            <select class="form-select form-select-sm" v-model="searchPage.filters.cult_soil_type" @change="performSearchPageSearch()">
+                                                <option value="">Tous</option>
+                                                <option value="clay">Argileux</option>
+                                                <option value="sandy">Sableux</option>
+                                                <option value="loam">Limoneux</option>
+                                                <option value="chalky">Calcaire</option>
+                                                <option value="peaty">Tourbeux</option>
+                                                <option value="silty">Limono-argileux</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 col-sm-6">
+                                            <label class="form-label small text-muted mb-1"><i class="fas fa-water me-1"></i>Drainage</label>
+                                            <select class="form-select form-select-sm" v-model="searchPage.filters.cult_soil_drainage" @change="performSearchPageSearch()">
+                                                <option value="">Tous</option>
+                                                <option value="well_drained">Bien drainé</option>
+                                                <option value="moist">Frais / humide</option>
+                                                <option value="wet">Mouillé</option>
+                                                <option value="dry">Sec</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 col-sm-6">
+                                            <label class="form-label small text-muted mb-1"><i class="fas fa-trophy me-1"></i>Difficulté</label>
+                                            <select class="form-select form-select-sm" v-model="searchPage.filters.cult_difficulty" @change="performSearchPageSearch()">
+                                                <option value="">Toutes</option>
+                                                <option value="easy">Facile</option>
+                                                <option value="medium">Moyen</option>
+                                                <option value="hard">Difficile</option>
+                                                <option value="expert">Expert</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 col-sm-6">
+                                            <label class="form-label small text-muted mb-1"><i class="fas fa-leaf me-1"></i>Usage</label>
+                                            <select class="form-select form-select-sm" v-model="searchPage.filters.cult_usage_type" @change="performSearchPageSearch()">
+                                                <option value="">Tous</option>
+                                                <option value="ornamental">Ornemental</option>
+                                                <option value="edible">Comestible</option>
+                                                <option value="medicinal">Médicinal</option>
+                                                <option value="hedging">Haie / brise-vent</option>
+                                                <option value="shade">Ombrage</option>
+                                                <option value="fragrance">Parfum</option>
+                                                <option value="wildlife">Faune / pollinisateurs</option>
+                                                <option value="erosion">Anti-érosion</option>
+                                                <option value="timber">Bois d'œuvre</option>
+                                                <option value="fodder">Fourrage</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3 col-sm-6">
+                                            <label class="form-label small text-muted mb-1"><i class="fas fa-thermometer-half me-1"></i>Zone USDA</label>
+                                            <input type="text" class="form-control form-control-sm" v-model="searchPage.filters.cult_usda_zone" placeholder="ex: 7-9" @change="performSearchPageSearch()">
+                                        </div>
+                                        <div class="col-md-3 col-sm-6 d-flex align-items-end">
+                                            <div class="d-flex flex-column gap-1 w-100">
+                                                <div class="form-check form-check-sm">
+                                                    <input class="form-check-input" type="checkbox" v-model="searchPage.filters.cult_is_edible" @change="performSearchPageSearch()" id="cultEdible">
+                                                    <label class="form-check-label small" for="cultEdible"><i class="fas fa-utensils text-success me-1"></i>Comestible</label>
+                                                </div>
+                                                <div class="form-check form-check-sm">
+                                                    <input class="form-check-input" type="checkbox" v-model="searchPage.filters.cult_is_toxic" @change="performSearchPageSearch()" id="cultToxic">
+                                                    <label class="form-check-label small" for="cultToxic"><i class="fas fa-skull-crossbones text-danger me-1"></i>Toxique</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3 d-flex justify-content-between align-items-center">
+                                        <button class="btn btn-sm btn-outline-secondary" @click="resetCultivationFilters(); performSearchPageSearch()" :disabled="!hasActiveCultivationFilters()">
+                                            <i class="fas fa-eraser me-1"></i>Réinitialiser les filtres
+                                        </button>
+                                        <small class="text-muted" v-if="hasActiveCultivationFilters()">
+                                            <i class="fas fa-check-circle text-success me-1"></i>Filtres actifs appliqués automatiquement
+                                        </small>
                                     </div>
                                 </div>
                             </div>
@@ -3153,6 +3942,11 @@
                 <li class="nav-item">
                     <a class="nav-link" :class="{ active: admin.activeTab === 'categories' }" href="#" @click.prevent="admin.activeTab = 'categories'; loadAdminCategories()">
                         <i class="fas fa-tags me-1"></i>Catégories
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" :class="{ active: admin.activeTab === 'site_categories' }" href="#" @click.prevent="admin.activeTab = 'site_categories'; loadSiteCategories()">
+                        <i class="fas fa-folder-open me-1"></i>Lieux
                     </a>
                 </li>
                 <li class="nav-item">
@@ -3374,6 +4168,121 @@
                 </div>
             </div>
 
+            <!-- ── Site Categories Tab ── -->
+            <div v-if="admin.activeTab === 'site_categories' && !admin.loading">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-info text-white">
+                        <i class="fas fa-folder-open me-2"></i>
+                        <span v-text="adminSiteCategoryForm.id ? 'Modifier le lieu' : 'Ajouter un lieu'"></span>
+                    </div>
+                    <div class="card-body">
+                        <form @submit.prevent="submitAdminSiteCategory">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label">Nom *</label>
+                                    <input v-model="adminSiteCategoryForm.name" type="text" class="form-control" required maxlength="150">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Slug</label>
+                                    <input v-model="adminSiteCategoryForm.slug" type="text" class="form-control" maxlength="180" placeholder="Auto si vide">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Lieu parent (optionnel)</label>
+                                    <select v-model="adminSiteCategoryForm.parent_id" class="form-select">
+                                        <option :value="null">— Aucune (racine) —</option>
+                                        <option v-for="cat in siteCategories" :key="cat.id" :value="cat.id"
+                                                :disabled="adminSiteCategoryForm.id === cat.id"
+                                                v-text="cat.breadcrumb || cat.name"></option>
+                                    </select>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label">Description</label>
+                                    <textarea v-model="adminSiteCategoryForm.description" class="form-control" rows="2"></textarea>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Icône (FontAwesome)</label>
+                                    <input v-model="adminSiteCategoryForm.icon" type="text" class="form-control" placeholder="fa-tree">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Couleur</label>
+                                    <input v-model="adminSiteCategoryForm.color" type="text" class="form-control" placeholder="primary | #3b82f6">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Ordre d'affichage</label>
+                                    <input v-model.number="adminSiteCategoryForm.sort_order" type="number" min="0" class="form-control">
+                                </div>
+                                <div class="col-md-3 d-flex align-items-end">
+                                    <div class="form-check">
+                                        <input v-model="adminSiteCategoryForm.is_active" type="checkbox" class="form-check-input" id="adminSiteCatActive">
+                                        <label class="form-check-label" for="adminSiteCatActive">Active</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 d-flex gap-2">
+                                <button type="submit" class="btn btn-info text-white">
+                                    <i class="fas fa-save me-1"></i>
+                                    <span v-text="adminSiteCategoryForm.id ? 'Mettre à jour' : 'Créer'"></span>
+                                </button>
+                                <button v-if="adminSiteCategoryForm.id" type="button" class="btn btn-outline-secondary" @click="resetAdminSiteCategoryForm">
+                                    <i class="fas fa-times me-1"></i>Annuler
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-list me-2"></i>Lieux existants (<span v-text="siteCategories.length"></span>)</span>
+                        <button class="btn btn-sm btn-outline-primary" @click="loadSiteCategories">
+                            <i class="fas fa-sync-alt me-1"></i>Recharger
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nom (chemin)</th>
+                                    <th>Slug</th>
+                                    <th>Sites</th>
+                                    <th>Ordre</th>
+                                    <th>Active</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="cat in siteCategories" :key="cat.id">
+                                    <td>
+                                        <span :style="cat.depth ? 'padding-left:' + (cat.depth * 1.25) + 'rem' : ''">
+                                            <i v-if="cat.icon" :class="'fas ' + cat.icon + ' me-1'"></i>
+                                            <span v-text="cat.name"></span>
+                                        </span>
+                                        <small v-if="cat.depth > 0" class="text-muted ms-2" v-text="'(' + (cat.breadcrumb || '') + ')'"></small>
+                                    </td>
+                                    <td><code v-text="cat.slug"></code></td>
+                                    <td><span class="badge bg-secondary" v-text="cat.sites_count || 0"></span></td>
+                                    <td v-text="cat.sort_order"></td>
+                                    <td>
+                                        <i class="fas" :class="cat.is_active ? 'fa-check text-success' : 'fa-times text-danger'"></i>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-primary me-1" @click="editAdminSiteCategory(cat)">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" @click="deleteAdminSiteCategory(cat)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr v-if="siteCategories.length === 0">
+                                    <td colspan="6" class="text-center text-muted py-4">Aucun lieu pour l'instant.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- ── Stages Tab ── -->
             <div v-if="admin.activeTab === 'stages' && !admin.loading">
                 <!-- Add stage form -->
@@ -3525,6 +4434,23 @@
                                 <p class="text-muted small">Importe toutes les espèces acceptées d'une famille depuis GBIF Backbone.</p>
                                 <button class="btn btn-primary w-100" @click="importGbifFamily()" :disabled="admin.loading">
                                     <i class="fas fa-download me-1"></i>Importer la famille
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ajout manuel d'un taxon -->
+                    <div class="col-12">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-secondary text-white">
+                                <i class="fas fa-dna me-2"></i>Ajouter un taxon manuellement
+                            </div>
+                            <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <p class="text-muted small mb-0">
+                                    Saisir directement un taxon (sans passer par GBIF) — utile pour les cultivars ou les espèces non répertoriées.
+                                </p>
+                                <button class="btn btn-secondary" @click="openModal('taxon')">
+                                    <i class="fas fa-plus me-1"></i>Nouveau taxon
                                 </button>
                             </div>
                         </div>
@@ -4864,6 +5790,7 @@
 
         <!-- Modal Backdrops - Manually managed for modals that don't use Bootstrap JS API -->
         <div v-if="showAddSiteModal" class="modal-backdrop fade show"></div>
+        <div v-if="showAddTaxonModal" class="modal-backdrop fade show"></div>
         <div v-if="showLoginModal" class="modal-backdrop fade show"></div>
         <div v-if="showAddPlantModal" class="modal-backdrop fade show"></div>
         <div v-if="showAddObservationModal" class="modal-backdrop fade show"></div>
@@ -5760,17 +6687,43 @@
                                     <input v-model="editSite.name" type="text" class="form-control" id="editSiteName" required>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="editSiteEnvironment" class="form-label">Environnement *</label>
+                                    <label for="editSiteEnvironment" class="form-label">Environnement / Type *</label>
                                     <select v-model="editSite.environment" class="form-select" id="editSiteEnvironment" required>
                                         <option value="">Sélectionner...</option>
-                                        <option value="urban">Urbain</option>
-                                        <option value="suburban">Périurbain</option>
-                                        <option value="rural">Rural</option>
-                                        <option value="forest">Forêt</option>
-                                        <option value="garden">Jardin/Parc</option>
-                                        <option value="natural">Naturel</option>
-                                        <option value="agricultural">Agricole</option>
+                                        <optgroup label="Environnements naturels">
+                                            <option value="urban">Urbain</option>
+                                            <option value="suburban">Périurbain</option>
+                                            <option value="rural">Rural</option>
+                                            <option value="forest">Forêt</option>
+                                            <option value="garden">Jardin/Parc</option>
+                                            <option value="natural">Naturel</option>
+                                            <option value="agricultural">Agricole</option>
+                                        </optgroup>
+                                        <optgroup label="Types de site aménagés">
+                                            <option value="botanical_garden">Jardin botanique</option>
+                                            <option value="arboretum">Arboretum</option>
+                                            <option value="nursery">Pépinière</option>
+                                            <option value="orchard">Verger</option>
+                                            <option value="vegetable_garden">Potager</option>
+                                            <option value="park">Parc public</option>
+                                            <option value="private_garden">Jardin privé</option>
+                                            <option value="school_garden">Jardin pédagogique</option>
+                                            <option value="community_garden">Jardin partagé</option>
+                                            <option value="experimental">Parcelle expérimentale</option>
+                                            <option value="natural_reserve">Réserve naturelle</option>
+                                            <option value="other">Autre</option>
+                                        </optgroup>
                                     </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="editSiteCat" class="form-label">Lieu</label>
+                                    <select v-model="editSite.site_category_id" class="form-select" id="editSiteCat">
+                                        <option :value="null">Non spécifiée</option>
+                                        <option v-for="cat in siteCategories" :key="cat.id" :value="cat.id" v-text="cat.breadcrumb || cat.name"></option>
+                                    </select>
+                                    <small class="text-muted">Géré dans Admin → Lieux.</small>
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -6081,6 +7034,275 @@
                         <button type="button" class="btn btn-secondary" @click="closeModal()">Annuler</button>
                         <button type="button" class="btn btn-success" @click="replacePlant">
                             <i class="fas fa-exchange-alt me-1"></i>Remplacer la plante
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============= CULTIVATION PROFILE MODAL ============= -->
+        <div class="modal fade" :class="{ 'show': showCultivationModal }" id="cultivationModal" tabindex="-1" v-show="showCultivationModal" @click.self="closeModal()" :style="{ display: showCultivationModal ? 'block' : 'none' }">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-seedling me-2"></i>Conditions de culture
+                            <small class="text-muted ms-2" v-if="cultivationForm.plantName">— <span v-text="cultivationForm.plantName"></span></small>
+                        </h5>
+                        <button type="button" class="btn-close" @click="closeModal()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form @submit.prevent="submitCultivationProfile">
+                            <div class="alert alert-info small mb-3">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Recommandations horticoles applicables à cette plante. Ces données sont indépendantes des observations phénologiques.
+                            </div>
+                            <div class="accordion" id="cultivationAccordion">
+                                <!-- Plantation -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#cult-when">
+                                            <i class="fas fa-calendar-alt me-2"></i>Plantation (quand)
+                                        </button>
+                                    </h2>
+                                    <div id="cult-when" class="accordion-collapse collapse show" data-bs-parent="#cultivationAccordion">
+                                        <div class="accordion-body">
+                                            <div class="row g-2">
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Mois de plantation</label>
+                                                    <div class="d-flex flex-wrap gap-2">
+                                                        <div v-for="m in monthOptions" :key="'p'+m.value" class="form-check form-check-inline">
+                                                            <input class="form-check-input" type="checkbox" :id="'pm-'+m.value" :value="m.value" v-model="cultivationForm.planting_months">
+                                                            <label class="form-check-label small" :for="'pm-'+m.value" v-text="m.label"></label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Mois de semis</label>
+                                                    <div class="d-flex flex-wrap gap-2">
+                                                        <div v-for="m in monthOptions" :key="'s'+m.value" class="form-check form-check-inline">
+                                                            <input class="form-check-input" type="checkbox" :id="'sm-'+m.value" :value="m.value" v-model="cultivationForm.sowing_months">
+                                                            <label class="form-check-label small" :for="'sm-'+m.value" v-text="m.label"></label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Mois de floraison</label>
+                                                    <div class="d-flex flex-wrap gap-2">
+                                                        <div v-for="m in monthOptions" :key="'f'+m.value" class="form-check form-check-inline">
+                                                            <input class="form-check-input" type="checkbox" :id="'fm-'+m.value" :value="m.value" v-model="cultivationForm.flowering_months">
+                                                            <label class="form-check-label small" :for="'fm-'+m.value" v-text="m.label"></label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Mois de récolte</label>
+                                                    <div class="d-flex flex-wrap gap-2">
+                                                        <div v-for="m in monthOptions" :key="'h'+m.value" class="form-check form-check-inline">
+                                                            <input class="form-check-input" type="checkbox" :id="'hm-'+m.value" :value="m.value" v-model="cultivationForm.harvest_months">
+                                                            <label class="form-check-label small" :for="'hm-'+m.value" v-text="m.label"></label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Environnement -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cult-where">
+                                            <i class="fas fa-sun me-2"></i>Environnement (où)
+                                        </button>
+                                    </h2>
+                                    <div id="cult-where" class="accordion-collapse collapse" data-bs-parent="#cultivationAccordion">
+                                        <div class="accordion-body">
+                                            <div class="row g-3">
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Exposition</label>
+                                                    <select v-model="cultivationForm.exposure" class="form-select form-select-sm">
+                                                        <option :value="null">—</option>
+                                                        <option v-for="(label, key) in exposureOptions" :key="key" :value="key" v-text="label"></option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Température min</label>
+                                                    <input v-model="cultivationForm.hardiness_min" type="text" class="form-control form-control-sm" placeholder="ex: -15°C">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Zone USDA</label>
+                                                    <input v-model="cultivationForm.usda_zone" type="text" class="form-control form-control-sm" placeholder="ex: 7-9">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Environnements adaptés</label>
+                                                    <select v-model="cultivationForm.suitable_environments" multiple class="form-select form-select-sm" size="6">
+                                                        <option v-for="(label, key) in environmentOptionsFlat" :key="'env-'+key" :value="key" v-text="label"></option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Type(s) de sol</label>
+                                                    <select v-model="cultivationForm.soil_types" multiple class="form-select form-select-sm" size="6">
+                                                        <option v-for="(label, key) in soilTypeOptions" :key="'st-'+key" :value="key" v-text="label"></option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">pH du sol</label>
+                                                    <input v-model="cultivationForm.soil_ph" type="text" class="form-control form-control-sm" placeholder="ex: 6.0-7.5">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Drainage</label>
+                                                    <select v-model="cultivationForm.soil_drainage" class="form-select form-select-sm">
+                                                        <option :value="null">—</option>
+                                                        <option v-for="(label, key) in soilDrainageOptions" :key="key" :value="key" v-text="label"></option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Fertilité</label>
+                                                    <select v-model="cultivationForm.soil_fertility" class="form-select form-select-sm">
+                                                        <option :value="null">—</option>
+                                                        <option v-for="(label, key) in soilFertilityOptions" :key="key" :value="key" v-text="label"></option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Hauteur min (m)</label>
+                                                    <input v-model.number="cultivationForm.mature_height_min" type="number" step="0.01" min="0" class="form-control form-control-sm">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Hauteur max (m)</label>
+                                                    <input v-model.number="cultivationForm.mature_height_max" type="number" step="0.01" min="0" class="form-control form-control-sm">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Envergure min (m)</label>
+                                                    <input v-model.number="cultivationForm.mature_spread_min" type="number" step="0.01" min="0" class="form-control form-control-sm">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Envergure max (m)</label>
+                                                    <input v-model.number="cultivationForm.mature_spread_max" type="number" step="0.01" min="0" class="form-control form-control-sm">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Soins -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cult-care">
+                                            <i class="fas fa-hand-holding-heart me-2"></i>Soins
+                                        </button>
+                                    </h2>
+                                    <div id="cult-care" class="accordion-collapse collapse" data-bs-parent="#cultivationAccordion">
+                                        <div class="accordion-body">
+                                            <div class="row g-3">
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Besoins en eau</label>
+                                                    <select v-model="cultivationForm.watering_needs" class="form-select form-select-sm">
+                                                        <option :value="null">—</option>
+                                                        <option v-for="(label, key) in wateringNeedsOptions" :key="key" :value="key" v-text="label"></option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Difficulté</label>
+                                                    <select v-model="cultivationForm.cultivation_difficulty" class="form-select form-select-sm">
+                                                        <option :value="null">—</option>
+                                                        <option v-for="(label, key) in difficultyOptions" :key="key" :value="key" v-text="label"></option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Fréquence fertilisation</label>
+                                                    <input v-model="cultivationForm.fertilizing_frequency" type="text" class="form-control form-control-sm">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Période de taille</label>
+                                                    <input v-model="cultivationForm.pruning_period" type="text" class="form-control form-control-sm">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Paillage</label>
+                                                    <input v-model="cultivationForm.mulching" type="text" class="form-control form-control-sm">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label small">Protection hivernale</label>
+                                                    <input v-model="cultivationForm.winter_protection" type="text" class="form-control form-control-sm">
+                                                </div>
+                                                <div class="col-md-12">
+                                                    <label class="form-label small">Notes arrosage</label>
+                                                    <textarea v-model="cultivationForm.watering_notes" rows="2" class="form-control form-control-sm"></textarea>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Notes fertilisation</label>
+                                                    <textarea v-model="cultivationForm.fertilizing_notes" rows="2" class="form-control form-control-sm"></textarea>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Notes taille</label>
+                                                    <textarea v-model="cultivationForm.pruning_notes" rows="2" class="form-control form-control-sm"></textarea>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Sensibilité aux ravageurs</label>
+                                                    <textarea v-model="cultivationForm.pest_susceptibility" rows="2" class="form-control form-control-sm"></textarea>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Sensibilité aux maladies</label>
+                                                    <textarea v-model="cultivationForm.disease_susceptibility" rows="2" class="form-control form-control-sm"></textarea>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Plantes compagnes (séparer par virgule)</label>
+                                                    <input :value="cultivationForm.companion_plants?.join(', ') || ''" @input="cultivationForm.companion_plants = parseTagList($event.target.value)" type="text" class="form-control form-control-sm" placeholder="ex: Basilic, Œillet d'Inde">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">À éviter à proximité (séparer par virgule)</label>
+                                                    <input :value="cultivationForm.avoid_near?.join(', ') || ''" @input="cultivationForm.avoid_near = parseTagList($event.target.value)" type="text" class="form-control form-control-sm">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Méthodes de propagation</label>
+                                                    <input v-model="cultivationForm.propagation_methods" type="text" class="form-control form-control-sm" placeholder="ex: bouture, semis, division">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label small">Usages</label>
+                                                    <select v-model="cultivationForm.usage_types" multiple class="form-select form-select-sm" size="5">
+                                                        <option v-for="(label, key) in usageTypeOptions" :key="'use-'+key" :value="key" v-text="label"></option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="form-check">
+                                                        <input v-model="cultivationForm.is_edible" class="form-check-input" type="checkbox" id="cult-edible">
+                                                        <label class="form-check-label" for="cult-edible">Comestible</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input v-model="cultivationForm.is_toxic" class="form-check-input" type="checkbox" id="cult-toxic">
+                                                        <label class="form-check-label" for="cult-toxic">Toxique</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Notes & Source -->
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cult-notes">
+                                            <i class="fas fa-sticky-note me-2"></i>Notes & Source
+                                        </button>
+                                    </h2>
+                                    <div id="cult-notes" class="accordion-collapse collapse" data-bs-parent="#cultivationAccordion">
+                                        <div class="accordion-body">
+                                            <div class="mb-2">
+                                                <label class="form-label small">Notes libres</label>
+                                                <textarea v-model="cultivationForm.notes" rows="3" class="form-control form-control-sm"></textarea>
+                                            </div>
+                                            <div>
+                                                <label class="form-label small">Source / référence</label>
+                                                <input v-model="cultivationForm.source" type="text" class="form-control form-control-sm" placeholder="ex: Le Bon Jardinier, p. 412">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @click="closeModal()">Annuler</button>
+                        <button type="button" class="btn btn-primary" :disabled="cultivationFormSaving" @click="submitCultivationProfile">
+                            <span v-if="cultivationFormSaving" class="spinner-border spinner-border-sm me-1"></span>
+                            <i v-else class="fas fa-save me-1"></i>Enregistrer
                         </button>
                     </div>
                 </div>
@@ -6482,6 +7704,158 @@
                         </div>
                     </div>
 
+                    <!-- Cultivation Profile Card -->
+                    <div class="card mb-4" v-if="plantDetail.plant.cultivation_profile || (user.isAuthenticated && (user.id === plantDetail.plant.owner?.id || user.isStaff))">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-seedling me-2"></i>Conditions de culture
+                                <span class="badge bg-info text-dark ms-2" title="Recommandations horticoles, indépendantes des observations">
+                                    Recommandations horticoles
+                                </span>
+                            </h5>
+                            <div v-if="user.isAuthenticated && (user.id === plantDetail.plant.owner?.id || user.isStaff)" class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" @click="openCultivationModal(plantDetail.plant)" title="Modifier les conditions de culture">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button v-if="plantDetail.plant.cultivation_profile" class="btn btn-outline-danger" @click="deleteCultivationProfile(plantDetail.plant)" title="Supprimer">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body" v-if="plantDetail.plant.cultivation_profile">
+                            <!-- Quand planter -->
+                            <div v-if="cultivationHasWhenData(plantDetail.plant.cultivation_profile)" class="mb-3">
+                                <h6><i class="fas fa-calendar-alt me-1"></i>Quand planter</h6>
+                                <div class="row small">
+                                    <div v-if="plantDetail.plant.cultivation_profile.planting_months?.length" class="col-md-6 mb-1">
+                                        <strong>Plantation :</strong> <span v-text="formatMonths(plantDetail.plant.cultivation_profile.planting_months)"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.sowing_months?.length" class="col-md-6 mb-1">
+                                        <strong>Semis :</strong> <span v-text="formatMonths(plantDetail.plant.cultivation_profile.sowing_months)"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.flowering_months?.length" class="col-md-6 mb-1">
+                                        <strong>Floraison :</strong> <span v-text="formatMonths(plantDetail.plant.cultivation_profile.flowering_months)"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.harvest_months?.length" class="col-md-6 mb-1">
+                                        <strong>Récolte :</strong> <span v-text="formatMonths(plantDetail.plant.cultivation_profile.harvest_months)"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Où cultiver -->
+                            <div v-if="cultivationHasWhereData(plantDetail.plant.cultivation_profile)" class="mb-3">
+                                <h6><i class="fas fa-map-marker-alt me-1"></i>Où cultiver</h6>
+                                <div class="row small">
+                                    <div v-if="plantDetail.plant.cultivation_profile.exposure" class="col-md-6 mb-1">
+                                        <strong>Exposition :</strong> <span v-text="getExposureLabel(plantDetail.plant.cultivation_profile.exposure)"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.hardiness_min" class="col-md-6 mb-1">
+                                        <strong>Température min :</strong> <span v-text="plantDetail.plant.cultivation_profile.hardiness_min"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.usda_zone" class="col-md-6 mb-1">
+                                        <strong>Zone USDA :</strong> <span v-text="plantDetail.plant.cultivation_profile.usda_zone"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.suitable_environments?.length" class="col-md-6 mb-1">
+                                        <strong>Environnements :</strong>
+                                        <span v-for="env in plantDetail.plant.cultivation_profile.suitable_environments" :key="env" class="badge bg-light text-dark me-1" v-text="getEnvironmentLabel(env)"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.soil_types?.length" class="col-md-6 mb-1">
+                                        <strong>Sol :</strong>
+                                        <span v-for="s in plantDetail.plant.cultivation_profile.soil_types" :key="s" class="badge bg-light text-dark me-1" v-text="getSoilTypeLabel(s)"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.soil_ph" class="col-md-6 mb-1">
+                                        <strong>pH :</strong> <span v-text="plantDetail.plant.cultivation_profile.soil_ph"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.soil_drainage" class="col-md-6 mb-1">
+                                        <strong>Drainage :</strong> <span v-text="getSoilDrainageLabel(plantDetail.plant.cultivation_profile.soil_drainage)"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.soil_fertility" class="col-md-6 mb-1">
+                                        <strong>Fertilité :</strong> <span v-text="getSoilFertilityLabel(plantDetail.plant.cultivation_profile.soil_fertility)"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.mature_height_min || plantDetail.plant.cultivation_profile.mature_height_max" class="col-md-6 mb-1">
+                                        <strong>Hauteur adulte :</strong>
+                                        <span v-text="formatRange(plantDetail.plant.cultivation_profile.mature_height_min, plantDetail.plant.cultivation_profile.mature_height_max, 'm')"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.mature_spread_min || plantDetail.plant.cultivation_profile.mature_spread_max" class="col-md-6 mb-1">
+                                        <strong>Envergure :</strong>
+                                        <span v-text="formatRange(plantDetail.plant.cultivation_profile.mature_spread_min, plantDetail.plant.cultivation_profile.mature_spread_max, 'm')"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Soins -->
+                            <div v-if="cultivationHasCareData(plantDetail.plant.cultivation_profile)" class="mb-3">
+                                <h6><i class="fas fa-hand-holding-heart me-1"></i>Soins</h6>
+                                <div class="row small">
+                                    <div v-if="plantDetail.plant.cultivation_profile.watering_needs" class="col-md-6 mb-1">
+                                        <strong>Arrosage :</strong> <span v-text="getWateringLabel(plantDetail.plant.cultivation_profile.watering_needs)"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.cultivation_difficulty" class="col-md-6 mb-1">
+                                        <strong>Difficulté :</strong> <span v-text="getDifficultyLabel(plantDetail.plant.cultivation_profile.cultivation_difficulty)"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.fertilizing_frequency" class="col-md-6 mb-1">
+                                        <strong>Fertilisation :</strong> <span v-text="plantDetail.plant.cultivation_profile.fertilizing_frequency"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.pruning_period" class="col-md-6 mb-1">
+                                        <strong>Taille :</strong> <span v-text="plantDetail.plant.cultivation_profile.pruning_period"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.mulching" class="col-md-6 mb-1">
+                                        <strong>Paillage :</strong> <span v-text="plantDetail.plant.cultivation_profile.mulching"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.winter_protection" class="col-md-6 mb-1">
+                                        <strong>Protection hivernale :</strong> <span v-text="plantDetail.plant.cultivation_profile.winter_protection"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.propagation_methods" class="col-md-6 mb-1">
+                                        <strong>Propagation :</strong> <span v-text="plantDetail.plant.cultivation_profile.propagation_methods"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.usage_types?.length" class="col-12 mb-1">
+                                        <strong>Usages :</strong>
+                                        <span v-for="u in plantDetail.plant.cultivation_profile.usage_types" :key="u" class="badge bg-success me-1" v-text="getUsageTypeLabel(u)"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.companion_plants?.length" class="col-12 mb-1">
+                                        <strong>Plantes compagnes :</strong>
+                                        <span v-for="c in plantDetail.plant.cultivation_profile.companion_plants" :key="c" class="badge bg-light text-dark me-1" v-text="c"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.avoid_near?.length" class="col-12 mb-1">
+                                        <strong>À éviter à proximité :</strong>
+                                        <span v-for="a in plantDetail.plant.cultivation_profile.avoid_near" :key="a" class="badge bg-light text-dark me-1" v-text="a"></span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.is_edible" class="col-md-6 mb-1">
+                                        <span class="badge bg-success"><i class="fas fa-utensils me-1"></i>Comestible</span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.is_toxic" class="col-md-6 mb-1">
+                                        <span class="badge bg-danger"><i class="fas fa-skull-crossbones me-1"></i>Toxique</span>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.watering_notes" class="col-12 mt-2">
+                                        <em class="text-muted small">Arrosage : <span v-text="plantDetail.plant.cultivation_profile.watering_notes"></span></em>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.fertilizing_notes" class="col-12">
+                                        <em class="text-muted small">Fertilisation : <span v-text="plantDetail.plant.cultivation_profile.fertilizing_notes"></span></em>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.pruning_notes" class="col-12">
+                                        <em class="text-muted small">Taille : <span v-text="plantDetail.plant.cultivation_profile.pruning_notes"></span></em>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.pest_susceptibility" class="col-12">
+                                        <em class="text-muted small">Ravageurs : <span v-text="plantDetail.plant.cultivation_profile.pest_susceptibility"></span></em>
+                                    </div>
+                                    <div v-if="plantDetail.plant.cultivation_profile.disease_susceptibility" class="col-12">
+                                        <em class="text-muted small">Maladies : <span v-text="plantDetail.plant.cultivation_profile.disease_susceptibility"></span></em>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Notes / Source -->
+                            <div v-if="plantDetail.plant.cultivation_profile.notes || plantDetail.plant.cultivation_profile.source" class="border-top pt-2 mt-2 small text-muted">
+                                <div v-if="plantDetail.plant.cultivation_profile.notes"><strong>Notes :</strong> <span v-text="plantDetail.plant.cultivation_profile.notes"></span></div>
+                                <div v-if="plantDetail.plant.cultivation_profile.source"><strong>Source :</strong> <span v-text="plantDetail.plant.cultivation_profile.source"></span></div>
+                            </div>
+                        </div>
+                        <div class="card-body text-center text-muted" v-else>
+                            <i class="fas fa-info-circle me-1"></i>
+                            Aucune condition de culture renseignée.
+                            <button class="btn btn-sm btn-outline-primary ms-2" @click="openCultivationModal(plantDetail.plant)">
+                                <i class="fas fa-plus me-1"></i>Ajouter
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Notes & Additional Info Card -->
                     <div class="card mb-4" v-if="plantDetail.plant.notes || plantDetail.plant.anecdotes || plantDetail.plant.cultural_significance || plantDetail.plant.ecological_notes || plantDetail.plant.care_notes">
                         <div class="card-header">
@@ -6728,15 +8102,19 @@
                     <div class="card mb-3">
                         <div class="card-body text-center">
                             <div class="row">
-                                <div class="col-4">
+                                <div class="col-3">
                                     <h3 class="text-primary mb-0" v-text="plantDetail.statistics?.observations_count || 0"></h3>
-                                    <small class="text-muted">Observations</small>
+                                    <small class="text-muted">Obs.</small>
                                 </div>
-                                <div class="col-4">
+                                <div class="col-3">
                                     <h3 class="text-success mb-0" v-text="plantDetail.statistics?.photos_count || 0"></h3>
                                     <small class="text-muted">Photos</small>
                                 </div>
-                                <div class="col-4">
+                                <div class="col-3">
+                                    <h3 class="text-info mb-0" v-text="plantDetail.plant.actions_count || 0"></h3>
+                                    <small class="text-muted">Actions</small>
+                                </div>
+                                <div class="col-3">
                                     <h3 class="text-warning mb-0">
                                         <span v-if="plantDetail.plant.planting_date || plantDetail.plant.age_years" v-text="computePlantAge(plantDetail.plant)"></span>
                                         <span v-else>-</span>
@@ -6758,6 +8136,9 @@
                             <div class="d-grid gap-2">
                                 <button class="btn btn-primary" @click="openModal('observation', { plantId: currentPlant })">
                                     <i class="fas fa-plus me-2"></i>Nouvelle observation
+                                </button>
+                                <button class="btn btn-outline-info" @click="openActionForm()">
+                                    <i class="fas fa-tools me-2"></i>Nouvelle action
                                 </button>
                                 <button class="btn btn-success" @click="openModal('photo', { plantId: currentPlant })">
                                     <i class="fas fa-camera me-2"></i>Ajouter photo
@@ -6811,10 +8192,183 @@
                             Aucune observation
                         </div>
                     </div>
+
+                    <!-- Actions / Interventions -->
+                    <div class="card mt-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-tools me-2"></i>Actions
+                                <span class="badge bg-info ms-1" v-text="plantDetail.actions.length"></span>
+                            </h6>
+                            <div class="d-flex gap-1">
+                                <button v-if="plantDetail.actions.length > 1"
+                                        class="btn btn-sm btn-outline-secondary py-0"
+                                        @click="plantDetail.actionSortAsc = !plantDetail.actionSortAsc"
+                                        :title="plantDetail.actionSortAsc ? 'Plus anciennes en premier' : 'Plus récentes en premier'">
+                                    <i class="fas" :class="plantDetail.actionSortAsc ? 'fa-sort-amount-up' : 'fa-sort-amount-down'"></i>
+                                </button>
+                                <button v-if="user.isAuthenticated" class="btn btn-sm btn-info py-0 text-white"
+                                        @click="openActionForm()" title="Ajouter une action">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Filters (only if there are actions) -->
+                        <div v-if="plantDetail.actions.length > 2" class="card-body py-2 border-bottom">
+                            <div class="row g-2">
+                                <div class="col-7">
+                                    <input type="text" class="form-control form-control-sm" placeholder="Rechercher..."
+                                           v-model="plantDetail.actionFilterQ">
+                                </div>
+                                <div class="col-5">
+                                    <select class="form-select form-select-sm" v-model="plantDetail.actionFilterType">
+                                        <option value="">Tous types</option>
+                                        <option v-for="t in plantActionTypes" :key="t.id" :value="t.id" v-text="t.name"></option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;"
+                             v-if="filteredPlantActions.length > 0">
+                            <div v-for="action in filteredPlantActions" :key="action.id"
+                                 class="list-group-item py-2 px-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                            <span class="badge" :class="action.action_type?.color || 'bg-secondary'">
+                                                <i v-if="action.action_type?.icon" :class="'fas ' + action.action_type.icon" class="me-1"></i>
+                                                <span v-text="action.action_type?.name || 'Action'"></span>
+                                            </span>
+                                            <small class="text-muted" v-text="formatDate(action.action_date)"></small>
+                                        </div>
+                                        <div v-if="action.title" class="fw-bold small" v-text="action.title"></div>
+                                        <small v-if="action.product_name" class="text-muted d-block">
+                                            <i class="fas fa-flask me-1"></i><span v-text="action.product_name"></span>
+                                            <span v-if="action.quantity"> — <span v-text="action.quantity"></span> <span v-text="action.unit || ''"></span></span>
+                                        </small>
+                                        <small v-if="action.notes" class="text-muted d-block">
+                                            <span v-text="action.notes.length > 60 ? action.notes.substring(0, 60) + '...' : action.notes"></span>
+                                        </small>
+                                        <small v-if="action.performer?.name || action.performer_name" class="text-muted d-block">
+                                            <i class="fas fa-user me-1"></i><span v-text="action.performer?.name || action.performer_name"></span>
+                                        </small>
+                                    </div>
+                                    <div v-if="user.isAuthenticated && (user.id === plantDetail.plant.owner?.id || user.isStaff)"
+                                         class="d-flex flex-column gap-1 ms-2">
+                                        <button class="btn btn-sm btn-outline-secondary py-0 px-1" @click="openActionForm(action)" title="Modifier">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger py-0 px-1" @click="deleteAction(action.id)" title="Supprimer">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="card-body text-muted text-center">
+                            <i class="fas fa-tools fa-2x mb-2"></i><br>
+                            Aucune action enregistrée
+                            <div v-if="user.isAuthenticated" class="mt-2">
+                                <button class="btn btn-sm btn-info text-white" @click="openActionForm()">
+                                    <i class="fas fa-plus me-1"></i>Ajouter la première action
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        
+
+        <!-- Action Form Modal -->
+        <div class="modal fade" :class="{show: actionForm.show}" v-if="actionForm.show"
+             tabindex="-1" style="display: block; background: rgba(0,0,0,0.5);">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-tools me-2"></i>
+                            <span v-text="actionForm.editing ? 'Modifier l\'action' : 'Nouvelle action'"></span>
+                        </h5>
+                        <button type="button" class="btn-close" @click="closeActionForm()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div v-if="actionForm.error" class="alert alert-danger" v-text="actionForm.error"></div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Type d'action <span class="text-danger">*</span></label>
+                                <select class="form-select" v-model="actionForm.data.action_type_id" required>
+                                    <option value="">— Choisir —</option>
+                                    <option v-for="t in plantActionTypes" :key="t.id" :value="t.id" v-text="t.name"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Date <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control" v-model="actionForm.data.action_date" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Titre (optionnel)</label>
+                                <input type="text" class="form-control" v-model="actionForm.data.title" placeholder="Ex: Taille de formation">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Notes</label>
+                                <textarea class="form-control" rows="2" v-model="actionForm.data.notes" placeholder="Détails de l'intervention..."></textarea>
+                            </div>
+                            <!-- Détails techniques (collapsed) -->
+                            <div class="col-12">
+                                <a class="text-decoration-none small" data-bs-toggle="collapse" href="#actionDetailsCollapse">
+                                    <i class="fas fa-chevron-down me-1"></i>Détails techniques (produit, dosage, coût...)
+                                </a>
+                                <div class="collapse mt-2" id="actionDetailsCollapse">
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <label class="form-label small">Produit utilisé</label>
+                                            <input type="text" class="form-control form-control-sm" v-model="actionForm.data.product_name">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small">Quantité</label>
+                                            <input type="number" step="0.01" class="form-control form-control-sm" v-model="actionForm.data.quantity">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small">Unité</label>
+                                            <input type="text" class="form-control form-control-sm" v-model="actionForm.data.unit" placeholder="litres, kg...">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small">Dosage</label>
+                                            <input type="text" class="form-control form-control-sm" v-model="actionForm.data.dosage" placeholder="Ex: 5ml/L">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label small">Méthode</label>
+                                            <input type="text" class="form-control form-control-sm" v-model="actionForm.data.method" placeholder="Pulvérisation, manuel...">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small">Coût (€)</label>
+                                            <input type="number" step="0.01" class="form-control form-control-sm" v-model="actionForm.data.cost">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small">Conditions météo</label>
+                                            <input type="text" class="form-control form-control-sm" v-model="actionForm.data.weather_conditions" placeholder="Ensoleillé, pluie...">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small">Réalisé par</label>
+                                            <input type="text" class="form-control form-control-sm" v-model="actionForm.data.performer_name" placeholder="Nom (si pas de compte)">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @click="closeActionForm()">Annuler</button>
+                        <button type="button" class="btn btn-info text-white" @click="saveAction()" :disabled="actionForm.loading || !actionForm.data.action_type_id || !actionForm.data.action_date">
+                            <span v-if="actionForm.loading" class="spinner-border spinner-border-sm me-1"></span>
+                            <i v-else class="fas fa-save me-1"></i>
+                            <span v-text="actionForm.editing ? 'Mettre à jour' : 'Enregistrer'"></span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Loading Plant Detail -->
         <div v-if="currentView === 'plant-detail' && plantDetail.loading" class="container-fluid px-4">
             <div class="row justify-content-center">
