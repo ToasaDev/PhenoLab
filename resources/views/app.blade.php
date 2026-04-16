@@ -3770,9 +3770,33 @@
                                                 <option value="fodder">Fourrage</option>
                                             </select>
                                         </div>
-                                        <div class="col-md-3 col-sm-6">
-                                            <label class="form-label small text-muted mb-1"><i class="fas fa-thermometer-half me-1"></i>Zone USDA</label>
-                                            <input type="text" class="form-control form-control-sm" v-model="searchPage.filters.cult_usda_zone" placeholder="ex: 7-9" @change="performSearchPageSearch()">
+                                        <div class="col-md-6 col-sm-12">
+                                            <label class="form-label small text-muted mb-1"><i class="fas fa-thermometer-half me-1"></i>Température min. supportée (°C)</label>
+                                            <div class="d-flex gap-2 align-items-center">
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text">&ge;</span>
+                                                    <input type="number" class="form-control" v-model="searchPage.filters.cult_temp_min" placeholder="-20" step="1" min="-60" max="60" @change="performSearchPageSearch()">
+                                                    <span class="input-group-text">°C</span>
+                                                </div>
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text">&le;</span>
+                                                    <input type="number" class="form-control" v-model="searchPage.filters.cult_temp_max" placeholder="5" step="1" min="-60" max="60" @change="performSearchPageSearch()">
+                                                    <span class="input-group-text">°C</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 col-sm-12">
+                                            <label class="form-label small text-muted mb-1"><i class="fas fa-globe-americas me-1"></i>Zone USDA (1-13)</label>
+                                            <div class="d-flex gap-2 align-items-center">
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text">&ge;</span>
+                                                    <input type="number" class="form-control" v-model="searchPage.filters.cult_usda_zone_min" placeholder="5" min="1" max="13" step="1" @change="performSearchPageSearch()">
+                                                </div>
+                                                <div class="input-group input-group-sm">
+                                                    <span class="input-group-text">&le;</span>
+                                                    <input type="number" class="form-control" v-model="searchPage.filters.cult_usda_zone_max" placeholder="10" min="1" max="13" step="1" @change="performSearchPageSearch()">
+                                                </div>
+                                            </div>
                                         </div>
                                         <div class="col-md-3 col-sm-6 d-flex align-items-end">
                                             <div class="d-flex flex-column gap-1 w-100">
@@ -3955,6 +3979,11 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link" :class="{ active: admin.activeTab === 'action_types' }" href="#" @click.prevent="admin.activeTab = 'action_types'; loadActionTypes()">
+                        <i class="fas fa-tools me-1"></i>Types d'actions
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" :class="{ active: admin.activeTab === 'gbif' }" href="#" @click.prevent="admin.activeTab = 'gbif'">
                         <i class="fas fa-globe me-1"></i>Taxons / GBIF
                     </a>
@@ -4061,6 +4090,9 @@
                         </button>
                         <button class="btn btn-outline-warning" @click="seedStages()" :disabled="admin.loading">
                             <i class="fas fa-leaf me-1"></i>Charger stades BBCH par défaut
+                        </button>
+                        <button class="btn btn-outline-info" @click="seedActionTypes()" :disabled="admin.loading">
+                            <i class="fas fa-tools me-1"></i>Charger types d'actions par défaut
                         </button>
                         <a href="/admin" target="_blank" class="btn btn-outline-secondary">
                             <i class="fas fa-shield-alt me-1"></i>Ouvrir Filament Admin
@@ -4367,6 +4399,160 @@
                                 </tr>
                                 <tr v-if="admin.stages.length === 0">
                                     <td colspan="7" class="text-center text-muted py-4">Aucun stade. Cliquez sur "Charger BBCH par défaut" pour commencer.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Action Types Tab ── -->
+            <div v-if="admin.activeTab === 'action_types' && !admin.loading">
+                <!-- Add / Edit form -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-info text-white">
+                        <i class="fas fa-tools me-2"></i>
+                        <span v-text="admin.editingActionType ? 'Modifier le type d\'action' : 'Ajouter un type d\'action'"></span>
+                    </div>
+                    <div class="card-body">
+                        <form @submit.prevent="submitActionType">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Nom *</label>
+                                    <input v-model="admin.newActionType.name" type="text" class="form-control" required maxlength="100" placeholder="Ex: Taille">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Slug</label>
+                                    <input v-model="admin.newActionType.slug" type="text" class="form-control" maxlength="120" placeholder="Auto si vide">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Catégorie *</label>
+                                    <select v-model="admin.newActionType.category" class="form-select" required>
+                                        <option value="maintenance">Entretien</option>
+                                        <option value="treatment">Traitement</option>
+                                        <option value="fertilization">Fertilisation</option>
+                                        <option value="irrigation">Irrigation</option>
+                                        <option value="harvest">Récolte</option>
+                                        <option value="planting">Plantation</option>
+                                        <option value="protection">Protection</option>
+                                        <option value="other">Autre</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">S'applique à</label>
+                                    <select v-model="admin.newActionType.applies_to" class="form-select">
+                                        <option value="all">Tous</option>
+                                        <option value="tree">Arbres</option>
+                                        <option value="shrub">Arbustes</option>
+                                        <option value="vegetable">Potager</option>
+                                        <option value="orchard">Verger</option>
+                                        <option value="ornamental">Ornementales</option>
+                                        <option value="crop">Cultures</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Ordre</label>
+                                    <input v-model.number="admin.newActionType.sort_order" type="number" min="0" class="form-control">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Icône (FA)</label>
+                                    <input v-model="admin.newActionType.icon" type="text" class="form-control" placeholder="fa-cut">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Couleur</label>
+                                    <select v-model="admin.newActionType.color" class="form-select">
+                                        <option value="bg-primary">Bleu</option>
+                                        <option value="bg-success">Vert</option>
+                                        <option value="bg-warning">Jaune</option>
+                                        <option value="bg-danger">Rouge</option>
+                                        <option value="bg-info">Cyan</option>
+                                        <option value="bg-secondary">Gris</option>
+                                        <option value="bg-dark">Sombre</option>
+                                        <option value="bg-light">Clair</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Description</label>
+                                    <input v-model="admin.newActionType.description" type="text" class="form-control" maxlength="500" placeholder="Description optionnelle...">
+                                </div>
+                                <div class="col-md-2 d-flex align-items-end">
+                                    <div class="form-check">
+                                        <input v-model="admin.newActionType.is_active" type="checkbox" class="form-check-input" id="actionTypeActive">
+                                        <label class="form-check-label" for="actionTypeActive">Actif</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 d-flex gap-2">
+                                <button type="submit" class="btn btn-info text-white">
+                                    <i class="fas fa-save me-1"></i>
+                                    <span v-text="admin.editingActionType ? 'Mettre à jour' : 'Créer'"></span>
+                                </button>
+                                <button v-if="admin.editingActionType" type="button" class="btn btn-outline-secondary" @click="resetActionTypeForm">
+                                    <i class="fas fa-times me-1"></i>Annuler
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Action types list -->
+                <div class="card shadow-sm">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-list me-2"></i>Types d'actions (<span v-text="admin.actionTypes.length"></span>)</span>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-sm btn-outline-info" @click="seedActionTypes" :disabled="admin.loading">
+                                <i class="fas fa-magic me-1"></i>Charger par défaut
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" @click="loadActionTypes">
+                                <i class="fas fa-sync-alt me-1"></i>Recharger
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nom</th>
+                                    <th>Catégorie</th>
+                                    <th>Icône</th>
+                                    <th>S'applique à</th>
+                                    <th>Actions liées</th>
+                                    <th>Ordre</th>
+                                    <th>Actif</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="at in admin.actionTypes" :key="at.id" :class="{ 'table-secondary': !at.is_active }">
+                                    <td>
+                                        <span :class="at.color + ' badge me-1'" v-if="at.icon"><i :class="'fas ' + at.icon"></i></span>
+                                        <span v-text="at.name"></span>
+                                        <br v-if="at.description"><small v-if="at.description" class="text-muted" v-text="at.description"></small>
+                                    </td>
+                                    <td><span class="badge bg-outline-secondary border" v-text="at.category"></span></td>
+                                    <td><code v-text="at.icon"></code></td>
+                                    <td v-text="at.applies_to"></td>
+                                    <td><span class="badge bg-secondary" v-text="at.actions_count || 0"></span></td>
+                                    <td v-text="at.sort_order"></td>
+                                    <td>
+                                        <i class="fas" :class="at.is_active ? 'fa-check text-success' : 'fa-times text-danger'"></i>
+                                    </td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-primary me-1" @click="editActionType(at)">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" @click="deleteActionType(at)" :disabled="at.actions_count > 0" :title="at.actions_count > 0 ? 'Utilisé par des actions' : 'Supprimer'">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr v-if="admin.actionTypes.length === 0">
+                                    <td colspan="8" class="text-center text-muted py-4">
+                                        Aucun type d'action.
+                                        <button class="btn btn-sm btn-info ms-2" @click="seedActionTypes">
+                                            <i class="fas fa-magic me-1"></i>Charger par défaut
+                                        </button>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>

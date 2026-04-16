@@ -103,6 +103,10 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     // ── Plant Action Types ──────────────────────────────
     Route::get('plant-action-types', [PlantActionTypeController::class, 'index']);
     Route::get('plant-action-types/by-category', [PlantActionTypeController::class, 'byCategory']);
+    Route::get('plant-action-types/admin', [PlantActionTypeController::class, 'adminIndex'])->middleware(['auth:sanctum', 'staff']);
+    Route::post('plant-action-types', [PlantActionTypeController::class, 'store'])->middleware(['auth:sanctum', 'staff']);
+    Route::put('plant-action-types/{plantActionType}', [PlantActionTypeController::class, 'update'])->middleware(['auth:sanctum', 'staff']);
+    Route::delete('plant-action-types/{plantActionType}', [PlantActionTypeController::class, 'destroy'])->middleware(['auth:sanctum', 'staff']);
 
     // ── Plant Actions ───────────────────────────────────
     Route::get('plant-actions/years-available', [PlantActionController::class, 'yearsAvailable']);
@@ -162,6 +166,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::post('import-tela', [AdminController::class, 'importTelaCsv']);
         Route::post('seed-stages', [AdminController::class, 'seedPhenologicalStages']);
         Route::post('seed-categories', [AdminController::class, 'seedCategories']);
+        Route::post('seed-action-types', [AdminController::class, 'seedActionTypes']);
     });
 
     // ── Export ───────────────────────────────────────────

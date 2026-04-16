@@ -789,7 +789,10 @@ createApp({
                     cult_soil_type: '',
                     cult_soil_drainage: '',
                     cult_usage_type: '',
-                    cult_usda_zone: '',
+                    cult_usda_zone_min: '',
+                    cult_usda_zone_max: '',
+                    cult_temp_min: '',
+                    cult_temp_max: '',
                     cult_is_edible: false,
                     cult_is_toxic: false,
                 },
@@ -811,6 +814,10 @@ createApp({
                 stages: [],
                 newStage: { stage_code: '', stage_description: '', main_event_code: 1, main_event_description: '', phenological_scale: 'BBCH Tela Botanica' },
                 editingStage: null,
+                // Action Types
+                actionTypes: [],
+                newActionType: { name: '', slug: '', description: '', category: 'maintenance', icon: '', color: 'bg-secondary', applies_to: 'all', is_active: true, sort_order: 0 },
+                editingActionType: null,
                 // Taxons GBIF
                 gbifSync: { mode: 'backbone_match', query: '', limit: 20, strict: false, fetchVernacular: true },
                 gbifResults: null,
@@ -1692,7 +1699,9 @@ createApp({
             const f = this.searchPage.filters;
             return !!(f.cult_exposure || f.cult_difficulty || f.cult_watering ||
                 f.cult_soil_type || f.cult_soil_drainage || f.cult_usage_type ||
-                f.cult_usda_zone || f.cult_is_edible || f.cult_is_toxic);
+                f.cult_usda_zone_min || f.cult_usda_zone_max ||
+                f.cult_temp_min !== '' || f.cult_temp_max !== '' ||
+                f.cult_is_edible || f.cult_is_toxic);
         },
 
         // Reset cultivation filters
@@ -1704,7 +1713,10 @@ createApp({
             f.cult_soil_type = '';
             f.cult_soil_drainage = '';
             f.cult_usage_type = '';
-            f.cult_usda_zone = '';
+            f.cult_usda_zone_min = '';
+            f.cult_usda_zone_max = '';
+            f.cult_temp_min = '';
+            f.cult_temp_max = '';
             f.cult_is_edible = false;
             f.cult_is_toxic = false;
         },
@@ -1749,9 +1761,13 @@ createApp({
                     cult_soil_type: this.searchPage.filters.cult_soil_type,
                     cult_soil_drainage: this.searchPage.filters.cult_soil_drainage,
                     cult_usage_type: this.searchPage.filters.cult_usage_type,
-                    cult_usda_zone: this.searchPage.filters.cult_usda_zone,
                 };
                 Object.entries(cultMap).forEach(([k, v]) => { if (v) params[k] = v; });
+                // Range filters
+                if (this.searchPage.filters.cult_usda_zone_min !== '') params.cult_usda_zone_min = this.searchPage.filters.cult_usda_zone_min;
+                if (this.searchPage.filters.cult_usda_zone_max !== '') params.cult_usda_zone_max = this.searchPage.filters.cult_usda_zone_max;
+                if (this.searchPage.filters.cult_temp_min !== '') params.cult_temp_min = this.searchPage.filters.cult_temp_min;
+                if (this.searchPage.filters.cult_temp_max !== '') params.cult_temp_max = this.searchPage.filters.cult_temp_max;
                 if (this.searchPage.filters.cult_is_edible) params.cult_is_edible = 1;
                 if (this.searchPage.filters.cult_is_toxic) params.cult_is_toxic = 1;
 
@@ -7728,6 +7744,94 @@ createApp({
                 this.loadAdminDashboard();
             } catch (e) {
                 this.setAdminMessage(e.response?.data?.message || 'Erreur', 'danger');
+            }
+            this.admin.loading = false;
+        },
+
+        // ── Action Types Admin ──
+
+        async loadActionTypes() {
+            this.admin.loading = true;
+            try {
+                const { data } = await axios.get('/api/v1/plant-action-types/admin');
+                this.admin.actionTypes = data;
+            } catch (e) {
+                this.setAdminMessage('Erreur chargement types d\'actions', 'danger');
+            }
+            this.admin.loading = false;
+        },
+
+        async seedActionTypes() {
+            if (!confirm('Charger les 21 types d\'actions par défaut ?')) return;
+            this.admin.loading = true;
+            try {
+                await this.ensureCsrf();
+                const { data } = await axios.post('/api/v1/admin/seed-action-types');
+                this.setAdminMessage(data.message || 'Types d\'actions chargés', 'success');
+                this.loadActionTypes();
+                this.loadAdminDashboard();
+            } catch (e) {
+                this.setAdminMessage(e.response?.data?.message || 'Erreur', 'danger');
+            }
+            this.admin.loading = false;
+        },
+
+        resetActionTypeForm() {
+            this.admin.newActionType = { name: '', slug: '', description: '', category: 'maintenance', icon: '', color: 'bg-secondary', applies_to: 'all', is_active: true, sort_order: 0 };
+            this.admin.editingActionType = null;
+        },
+
+        editActionType(type) {
+            this.admin.editingActionType = type.id;
+            this.admin.newActionType = {
+                name: type.name,
+                slug: type.slug || '',
+                description: type.description || '',
+                category: type.category,
+                icon: type.icon || '',
+                color: type.color || 'bg-secondary',
+                applies_to: type.applies_to || 'all',
+                is_active: type.is_active !== false,
+                sort_order: type.sort_order || 0,
+            };
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+
+        async submitActionType() {
+            const form = this.admin.newActionType;
+            if (!form.name.trim()) {
+                this.setAdminMessage('Le nom est obligatoire.', 'warning');
+                return;
+            }
+            this.admin.loading = true;
+            try {
+                await this.ensureCsrf();
+                if (this.admin.editingActionType) {
+                    await axios.put('/api/v1/plant-action-types/' + this.admin.editingActionType, form);
+                    this.setAdminMessage('Type d\'action mis à jour.', 'success');
+                } else {
+                    await axios.post('/api/v1/plant-action-types', form);
+                    this.setAdminMessage('Type d\'action créé.', 'success');
+                }
+                this.resetActionTypeForm();
+                this.loadActionTypes();
+            } catch (e) {
+                const msg = e.response?.data?.message || e.response?.data?.errors?.name?.[0] || 'Erreur';
+                this.setAdminMessage(msg, 'danger');
+            }
+            this.admin.loading = false;
+        },
+
+        async deleteActionType(type) {
+            if (!confirm('Supprimer le type "' + type.name + '" ?')) return;
+            this.admin.loading = true;
+            try {
+                await this.ensureCsrf();
+                await axios.delete('/api/v1/plant-action-types/' + type.id);
+                this.setAdminMessage('Type supprimé.', 'success');
+                this.loadActionTypes();
+            } catch (e) {
+                this.setAdminMessage(e.response?.data?.message || 'Erreur lors de la suppression', 'danger');
             }
             this.admin.loading = false;
         },

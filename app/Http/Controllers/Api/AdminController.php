@@ -132,6 +132,36 @@ class AdminController extends Controller
     }
 
     /**
+     * Seed plant action types from the seeder.
+     */
+    public function seedActionTypes(): JsonResponse
+    {
+        if (! Auth::user()->is_staff) {
+            return response()->json(['detail' => 'Acces reserve au personnel.'], 403);
+        }
+
+        try {
+            Artisan::call('db:seed', [
+                '--class' => 'PlantActionTypeSeeder',
+                '--force' => true,
+            ]);
+
+            $count = DB::table('plant_action_types')->count();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Types d'actions synchronisés. {$count} types en base.",
+                'count'   => $count,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Seed categories from the seeder.
      */
     public function seedCategories(): JsonResponse

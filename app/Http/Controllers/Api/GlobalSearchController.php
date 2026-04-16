@@ -27,7 +27,10 @@ class GlobalSearchController extends Controller
             'cult_soil_type'     => ['nullable', 'string', 'max:30'],
             'cult_soil_drainage' => ['nullable', 'string', 'max:30'],
             'cult_usage_type'    => ['nullable', 'string', 'max:30'],
-            'cult_usda_zone'     => ['nullable', 'string', 'max:20'],
+            'cult_usda_zone_min' => ['nullable', 'integer', 'min:1', 'max:13'],
+            'cult_usda_zone_max' => ['nullable', 'integer', 'min:1', 'max:13'],
+            'cult_temp_min'      => ['nullable', 'numeric', 'min:-60', 'max:60'],
+            'cult_temp_max'      => ['nullable', 'numeric', 'min:-60', 'max:60'],
             'cult_is_edible'     => ['nullable', 'boolean'],
             'cult_is_toxic'      => ['nullable', 'boolean'],
         ]);
@@ -46,7 +49,6 @@ class GlobalSearchController extends Controller
             'cultivation_difficulty'=> $request->query('cult_difficulty'),
             'watering_needs'        => $request->query('cult_watering'),
             'soil_drainage'         => $request->query('cult_soil_drainage'),
-            'usda_zone'             => $request->query('cult_usda_zone'),
         ], fn ($v) => $v !== null && $v !== '');
         $cultJsonAny = array_filter([
             'soil_types'  => $request->query('cult_soil_type'),
@@ -56,7 +58,14 @@ class GlobalSearchController extends Controller
         if ($request->filled('cult_is_edible')) $cultBool['is_edible'] = $request->boolean('cult_is_edible');
         if ($request->filled('cult_is_toxic'))  $cultBool['is_toxic']  = $request->boolean('cult_is_toxic');
 
-        $hasCultivationFilter = !empty($cultFilters) || !empty($cultJsonAny) || !empty($cultBool);
+        // Range filters
+        $cultRanges = [];
+        if ($request->filled('cult_temp_min'))      $cultRanges['temp_min']      = (float) $request->query('cult_temp_min');
+        if ($request->filled('cult_temp_max'))      $cultRanges['temp_max']      = (float) $request->query('cult_temp_max');
+        if ($request->filled('cult_usda_zone_min')) $cultRanges['usda_zone_min'] = (int) $request->query('cult_usda_zone_min');
+        if ($request->filled('cult_usda_zone_max')) $cultRanges['usda_zone_max'] = (int) $request->query('cult_usda_zone_max');
+
+        $hasCultivationFilter = !empty($cultFilters) || !empty($cultJsonAny) || !empty($cultBool) || !empty($cultRanges);
 
         // Require either a query or at least one cultivation filter
         if ($rawQ === '' && !$hasCultivationFilter) {
@@ -101,7 +110,7 @@ class GlobalSearchController extends Controller
 
             // Cultivation profile filters
             if ($hasCultivationFilter) {
-                $plantQuery->whereHas('cultivationProfile', function ($cp) use ($cultFilters, $cultJsonAny, $cultBool) {
+                $plantQuery->whereHas('cultivationProfile', function ($cp) use ($cultFilters, $cultJsonAny, $cultBool, $cultRanges) {
                     foreach ($cultFilters as $col => $val) {
                         $cp->where($col, $val);
                     }
@@ -111,6 +120,26 @@ class GlobalSearchController extends Controller
                     }
                     foreach ($cultBool as $col => $val) {
                         $cp->where($col, $val);
+                    }
+                    // Temperature range: hardiness_min is stored as string (e.g. "-15")
+                    // Cast to numeric for comparison
+                    if (isset($cultRanges['temp_min'])) {
+                        $cp->whereNotNull('hardiness_min')
+                           ->whereRaw('CAST(hardiness_min AS REAL) >= ?', [$cultRanges['temp_min']]);
+                    }
+                    if (isset($cultRanges['temp_max'])) {
+                        $cp->whereNotNull('hardiness_min')
+                           ->whereRaw('CAST(hardiness_min AS REAL) <= ?', [$cultRanges['temp_max']]);
+                    }
+                    // USDA zone range: usda_zone stored as string (e.g. "7a", "8", "7-9")
+                    // Extract leading numeric part for comparison
+                    if (isset($cultRanges['usda_zone_min'])) {
+                        $cp->whereNotNull('usda_zone')
+                           ->whereRaw('CAST(usda_zone AS INTEGER) >= ?', [$cultRanges['usda_zone_min']]);
+                    }
+                    if (isset($cultRanges['usda_zone_max'])) {
+                        $cp->whereNotNull('usda_zone')
+                           ->whereRaw('CAST(usda_zone AS INTEGER) <= ?', [$cultRanges['usda_zone_max']]);
                     }
                 });
             }
@@ -124,11 +153,13 @@ class GlobalSearchController extends Controller
                 'site_name'     => $p->site->name ?? null,
                 'status'        => $p->status,
                 'cultivation'   => $p->cultivationProfile ? [
-                    'exposure'   => $p->cultivationProfile->exposure,
-                    'watering'   => $p->cultivationProfile->watering_needs,
-                    'difficulty' => $p->cultivationProfile->cultivation_difficulty,
-                    'is_edible'  => $p->cultivationProfile->is_edible,
-                    'is_toxic'   => $p->cultivationProfile->is_toxic,
+                    'exposure'      => $p->cultivationProfile->exposure,
+                    'watering'      => $p->cultivationProfile->watering_needs,
+                    'difficulty'    => $p->cultivationProfile->cultivation_difficulty,
+                    'hardiness_min' => $p->cultivationProfile->hardiness_min,
+                    'usda_zone'     => $p->cultivationProfile->usda_zone,
+                    'is_edible'     => $p->cultivationProfile->is_edible,
+                    'is_toxic'      => $p->cultivationProfile->is_toxic,
                 ] : null,
             ]);
         }
