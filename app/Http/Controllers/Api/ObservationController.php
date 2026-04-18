@@ -36,6 +36,12 @@ class ObservationController extends Controller
             if ($user !== null) {
                 $visible->orWhere('observer_id', $user->id)
                     ->orWhereHas('plant', fn (Builder $plant) => $plant->where('owner_id', $user->id));
+
+                // Include observations on group-shared plants
+                $groupIds = $user->groupIds();
+                if (!empty($groupIds)) {
+                    $visible->orWhereHas('plant', fn (Builder $plant) => $plant->whereIn('group_id', $groupIds));
+                }
             }
         });
     }
@@ -175,7 +181,11 @@ class ObservationController extends Controller
 
         $plant = Plant::with('site:id,owner_id')->findOrFail($data['plant_id']);
 
-        if (! Auth::user()?->is_staff && (int) $plant->owner_id !== (int) Auth::id()) {
+        $user = Auth::user();
+        $canObserve = $user->is_staff
+            || (int) $plant->owner_id === (int) $user->id
+            || ($plant->group_id && in_array($plant->group_id, $user->groupIds()));
+        if (! $canObserve) {
             return response()->json(['detail' => 'Non autorise.'], 403);
         }
 

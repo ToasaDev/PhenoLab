@@ -20,8 +20,13 @@ class SiteController extends Controller
     private function canManageSite(Site $site): bool
     {
         $user = Auth::user();
+        if ($user === null) return false;
+        if ($user->is_staff) return true;
+        if ($site->owner_id === $user->id) return true;
+        // Group members can manage shared sites
+        if ($site->group_id && in_array($site->group_id, $user->groupIds())) return true;
 
-        return $user !== null && ($user->is_staff || $site->owner_id === $user->id);
+        return false;
     }
 
     private function visibleSitesQuery(): Builder
@@ -38,6 +43,11 @@ class SiteController extends Controller
 
             if ($user !== null) {
                 $visible->orWhere('owner_id', $user->id);
+                // Include sites shared with user's groups
+                $groupIds = $user->groupIds();
+                if (!empty($groupIds)) {
+                    $visible->orWhereIn('group_id', $groupIds);
+                }
             }
         });
     }
@@ -146,7 +156,16 @@ class SiteController extends Controller
             'climate_zone'      => ['nullable', 'string', 'max:50'],
             'plan_width_meters' => ['nullable', 'numeric'],
             'plan_height_meters'=> ['nullable', 'numeric'],
+            'group_id'          => ['nullable', 'exists:user_groups,id'],
         ]);
+
+        // Verify user belongs to the group if specified
+        if (!empty($data['group_id'])) {
+            $groupIds = Auth::user()->groupIds();
+            if (!in_array((int) $data['group_id'], $groupIds) && !Auth::user()->is_staff) {
+                return response()->json(['message' => 'Vous ne faites pas partie de ce groupe.'], 403);
+            }
+        }
 
         $data['owner_id'] = Auth::id();
 
@@ -275,7 +294,15 @@ class SiteController extends Controller
      */
     public function mySites(): JsonResponse
     {
-        $sites = Site::where('owner_id', Auth::id())
+        $userId = Auth::id();
+        $groupIds = Auth::user()->groupIds();
+
+        $sites = Site::where(function ($q) use ($userId, $groupIds) {
+                $q->where('owner_id', $userId);
+                if (!empty($groupIds)) {
+                    $q->orWhereIn('group_id', $groupIds);
+                }
+            })
             ->withCount('plants')
             ->orderBy('name')
             ->get();

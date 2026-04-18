@@ -5,6 +5,7 @@ namespace App\Models;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -95,5 +96,31 @@ class User extends Authenticatable implements FilamentUser
     public function plantPositions(): HasMany
     {
         return $this->hasMany(PlantPosition::class, 'owner_id');
+    }
+
+    // ── Groups ──────────────────────────────────────────────────────
+
+    public function groups(): BelongsToMany
+    {
+        return $this->belongsToMany(UserGroup::class, 'user_group_memberships', 'user_id', 'group_id')
+                    ->withPivot('role', 'created_at');
+    }
+
+    public function userGroups(): BelongsToMany
+    {
+        return $this->groups();
+    }
+
+    public function ownedGroups(): HasMany
+    {
+        return $this->hasMany(UserGroup::class, 'owner_id');
+    }
+
+    /**
+     * Get all group IDs this user belongs to (cached per request).
+     */
+    public function groupIds(): array
+    {
+        return $this->groups()->pluck('user_groups.id')->all();
     }
 }

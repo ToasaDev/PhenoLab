@@ -132,6 +132,16 @@ class AuthController extends Controller
 
         $user = Auth::user();
 
+        $groups = $user->groups()
+            ->select('user_groups.id', 'user_groups.name', 'user_groups.slug')
+            ->get()
+            ->map(fn ($g) => [
+                'id'   => $g->id,
+                'name' => $g->name,
+                'slug' => $g->slug,
+                'role' => $g->pivot->role,
+            ]);
+
         return response()->json([
             'success' => true,
             'authenticated' => true,
@@ -139,11 +149,12 @@ class AuthController extends Controller
             'message' => 'Connexion réussie.',
             'csrfToken' => csrf_token(),
             'user' => [
-                'id' => $user->id,
-                'username' => $user->name,
-                'email' => $user->email,
-                'is_staff' => $user->is_staff ?? false,
+                'id'           => $user->id,
+                'username'     => $user->name,
+                'email'        => $user->email,
+                'is_staff'     => $user->is_staff ?? false,
                 'is_superuser' => $user->is_superuser ?? false,
+                'groups'       => $groups,
             ],
         ]);
     }
@@ -180,15 +191,26 @@ class AuthController extends Controller
 
         $user = Auth::user();
 
+        $groups = $user->groups()
+            ->select('user_groups.id', 'user_groups.name', 'user_groups.slug')
+            ->get()
+            ->map(fn ($g) => [
+                'id'   => $g->id,
+                'name' => $g->name,
+                'slug' => $g->slug,
+                'role' => $g->pivot->role,
+            ]);
+
         return response()->json([
             'authenticated' => true,
             'isAuthenticated' => true,
             'user' => [
-                'id'       => $user->id,
-                'username' => $user->name,
-                'email'    => $user->email,
-                'is_staff' => $user->is_staff ?? false,
+                'id'           => $user->id,
+                'username'     => $user->name,
+                'email'        => $user->email,
+                'is_staff'     => $user->is_staff ?? false,
                 'is_superuser' => $user->is_superuser ?? false,
+                'groups'       => $groups,
             ],
         ]);
     }

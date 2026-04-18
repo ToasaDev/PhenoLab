@@ -210,6 +210,42 @@
             .map-stat-card .card-text { font-size: 0.75rem; }
         }
 
+        /* Navbar dropdowns — ensure readability on hover */
+        .navbar .dropdown-menu {
+            background: #fff;
+        }
+        .navbar .dropdown-menu .dropdown-item {
+            color: #212529;
+        }
+        .navbar .dropdown-menu .dropdown-item:hover,
+        .navbar .dropdown-menu .dropdown-item:focus {
+            color: #1e2125;
+            background-color: #e9ecef;
+        }
+        .navbar .dropdown-menu .dropdown-item.text-danger:hover {
+            color: #b02a37;
+            background-color: #f8d7da;
+        }
+        .navbar .dropdown-menu .dropdown-header {
+            color: #6c757d;
+        }
+        .navbar .dropdown-menu .dropdown-item-text {
+            color: #212529;
+        }
+
+        /* Hide Bootstrap dropdown caret when not needed */
+        .caret-off::after {
+            display: none !important;
+        }
+
+        /* Navbar visual separator between nav groups */
+        .nav-separator {
+            width: 1px;
+            height: 20px;
+            background: rgba(255,255,255,0.3);
+            margin: auto 0.4rem;
+        }
+
         /* Navbar action buttons — clean & uniform */
         .navbar-actions .nav-link {
             display: flex;
@@ -339,17 +375,17 @@
                                 <i class="fas fa-chart-line me-1"></i>Analyses
                             </a>
                         </li>
-                    </ul>
 
-                    <!-- Action Buttons -->
-                    <ul class="navbar-nav ms-auto navbar-actions">
-                        <!-- Create new (+ button) -->
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Créer">
-                                <i class="fas fa-circle-plus me-1"></i><span class="nav-action-label">Créer</span>
+                        <!-- Visual separator before Créer -->
+                        <li class="d-none d-lg-flex" v-if="user.isAuthenticated"><div class="nav-separator"></div></li>
+
+                        <!-- Create new — only when authenticated -->
+                        <li class="nav-item dropdown" v-if="user.isAuthenticated">
+                            <a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Créer">
+                                <i class="fas fa-plus-circle me-1"></i>Créer
                             </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><h6 class="dropdown-header">Creer</h6></li>
+                            <ul class="dropdown-menu">
+                                <li><h6 class="dropdown-header">Créer</h6></li>
                                 <li><a class="dropdown-item" href="#" @click.prevent="openModal('site')">
                                     <i class="fas fa-map-marker-alt me-2 text-primary"></i>Site
                                 </a></li>
@@ -379,33 +415,13 @@
                         <!-- Search -->
                         <li class="nav-item">
                             <a class="nav-link" href="#search" @click="currentView = 'search'" :class="{active: currentView === 'search'}" aria-label="Rechercher">
-                                <i class="fas fa-search"></i><span class="nav-action-label ms-1">Recherche</span>
+                                <i class="fas fa-search me-1"></i>Recherche
                             </a>
                         </li>
+                    </ul>
 
-                        <!-- More (tools + admin) -->
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Plus">
-                                <i class="fas fa-ellipsis-h"></i><span class="nav-action-label ms-1">Plus</span>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="/observations-ods" target="_blank">
-                                    <i class="fas fa-database me-2 text-info"></i>Donnees ODS
-                                    <i class="fas fa-external-link-alt ms-1 text-muted" style="font-size: 0.75em;"></i>
-                                </a></li>
-                                <li v-if="user.isStaff || user.isSuperuser"><hr class="dropdown-divider"></li>
-                                <li v-if="user.isStaff || user.isSuperuser">
-                                    <a class="dropdown-item" href="#admin" @click="currentView = 'admin'">
-                                        <i class="fas fa-cogs me-2 text-secondary"></i>Gestion des donnees
-                                    </a>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="#help" @click="currentView = 'help'">
-                                    <i class="fas fa-question-circle me-2 text-primary"></i>Aide et documentation
-                                </a></li>
-                            </ul>
-                        </li>
-
+                    <!-- Action Buttons -->
+                    <ul class="navbar-nav ms-auto navbar-actions">
                         <!-- User account -->
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Mon compte">
@@ -435,10 +451,23 @@
                                             Connectez-vous pour enregistrer vos donnees
                                         </small>
                                     </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item" href="/observations-ods" target="_blank">
+                                            <i class="fas fa-database me-2 text-info"></i>Donnees ODS
+                                            <i class="fas fa-external-link-alt ms-1 text-muted" style="font-size: 0.75em;"></i>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#help" @click.prevent="currentView = 'help'">
+                                            <i class="fas fa-question-circle me-2 text-primary"></i>Aide
+                                        </a>
+                                    </li>
                                 </template>
 
                                 <!-- Authenticated -->
                                 <template v-if="user.isAuthenticated">
+                                    <!-- Profile -->
                                     <li>
                                         <div class="dropdown-item-text">
                                             <div class="fw-bold" v-text="user.username"></div>
@@ -447,20 +476,56 @@
                                                 <span v-if="user.isStaff" class="badge bg-warning">Staff</span>
                                                 <span v-if="user.isSuperuser" class="badge bg-danger ms-1">Admin</span>
                                             </div>
+                                            <div class="mt-1" v-if="user.groups.length">
+                                                <span v-for="g in user.groups" :key="g.id" class="badge bg-info me-1">
+                                                    <i class="fas fa-users me-1"></i>@{{ g.name }}
+                                                </span>
+                                            </div>
                                         </div>
                                     </li>
+
+                                    <!-- Mon espace -->
                                     <li><hr class="dropdown-divider"></li>
+                                    <li><h6 class="dropdown-header">Mon espace</h6></li>
                                     <li>
-                                        <a class="dropdown-item" href="#" @click.prevent="">
-                                            <i class="fas fa-cog me-2 text-secondary"></i>Parametres
+                                        <a class="dropdown-item" href="#settings" @click.prevent="currentView = 'settings'; loadUserTags();">
+                                            <i class="fas fa-cog me-2 text-secondary"></i>Parametres & tags
                                         </a>
                                     </li>
-                                    <li v-if="user.isStaff">
-                                        <a class="dropdown-item" href="/admin/" target="_blank">
-                                            <i class="fas fa-shield-alt me-2 text-secondary"></i>Administration
+
+                                    <!-- Outils -->
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><h6 class="dropdown-header">Outils</h6></li>
+                                    <li>
+                                        <a class="dropdown-item" href="/observations-ods" target="_blank">
+                                            <i class="fas fa-database me-2 text-info"></i>Donnees ODS
                                             <i class="fas fa-external-link-alt ms-1 text-muted" style="font-size: 0.75em;"></i>
                                         </a>
                                     </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#help" @click.prevent="currentView = 'help'">
+                                            <i class="fas fa-question-circle me-2 text-primary"></i>Aide
+                                        </a>
+                                    </li>
+
+                                    <!-- Administration (staff only) -->
+                                    <template v-if="user.isStaff || user.isSuperuser">
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><h6 class="dropdown-header">Administration</h6></li>
+                                        <li>
+                                            <a class="dropdown-item" href="#admin" @click.prevent="currentView = 'admin'">
+                                                <i class="fas fa-cogs me-2 text-secondary"></i>Gestion des donnees
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="/admin/" target="_blank">
+                                                <i class="fas fa-shield-alt me-2 text-secondary"></i>Panel Filament
+                                                <i class="fas fa-external-link-alt ms-1 text-muted" style="font-size: 0.75em;"></i>
+                                            </a>
+                                        </li>
+                                    </template>
+
+                                    <!-- Déconnexion -->
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
                                         <a class="dropdown-item text-danger" href="#" @click.prevent="logout()">
@@ -553,8 +618,19 @@
                     </div>
                 </div>
 
+                <!-- Anonymous Banner -->
+                <div v-if="!user.isAuthenticated" class="alert alert-info d-flex align-items-center mb-4 shadow-sm" role="alert">
+                    <i class="fas fa-info-circle fa-lg me-3"></i>
+                    <div class="flex-grow-1">
+                        <strong>Mode consultation</strong> — Vous n'êtes pas connecté. La navigation est libre, mais la création et la modification de données sont désactivées.
+                    </div>
+                    <button class="btn btn-sm btn-primary ms-3 text-nowrap" @click="showLoginModal = true">
+                        <i class="fas fa-sign-in-alt me-1"></i>Se connecter
+                    </button>
+                </div>
+
                 <!-- Quick Actions -->
-                <div class="row mb-4">
+                <div class="row mb-4" v-if="user.isAuthenticated">
                     <div class="col-12">
                         <h2 class="h5 mb-3">
                             <i class="fas fa-tasks text-info me-2"></i>
@@ -668,12 +744,16 @@
 
             <!-- Sites View -->
             <div v-if="currentView === 'sites'" class="sites-view">
+                <div v-if="!user.isAuthenticated" class="alert alert-info d-flex align-items-center mb-3" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <span>Mode consultation — <a href="#" @click.prevent="showLoginModal = true" class="alert-link">connectez-vous</a> pour créer ou modifier des sites.</span>
+                </div>
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2">
                     <h1 class="h4 h3-md mb-0">
                         <i class="fas fa-map-marker-alt text-primary me-2"></i>
                         Gestion des Sites
                     </h1>
-                    <button class="btn btn-primary" @click="openModal('site')">
+                    <button class="btn btn-primary" @click="openModal('site')" v-if="user.isAuthenticated">
                         <i class="fas fa-plus me-1"></i>Ajouter un site
                     </button>
                 </div>
@@ -765,7 +845,7 @@
                         <i class="fas fa-map-marker-alt fa-3x text-muted mb-3"></i>
                         <h4>Aucun site trouvé</h4>
                         <p class="text-muted mb-4">Aucun site ne correspond à vos critères de recherche.</p>
-                        <button class="btn btn-primary" @click="openModal('site')">
+                        <button class="btn btn-primary" @click="openModal('site')" v-if="user.isAuthenticated">
                             <i class="fas fa-plus me-1"></i>Ajouter le premier site
                         </button>
                     </div>
@@ -999,7 +1079,7 @@
                         <div class="col-md-4">
                             <div class="d-flex flex-wrap gap-2 justify-content-md-end">
                                 <button class="btn btn-sm btn-outline-secondary" @click="backToSites">
-                                    <i class="fas fa-arrow-left me-1"></i>Retour
+                                    <i class="fas fa-arrow-left me-1"></i><span v-text="siteReturnView === 'search' ? 'Retour à la recherche' : 'Retour'"></span>
                                 </button>
                                 <button class="btn btn-sm btn-success" @click="showSiteMap(siteDetail.site)" title="Carte détaillée avec GPS des plantes">
                                     <i class="fas fa-map-marked-alt me-1"></i>Carte GPS
@@ -1390,6 +1470,10 @@
 
             <!-- Plants View -->
             <div v-if="currentView === 'plants'">
+                <div v-if="!user.isAuthenticated" class="alert alert-info d-flex align-items-center mb-3" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <span>Mode consultation — <a href="#" @click.prevent="showLoginModal = true" class="alert-link">connectez-vous</a> pour ajouter ou modifier des plantes.</span>
+                </div>
                 <!-- Header -->
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2">
                     <div>
@@ -1402,7 +1486,7 @@
                         <button class="btn btn-outline-primary btn-sm" @click="currentView = 'map'" title="Voir sur carte">
                             <i class="fas fa-map me-1"></i>Carte
                         </button>
-                        <button class="btn btn-success" @click="openModal('plant')">
+                        <button class="btn btn-success" @click="openModal('plant')" v-if="user.isAuthenticated">
                             <i class="fas fa-plus me-1"></i>Ajouter
                         </button>
                     </div>
@@ -1517,6 +1601,17 @@
                                     <option :value="null">Toutes</option>
                                     <option :value="true">Avec actions</option>
                                     <option :value="false">Sans actions</option>
+                                </select>
+                            </div>
+
+                            <!-- Tag Filter -->
+                            <div class="col-md-3 col-6" v-if="user.isAuthenticated && userTags.length">
+                                <label class="form-label"><i class="fas fa-tag me-1"></i>Tag</label>
+                                <select v-model="tagFilter" class="form-select" @change="applyPlantsFilters">
+                                    <option value="">Tous</option>
+                                    <option v-for="tag in userTags" :key="tag.id" :value="tag.id">
+                                        @{{ tag.name }} (@{{ tag.plants_count }})
+                                    </option>
                                 </select>
                             </div>
 
@@ -1940,6 +2035,10 @@
 
             <!-- Observations View (FULL IMPLEMENTATION) -->
             <div v-if="currentView === 'observations'" class="container-fluid py-4">
+                <div v-if="!user.isAuthenticated" class="alert alert-info d-flex align-items-center mb-3" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <span>Mode consultation — <a href="#" @click.prevent="showLoginModal = true" class="alert-link">connectez-vous</a> pour enregistrer des observations.</span>
+                </div>
                 <!-- Header -->
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2">
                     <div>
@@ -2251,7 +2350,8 @@
                             <div>
                                 <button class="btn btn-outline-secondary btn-sm mb-2" @click="backToObservations()">
                                     <i class="fas fa-arrow-left me-1"></i>
-                                    <span v-if="observationReturnView === 'plant-detail'">Retour à la plante</span>
+                                    <span v-if="observationReturnView === 'search'">Retour à la recherche</span>
+                                    <span v-else-if="observationReturnView === 'plant-detail'">Retour à la plante</span>
                                     <span v-else>Retour aux observations</span>
                                 </button>
                                 <h2><i class="fas fa-eye me-2 text-info"></i>Détail de l'observation</h2>
@@ -3283,7 +3383,7 @@
                             <div class="col-md-6 d-flex align-items-center">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" v-model="gbifModal.importFamily.acceptedOnly" id="gbifFamilyAccepted">
-                                    <label class="form-check-label" for="gbifFamilyAccepted">Taxons acceptes uniquement</label>
+                                    <label class="form-check-label" for="gbifFamilyAccepted">Taxons acceptés uniquement</label>
                                 </div>
                             </div>
                             <div class="col-md-6 d-flex align-items-center">
@@ -3332,17 +3432,17 @@
                             <h5 class="mb-0"><i class="fas fa-rocket me-2"></i>Premiers pas</h5>
                         </div>
                         <div class="card-body">
-                            <p>PhenoLab est une application de suivi phenologique des plantes. Elle permet de :</p>
+                            <p>PhenoLab est une application de suivi phénologique des plantes. Elle permet de :</p>
                             <ul class="mb-3">
-                                <li>Gerer des <strong>sites</strong> d'observation (jardins, parcs, forets...)</li>
-                                <li>Enregistrer des <strong>plantes</strong> avec leur position GPS precise</li>
-                                <li>Suivre leur evolution avec des <strong>observations</strong> regulieres</li>
+                                <li>Gérer des <strong>sites</strong> d'observation (jardins, parcs, forêts...)</li>
+                                <li>Enregistrer des <strong>plantes</strong> avec leur position GPS précise</li>
+                                <li>Suivre leur évolution avec des <strong>observations</strong> régulières</li>
                                 <li>Documenter visuellement avec des <strong>photos</strong></li>
-                                <li>Analyser les donnees avec des <strong>graphiques</strong> et statistiques</li>
+                                <li>Analyser les données avec des <strong>graphiques</strong> et statistiques</li>
                             </ul>
                             <div class="alert alert-info mb-0">
                                 <i class="fas fa-user-plus me-2"></i>
-                                Connectez-vous pour pouvoir creer et enregistrer vos propres donnees. En mode visiteur, vous pouvez consulter les donnees publiques.
+                                Connectez-vous pour pouvoir créer et enregistrer vos propres données. En mode visiteur, vous pouvez consulter les données publiques.
                             </div>
                         </div>
                     </div>
@@ -3358,7 +3458,7 @@
                                     <tr>
                                         <td class="text-center" style="width:50px"><i class="fas fa-home text-success"></i></td>
                                         <td><strong>Accueil</strong></td>
-                                        <td>Tableau de bord avec les statistiques generales et l'activite recente</td>
+                                        <td>Tableau de bord avec les statistiques générales et l'activité récente</td>
                                     </tr>
                                     <tr>
                                         <td class="text-center"><i class="fas fa-map-marker-alt text-primary"></i></td>
@@ -3368,22 +3468,22 @@
                                     <tr>
                                         <td class="text-center"><i class="fas fa-leaf text-success"></i></td>
                                         <td><strong>Plantes</strong></td>
-                                        <td>Catalogue de toutes les plantes. Filtrez par site, categorie, statut ou sante</td>
+                                        <td>Catalogue de toutes les plantes. Filtrez par site, catégorie, statut ou santé</td>
                                     </tr>
                                     <tr>
                                         <td class="text-center"><i class="fas fa-eye text-info"></i></td>
                                         <td><strong>Observations</strong></td>
-                                        <td>Historique des observations phenologiques avec stades BBCH et photos</td>
+                                        <td>Historique des observations phénologiques avec stades BBCH et photos</td>
                                     </tr>
                                     <tr>
                                         <td class="text-center"><i class="fas fa-globe text-primary"></i></td>
                                         <td><strong>Carte</strong></td>
-                                        <td>Vue geographique de tous les sites et plantes sur fond satellite</td>
+                                        <td>Vue géographique de tous les sites et plantes sur fond satellite</td>
                                     </tr>
                                     <tr>
                                         <td class="text-center"><i class="fas fa-chart-line text-warning"></i></td>
                                         <td><strong>Analyses</strong></td>
-                                        <td>Graphiques interactifs : calendrier phenologique, repartition par espece, evolution mensuelle</td>
+                                        <td>Graphiques interactifs : calendrier phénologique, répartition par espèce, évolution mensuelle</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -3401,7 +3501,7 @@
                                 <div class="accordion-item">
                                     <h2 class="accordion-header">
                                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#helpSites">
-                                            <i class="fas fa-map-marker-alt me-2 text-primary"></i>Creer et gerer un site
+                                            <i class="fas fa-map-marker-alt me-2 text-primary"></i>Créer et gérer un site
                                         </button>
                                     </h2>
                                     <div id="helpSites" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
@@ -3409,8 +3509,8 @@
                                             <ol>
                                                 <li>Cliquez sur <strong>Nouveau &gt; Site</strong> dans la barre de navigation</li>
                                                 <li>Renseignez le nom, la description et le type d'environnement</li>
-                                                <li>Indiquez les coordonnees GPS (latitude/longitude) ou utilisez la geolocalisation automatique</li>
-                                                <li>Un site peut etre <strong>prive</strong> (visible uniquement par vous et les administrateurs)</li>
+                                                <li>Indiquez les coordonnées GPS (latitude/longitude) ou utilisez la géolocalisation automatique</li>
+                                                <li>Un site peut être <strong>privé</strong> (visible uniquement par vous et les administrateurs)</li>
                                             </ol>
                                             <p class="mb-0 text-muted"><i class="fas fa-lightbulb me-1"></i>Depuis la fiche d'un site, vous pouvez voir ses plantes sur une carte satellite et ajouter directement de nouvelles plantes.</p>
                                         </div>
@@ -3427,8 +3527,8 @@
                                         <div class="accordion-body">
                                             <ol>
                                                 <li>Cliquez sur <strong>Nouveau &gt; Plante</strong> ou sur le bouton <strong>Ajouter</strong> depuis un site</li>
-                                                <li>Selectionnez le site, le taxon (nom scientifique) et la categorie</li>
-                                                <li>Precisez la position GPS pour la localiser sur la carte</li>
+                                                <li>Sélectionnez le site, le taxon (nom scientifique) et la catégorie</li>
+                                                <li>Précisez la position GPS pour la localiser sur la carte</li>
                                                 <li>Ajoutez une <strong>photo principale</strong> pour l'identifier facilement dans les listes</li>
                                             </ol>
                                             <p class="text-muted mb-2"><i class="fas fa-lightbulb me-1"></i>Les categories determinent l'icone affichee :</p>
@@ -3453,11 +3553,11 @@
                                         <div class="accordion-body">
                                             <ol>
                                                 <li>Cliquez sur <strong>Nouveau &gt; Observation</strong></li>
-                                                <li>Selectionnez la plante concernee et la date d'observation</li>
-                                                <li>Choisissez le <strong>stade phenologique BBCH</strong> observe (bourgeonnement, floraison, fructification...)</li>
-                                                <li>Ajoutez des notes et des photos pour documenter l'etat de la plante</li>
+                                                <li>Sélectionnez la plante concernée et la date d'observation</li>
+                                                <li>Choisissez le <strong>stade phénologique BBCH</strong> observé (bourgeonnement, floraison, fructification...)</li>
+                                                <li>Ajoutez des notes et des photos pour documenter l'état de la plante</li>
                                             </ol>
-                                            <p class="mb-0 text-muted"><i class="fas fa-lightbulb me-1"></i>Les observations regulieres permettent de construire un calendrier phenologique et de suivre l'evolution au fil des saisons.</p>
+                                            <p class="mb-0 text-muted"><i class="fas fa-lightbulb me-1"></i>Les observations régulières permettent de construire un calendrier phénologique et de suivre l'évolution au fil des saisons.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -3471,10 +3571,10 @@
                                     <div id="helpPhotos" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
                                         <div class="accordion-body">
                                             <ul>
-                                                <li><strong>Photo principale</strong> : definissez une photo comme principale pour qu'elle apparaisse en miniature dans les listes et en grand dans la fiche</li>
-                                                <li><strong>Photos d'observation</strong> : documentez chaque observation avec des photos du stade phenologique observe</li>
-                                                <li>Les photos sont automatiquement redimensionnees (max 2048px) pour optimiser le stockage</li>
-                                                <li>Formats acceptes : JPG, PNG, WebP</li>
+                                                <li><strong>Photo principale</strong> : définissez une photo comme principale pour qu'elle apparaisse en miniature dans les listes et en grand dans la fiche</li>
+                                                <li><strong>Photos d'observation</strong> : documentez chaque observation avec des photos du stade phénologique observé</li>
+                                                <li>Les photos sont automatiquement redimensionnées (max 2048px) pour optimiser le stockage</li>
+                                                <li>Formats acceptés : JPG, PNG, WebP</li>
                                             </ul>
                                         </div>
                                     </div>
@@ -3489,12 +3589,12 @@
                                     <div id="helpMap" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
                                         <div class="accordion-body">
                                             <ul>
-                                                <li><strong>Carte generale</strong> : visualisez tous les sites et plantes. Basculez entre les modes Sites, Plantes ou Tout</li>
-                                                <li><strong>Carte du site</strong> : depuis la fiche d'un site, explorez les plantes sur fond satellite haute resolution</li>
+                                                <li><strong>Carte générale</strong> : visualisez tous les sites et plantes. Basculez entre les modes Sites, Plantes ou Tout</li>
+                                                <li><strong>Carte du site</strong> : depuis la fiche d'un site, explorez les plantes sur fond satellite haute résolution</li>
                                                 <li>Cliquez sur un marqueur pour voir les informations de la plante</li>
-                                                <li>Utilisez la molette pour zoomer et le glisser-deposer pour naviguer</li>
+                                                <li>Utilisez la molette pour zoomer et le glisser-déposer pour naviguer</li>
                                             </ul>
-                                            <p class="mb-0 text-muted"><i class="fas fa-lightbulb me-1"></i>La precision de localisation depend de votre equipement : smartphone (±3-5m), GPS professionnel (±1m).</p>
+                                            <p class="mb-0 text-muted"><i class="fas fa-lightbulb me-1"></i>La précision de localisation dépend de votre équipement : smartphone (±3-5m), GPS professionnel (±1m).</p>
                                         </div>
                                     </div>
                                 </div>
@@ -3552,11 +3652,193 @@
                     <!-- About -->
                     <div class="card">
                         <div class="card-header">
-                            <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>A propos</h5>
+                            <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>À propos</h5>
                         </div>
                         <div class="card-body">
-                            <p><strong>PhenoLab</strong> est un outil de suivi phenologique developpe pour faciliter l'observation et la documentation de la vegetation au fil des saisons.</p>
-                            <p class="mb-0 text-muted small">Version 1.0 &middot; Propulse par Laravel &amp; Vue.js &middot; Cartographie Leaflet &amp; OpenStreetMap</p>
+                            <p><strong>PhenoLab</strong> est un outil de suivi phénologique développé pour faciliter l'observation et la documentation de la végétation au fil des saisons.</p>
+                            <p class="mb-0 text-muted small">Version 1.0 &middot; Propulsé par Laravel &amp; Vue.js &middot; Cartographie Leaflet &amp; OpenStreetMap</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings View -->
+        <div v-if="currentView === 'settings' && user.isAuthenticated" class="container py-4">
+
+            <!-- Header -->
+            <div class="d-flex align-items-center gap-3 mb-4">
+                <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
+                    <i class="fas fa-user-circle fa-2x text-primary"></i>
+                </div>
+                <div>
+                    <h1 class="h3 mb-0"><span v-text="user.username"></span></h1>
+                    <p class="text-muted mb-0"><span v-text="user.email"></span></p>
+                </div>
+                <div class="ms-auto d-flex gap-2">
+                    <span v-if="user.isStaff" class="badge bg-warning text-dark"><i class="fas fa-shield-alt me-1"></i>Staff</span>
+                    <span v-if="user.isSuperuser" class="badge bg-danger"><i class="fas fa-crown me-1"></i>Super admin</span>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <!-- Left column: User info -->
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-transparent border-bottom-0 pt-3">
+                            <h5 class="mb-0"><i class="fas fa-id-card me-2 text-primary"></i>Mon compte</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label small text-muted text-uppercase" style="letter-spacing: 0.05em;">Nom d'utilisateur</label>
+                                <div class="fw-semibold" v-text="user.username"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small text-muted text-uppercase" style="letter-spacing: 0.05em;">Email</label>
+                                <div class="fw-semibold" v-text="user.email"></div>
+                            </div>
+                            <div v-if="user.groups.length">
+                                <label class="form-label small text-muted text-uppercase" style="letter-spacing: 0.05em;">Groupes</label>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <span v-for="g in user.groups" :key="g.id" class="badge bg-info bg-opacity-75">
+                                        <i class="fas fa-users me-1"></i>@{{ g.name }}
+                                        <small class="opacity-75">(@{{ g.role }})</small>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right column: Tags management -->
+                <div class="col-lg-8">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-transparent d-flex justify-content-between align-items-center pt-3">
+                            <h5 class="mb-0"><i class="fas fa-tags me-2 text-success"></i>Mes tags</h5>
+                            <button class="btn btn-sm btn-success" @click="showTagModal = true">
+                                <i class="fas fa-plus me-1"></i>Nouveau tag
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div v-if="userTags.length === 0" class="text-center py-5 text-muted">
+                                <i class="fas fa-tags fa-3x mb-3 opacity-25"></i>
+                                <p class="mb-2">Aucun tag pour le moment</p>
+                                <button class="btn btn-sm btn-outline-success" @click="showTagModal = true">
+                                    <i class="fas fa-plus me-1"></i>Créer mon premier tag
+                                </button>
+                            </div>
+
+                            <div v-else class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 30%;">Tag</th>
+                                            <th style="width: 15%;" class="text-center">Plantes</th>
+                                            <th style="width: 30%;">Portée</th>
+                                            <th style="width: 25%;" class="text-end">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template v-for="tag in userTags" :key="tag.id">
+                                            <!-- Display row -->
+                                            <tr v-if="!editingTag || editingTag.id !== tag.id">
+                                                <td>
+                                                    <span class="badge rounded-pill px-3 py-2" :class="'bg-' + tag.color"
+                                                          style="font-size: 0.85em;">
+                                                        <i class="fas fa-tag me-1" style="font-size: 0.8em;"></i>
+                                                        @{{ tag.name }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-light text-dark border" style="font-size: 0.9em;">
+                                                        <i class="fas fa-seedling me-1 text-success" style="font-size: 0.8em;"></i>
+                                                        @{{ tag.plants_count }}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span v-if="tag.group_name" class="d-inline-flex align-items-center gap-1">
+                                                        <i class="fas fa-users text-info" style="font-size: 0.8em;"></i>
+                                                        <span class="small" v-text="tag.group_name"></span>
+                                                    </span>
+                                                    <span v-else class="d-inline-flex align-items-center gap-1 text-muted">
+                                                        <i class="fas fa-lock" style="font-size: 0.75em;"></i>
+                                                        <span class="small">Personnel</span>
+                                                    </span>
+                                                    <small v-if="!tag.is_mine" class="d-block text-muted mt-1">
+                                                        <i class="fas fa-share-alt me-1" style="font-size: 0.7em;"></i>Partagé avec vous
+                                                    </small>
+                                                </td>
+                                                <td class="text-end">
+                                                    <div v-if="tag.is_mine" class="btn-group btn-group-sm">
+                                                        <button class="btn btn-outline-secondary" @click="startEditTag(tag)" title="Modifier">
+                                                            <i class="fas fa-pen" style="font-size: 0.75em;"></i>
+                                                        </button>
+                                                        <button class="btn btn-outline-danger" @click="deleteTag(tag)" title="Supprimer">
+                                                            <i class="fas fa-trash" style="font-size: 0.75em;"></i>
+                                                        </button>
+                                                    </div>
+                                                    <span v-else class="text-muted small">
+                                                        <i class="fas fa-lock" style="font-size: 0.7em;"></i>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            <!-- Inline edit row -->
+                                            <tr v-else class="table-warning">
+                                                <td colspan="4">
+                                                    <div class="d-flex flex-wrap align-items-center gap-2 py-1">
+                                                        <input type="text" class="form-control form-control-sm" style="max-width: 180px;"
+                                                               v-model="editingTag.name" maxlength="100"
+                                                               @keyup.enter="updateTag" @keyup.escape="cancelEditTag"
+                                                               placeholder="Nom du tag">
+                                                        <div class="d-flex gap-1">
+                                                            <button v-for="(label, key) in {primary:'',success:'',warning:'',danger:'',info:'',secondary:'',dark:''}" :key="key"
+                                                                    class="btn btn-sm rounded-circle p-0 border"
+                                                                    :class="editingTag.color === key ? 'bg-' + key + ' border-dark' : 'bg-' + key + ' border-0 opacity-50'"
+                                                                    @click="editingTag.color = key" type="button"
+                                                                    style="width: 22px; height: 22px;"
+                                                                    :title="key">
+                                                            </button>
+                                                        </div>
+                                                        <select class="form-select form-select-sm" style="max-width: 160px;"
+                                                                v-model="editingTag.group_id">
+                                                            <option :value="null">Personnel</option>
+                                                            <option v-for="g in user.groups" :key="g.id" :value="g.id" v-text="g.name"></option>
+                                                        </select>
+                                                        <div class="btn-group btn-group-sm ms-auto">
+                                                            <button class="btn btn-success" @click="updateTag" :disabled="!editingTag.name.trim()">
+                                                                <i class="fas fa-check me-1"></i>OK
+                                                            </button>
+                                                            <button class="btn btn-outline-secondary" @click="cancelEditTag">
+                                                                <i class="fas fa-times"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Summary footer -->
+                            <div v-if="userTags.length" class="card-footer bg-transparent border-top">
+                                <div class="d-flex justify-content-between align-items-center small text-muted">
+                                    <span>
+                                        <i class="fas fa-tags me-1"></i>
+                                        @{{ userTags.length }} tag<span v-if="userTags.length > 1">s</span>
+                                        <span class="mx-1">·</span>
+                                        @{{ userTags.filter(t => t.is_mine).length }} personnel<span v-if="userTags.filter(t => t.is_mine).length > 1">s</span>
+                                        <span v-if="userTags.some(t => !t.is_mine)">
+                                            <span class="mx-1">·</span>
+                                            @{{ userTags.filter(t => !t.is_mine).length }} partagé<span v-if="userTags.filter(t => !t.is_mine).length > 1">s</span>
+                                        </span>
+                                    </span>
+                                    <span>
+                                        <i class="fas fa-seedling me-1"></i>
+                                        @{{ userTags.reduce((sum, t) => sum + (t.plants_count || 0), 0) }} affectation<span v-if="userTags.reduce((sum, t) => sum + (t.plants_count || 0), 0) > 1">s</span>
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3644,180 +3926,206 @@
                                 </div>
                             </div>
 
-                            <!-- Common filters (mine + dates) -->
-                            <div class="mt-3 pt-3 border-top" v-if="user.isAuthenticated">
-                                <div class="row g-3 align-items-end">
-                                    <div class="col-md-3">
-                                        <div class="form-check">
-                                            <input
-                                                class="form-check-input"
-                                                type="checkbox"
-                                                v-model="searchPage.filters.mine"
-                                                @change="(searchPage.query.trim().length >= 2 || hasActiveCultivationFilters()) && performSearchPageSearch()"
-                                                id="searchFilterMine"
-                                            >
-                                            <label class="form-check-label" for="searchFilterMine">
-                                                Mes données uniquement
-                                            </label>
+                            <!-- Filters panel -->
+                            <div class="mt-3">
+                                <!-- Quick filters row -->
+                                <div class="d-flex flex-wrap align-items-center gap-2 py-2 px-3 rounded-3" style="background: #f8faf8;">
+                                    <!-- Mine toggle -->
+                                    <div v-if="user.isAuthenticated" class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" role="switch"
+                                               v-model="searchPage.filters.mine"
+                                               @change="(searchPage.query.trim().length >= 2 || hasActiveCultivationFilters()) && performSearchPageSearch()"
+                                               id="searchFilterMine">
+                                        <label class="form-check-label small" for="searchFilterMine">
+                                            <i class="fas fa-user me-1 text-muted"></i>Mes données
+                                        </label>
+                                    </div>
+
+                                    <div class="vr mx-1 opacity-25" v-if="user.isAuthenticated"></div>
+
+                                    <!-- Date range (observations) -->
+                                    <template v-if="searchPage.filters.type === 'observations' || searchPage.filters.type === 'all'">
+                                        <div class="d-flex align-items-center gap-1">
+                                            <i class="fas fa-calendar-alt text-muted" style="font-size: 0.8em;"></i>
+                                            <input type="date" class="form-control form-control-sm border-0 bg-white" style="max-width: 145px;"
+                                                   v-model="searchPage.filters.date_from"
+                                                   @change="(searchPage.query.trim().length >= 2 || hasActiveCultivationFilters()) && performSearchPageSearch()">
+                                            <span class="text-muted small">à</span>
+                                            <input type="date" class="form-control form-control-sm border-0 bg-white" style="max-width: 145px;"
+                                                   v-model="searchPage.filters.date_to"
+                                                   @change="(searchPage.query.trim().length >= 2 || hasActiveCultivationFilters()) && performSearchPageSearch()">
                                         </div>
-                                    </div>
-                                    <div class="col-md-4" v-if="searchPage.filters.type === 'observations' || searchPage.filters.type === 'all'">
-                                        <label class="form-label small text-muted mb-1">Date de début</label>
-                                        <input
-                                            type="date"
-                                            class="form-control form-control-sm"
-                                            v-model="searchPage.filters.date_from"
-                                            @change="(searchPage.query.trim().length >= 2 || hasActiveCultivationFilters()) && performSearchPageSearch()"
-                                        />
-                                    </div>
-                                    <div class="col-md-4" v-if="searchPage.filters.type === 'observations' || searchPage.filters.type === 'all'">
-                                        <label class="form-label small text-muted mb-1">Date de fin</label>
-                                        <input
-                                            type="date"
-                                            class="form-control form-control-sm"
-                                            v-model="searchPage.filters.date_to"
-                                            @change="(searchPage.query.trim().length >= 2 || hasActiveCultivationFilters()) && performSearchPageSearch()"
-                                        />
+                                        <div class="vr mx-1 opacity-25"></div>
+                                    </template>
+
+                                    <!-- Tag filter -->
+                                    <div v-if="user.isAuthenticated && (searchPage.filters.type === 'plants' || searchPage.filters.type === 'all') && userTags.length > 0"
+                                         class="d-flex align-items-center gap-1">
+                                        <i class="fas fa-tag text-muted" style="font-size: 0.8em;"></i>
+                                        <select class="form-select form-select-sm border-0 bg-white" style="max-width: 160px;"
+                                                v-model="searchPage.filters.tag_id" @change="performSearchPageSearch()">
+                                            <option value="">Tous les tags</option>
+                                            <option v-for="tag in userTags" :key="tag.id" :value="tag.id">
+                                                @{{ tag.name }} (@{{ tag.plants_count }})
+                                            </option>
+                                        </select>
                                     </div>
                                 </div>
-                            </div>
 
-                            <!-- Cultivation Filters (collapsible) -->
-                            <div class="mt-3 pt-3 border-top">
-                                <button
-                                    type="button"
-                                    class="btn btn-link text-decoration-none p-0 d-flex align-items-center gap-2"
-                                    @click="searchPage.showCultivationFilters = !searchPage.showCultivationFilters"
-                                >
-                                    <i class="fas" :class="searchPage.showCultivationFilters ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
-                                    <i class="fas fa-seedling text-success"></i>
-                                    <span class="fw-semibold">Filtres de culture</span>
-                                    <span v-if="hasActiveCultivationFilters()" class="badge bg-success ms-1">actifs</span>
-                                    <span class="text-muted small ms-2">— sécheresse, sol, exposition, usages…</span>
-                                </button>
+                                <!-- Cultivation Filters (collapsible) -->
+                                <div class="mt-2">
+                                    <button type="button"
+                                            class="btn btn-sm w-100 text-start d-flex align-items-center gap-2 py-2 px-3 rounded-3 border-0"
+                                            :class="searchPage.showCultivationFilters ? 'bg-success bg-opacity-10' : ''"
+                                            style="transition: background 0.2s;"
+                                            @click="searchPage.showCultivationFilters = !searchPage.showCultivationFilters">
+                                        <i class="fas fa-seedling text-success"></i>
+                                        <span class="small fw-semibold text-dark">Filtres de culture</span>
+                                        <span v-if="hasActiveCultivationFilters()" class="badge rounded-pill bg-success" style="font-size: 0.65em;">actifs</span>
+                                        <span class="text-muted small d-none d-md-inline ms-1">— sol, exposition, rusticité…</span>
+                                        <i class="fas ms-auto text-muted" style="font-size: 0.7em;"
+                                           :class="searchPage.showCultivationFilters ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                                    </button>
 
-                                <div v-show="searchPage.showCultivationFilters" class="mt-3">
-                                    <div class="alert alert-light border small mb-3 py-2">
-                                        <i class="fas fa-info-circle text-success me-1"></i>
-                                        Ces filtres ne s'appliquent qu'aux <strong>plantes</strong> ayant des conditions de culture renseignées.
-                                    </div>
-                                    <div class="row g-2">
-                                        <div class="col-md-3 col-sm-6">
-                                            <label class="form-label small text-muted mb-1"><i class="fas fa-sun me-1"></i>Exposition</label>
-                                            <select class="form-select form-select-sm" v-model="searchPage.filters.cult_exposure" @change="performSearchPageSearch()">
-                                                <option value="">Toutes</option>
-                                                <option value="full_sun">Plein soleil</option>
-                                                <option value="partial_shade">Mi-ombre</option>
-                                                <option value="shade">Ombre</option>
-                                                <option value="full_shade">Ombre dense</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-3 col-sm-6">
-                                            <label class="form-label small text-muted mb-1"><i class="fas fa-tint me-1"></i>Arrosage</label>
-                                            <select class="form-select form-select-sm" v-model="searchPage.filters.cult_watering" @change="performSearchPageSearch()">
-                                                <option value="">Tous</option>
-                                                <option value="low">Faible (résiste à la sécheresse)</option>
-                                                <option value="moderate">Modéré</option>
-                                                <option value="regular">Régulier</option>
-                                                <option value="high">Élevé</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-3 col-sm-6">
-                                            <label class="form-label small text-muted mb-1"><i class="fas fa-mountain me-1"></i>Type de sol</label>
-                                            <select class="form-select form-select-sm" v-model="searchPage.filters.cult_soil_type" @change="performSearchPageSearch()">
-                                                <option value="">Tous</option>
-                                                <option value="clay">Argileux</option>
-                                                <option value="sandy">Sableux</option>
-                                                <option value="loam">Limoneux</option>
-                                                <option value="chalky">Calcaire</option>
-                                                <option value="peaty">Tourbeux</option>
-                                                <option value="silty">Limono-argileux</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-3 col-sm-6">
-                                            <label class="form-label small text-muted mb-1"><i class="fas fa-water me-1"></i>Drainage</label>
-                                            <select class="form-select form-select-sm" v-model="searchPage.filters.cult_soil_drainage" @change="performSearchPageSearch()">
-                                                <option value="">Tous</option>
-                                                <option value="well_drained">Bien drainé</option>
-                                                <option value="moist">Frais / humide</option>
-                                                <option value="wet">Mouillé</option>
-                                                <option value="dry">Sec</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-3 col-sm-6">
-                                            <label class="form-label small text-muted mb-1"><i class="fas fa-trophy me-1"></i>Difficulté</label>
-                                            <select class="form-select form-select-sm" v-model="searchPage.filters.cult_difficulty" @change="performSearchPageSearch()">
-                                                <option value="">Toutes</option>
-                                                <option value="easy">Facile</option>
-                                                <option value="medium">Moyen</option>
-                                                <option value="hard">Difficile</option>
-                                                <option value="expert">Expert</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-3 col-sm-6">
-                                            <label class="form-label small text-muted mb-1"><i class="fas fa-leaf me-1"></i>Usage</label>
-                                            <select class="form-select form-select-sm" v-model="searchPage.filters.cult_usage_type" @change="performSearchPageSearch()">
-                                                <option value="">Tous</option>
-                                                <option value="ornamental">Ornemental</option>
-                                                <option value="edible">Comestible</option>
-                                                <option value="medicinal">Médicinal</option>
-                                                <option value="hedging">Haie / brise-vent</option>
-                                                <option value="shade">Ombrage</option>
-                                                <option value="fragrance">Parfum</option>
-                                                <option value="wildlife">Faune / pollinisateurs</option>
-                                                <option value="erosion">Anti-érosion</option>
-                                                <option value="timber">Bois d'œuvre</option>
-                                                <option value="fodder">Fourrage</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-6 col-sm-12">
-                                            <label class="form-label small text-muted mb-1"><i class="fas fa-thermometer-half me-1"></i>Température min. supportée (°C)</label>
-                                            <div class="d-flex gap-2 align-items-center">
-                                                <div class="input-group input-group-sm">
-                                                    <span class="input-group-text">&ge;</span>
-                                                    <input type="number" class="form-control" v-model="searchPage.filters.cult_temp_min" placeholder="-20" step="1" min="-60" max="60" @change="performSearchPageSearch()">
-                                                    <span class="input-group-text">°C</span>
+                                    <div v-show="searchPage.showCultivationFilters"
+                                         class="mt-2 p-3 rounded-3 border" style="background: #fcfcfc;">
+
+                                        <!-- Row 1: Environment -->
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-12">
+                                                <div class="small text-uppercase text-muted fw-semibold mb-2" style="font-size: 0.7em; letter-spacing: 0.08em;">
+                                                    <i class="fas fa-cloud-sun me-1"></i>Environnement
                                                 </div>
-                                                <div class="input-group input-group-sm">
-                                                    <span class="input-group-text">&le;</span>
-                                                    <input type="number" class="form-control" v-model="searchPage.filters.cult_temp_max" placeholder="5" step="1" min="-60" max="60" @change="performSearchPageSearch()">
-                                                    <span class="input-group-text">°C</span>
+                                            </div>
+                                            <div class="col-md-3 col-6">
+                                                <select class="form-select form-select-sm" v-model="searchPage.filters.cult_exposure" @change="performSearchPageSearch()">
+                                                    <option value="">Exposition</option>
+                                                    <option value="full_sun">☀️ Plein soleil</option>
+                                                    <option value="partial_shade">⛅ Mi-ombre</option>
+                                                    <option value="shade">🌥️ Ombre</option>
+                                                    <option value="full_shade">🌑 Ombre dense</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3 col-6">
+                                                <select class="form-select form-select-sm" v-model="searchPage.filters.cult_watering" @change="performSearchPageSearch()">
+                                                    <option value="">Arrosage</option>
+                                                    <option value="low">💧 Faible</option>
+                                                    <option value="moderate">💧💧 Modéré</option>
+                                                    <option value="regular">💧💧💧 Régulier</option>
+                                                    <option value="high">🌊 Élevé</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3 col-6">
+                                                <select class="form-select form-select-sm" v-model="searchPage.filters.cult_soil_type" @change="performSearchPageSearch()">
+                                                    <option value="">Type de sol</option>
+                                                    <option value="clay">Argileux</option>
+                                                    <option value="sandy">Sableux</option>
+                                                    <option value="loam">Limoneux</option>
+                                                    <option value="chalky">Calcaire</option>
+                                                    <option value="peaty">Tourbeux</option>
+                                                    <option value="silty">Limono-argileux</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3 col-6">
+                                                <select class="form-select form-select-sm" v-model="searchPage.filters.cult_soil_drainage" @change="performSearchPageSearch()">
+                                                    <option value="">Drainage</option>
+                                                    <option value="well_drained">Bien drainé</option>
+                                                    <option value="moist">Frais / humide</option>
+                                                    <option value="wet">Mouillé</option>
+                                                    <option value="dry">Sec</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <!-- Row 2: Rusticité -->
+                                        <div class="row g-2 mb-3">
+                                            <div class="col-12">
+                                                <div class="small text-uppercase text-muted fw-semibold mb-2" style="font-size: 0.7em; letter-spacing: 0.08em;">
+                                                    <i class="fas fa-snowflake me-1"></i>Rusticité
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="small text-muted text-nowrap" style="min-width: 60px;">Temp. °C</span>
+                                                    <div class="input-group input-group-sm">
+                                                        <span class="input-group-text border-end-0 bg-white">&ge;</span>
+                                                        <input type="number" class="form-control border-start-0" v-model="searchPage.filters.cult_temp_min" placeholder="-20" step="1" min="-60" max="60" @change="performSearchPageSearch()">
+                                                    </div>
+                                                    <div class="input-group input-group-sm">
+                                                        <span class="input-group-text border-end-0 bg-white">&le;</span>
+                                                        <input type="number" class="form-control border-start-0" v-model="searchPage.filters.cult_temp_max" placeholder="5" step="1" min="-60" max="60" @change="performSearchPageSearch()">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="small text-muted text-nowrap" style="min-width: 60px;">USDA</span>
+                                                    <div class="input-group input-group-sm">
+                                                        <span class="input-group-text border-end-0 bg-white">&ge;</span>
+                                                        <input type="number" class="form-control border-start-0" v-model="searchPage.filters.cult_usda_zone_min" placeholder="5" min="1" max="13" step="1" @change="performSearchPageSearch()">
+                                                    </div>
+                                                    <div class="input-group input-group-sm">
+                                                        <span class="input-group-text border-end-0 bg-white">&le;</span>
+                                                        <input type="number" class="form-control border-start-0" v-model="searchPage.filters.cult_usda_zone_max" placeholder="10" min="1" max="13" step="1" @change="performSearchPageSearch()">
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div class="col-md-6 col-sm-12">
-                                            <label class="form-label small text-muted mb-1"><i class="fas fa-globe-americas me-1"></i>Zone USDA (1-13)</label>
-                                            <div class="d-flex gap-2 align-items-center">
-                                                <div class="input-group input-group-sm">
-                                                    <span class="input-group-text">&ge;</span>
-                                                    <input type="number" class="form-control" v-model="searchPage.filters.cult_usda_zone_min" placeholder="5" min="1" max="13" step="1" @change="performSearchPageSearch()">
-                                                </div>
-                                                <div class="input-group input-group-sm">
-                                                    <span class="input-group-text">&le;</span>
-                                                    <input type="number" class="form-control" v-model="searchPage.filters.cult_usda_zone_max" placeholder="10" min="1" max="13" step="1" @change="performSearchPageSearch()">
+
+                                        <!-- Row 3: Usage & propriétés -->
+                                        <div class="row g-2">
+                                            <div class="col-12">
+                                                <div class="small text-uppercase text-muted fw-semibold mb-2" style="font-size: 0.7em; letter-spacing: 0.08em;">
+                                                    <i class="fas fa-tags me-1"></i>Usage & propriétés
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div class="col-md-3 col-sm-6 d-flex align-items-end">
-                                            <div class="d-flex flex-column gap-1 w-100">
-                                                <div class="form-check form-check-sm">
-                                                    <input class="form-check-input" type="checkbox" v-model="searchPage.filters.cult_is_edible" @change="performSearchPageSearch()" id="cultEdible">
-                                                    <label class="form-check-label small" for="cultEdible"><i class="fas fa-utensils text-success me-1"></i>Comestible</label>
-                                                </div>
-                                                <div class="form-check form-check-sm">
-                                                    <input class="form-check-input" type="checkbox" v-model="searchPage.filters.cult_is_toxic" @change="performSearchPageSearch()" id="cultToxic">
-                                                    <label class="form-check-label small" for="cultToxic"><i class="fas fa-skull-crossbones text-danger me-1"></i>Toxique</label>
-                                                </div>
+                                            <div class="col-md-3 col-6">
+                                                <select class="form-select form-select-sm" v-model="searchPage.filters.cult_difficulty" @change="performSearchPageSearch()">
+                                                    <option value="">Difficulté</option>
+                                                    <option value="easy">🟢 Facile</option>
+                                                    <option value="medium">🟡 Moyen</option>
+                                                    <option value="hard">🟠 Difficile</option>
+                                                    <option value="expert">🔴 Expert</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3 col-6">
+                                                <select class="form-select form-select-sm" v-model="searchPage.filters.cult_usage_type" @change="performSearchPageSearch()">
+                                                    <option value="">Usage</option>
+                                                    <option value="ornamental">🌸 Ornemental</option>
+                                                    <option value="edible">🍎 Comestible</option>
+                                                    <option value="medicinal">💊 Médicinal</option>
+                                                    <option value="hedging">🌿 Haie</option>
+                                                    <option value="shade">🌳 Ombrage</option>
+                                                    <option value="fragrance">🌺 Parfum</option>
+                                                    <option value="wildlife">🐝 Pollinisateurs</option>
+                                                    <option value="erosion">🏔️ Anti-érosion</option>
+                                                    <option value="timber">🪵 Bois</option>
+                                                    <option value="fodder">🌾 Fourrage</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3 col-6">
+                                                <label class="btn btn-sm w-100 text-start" :class="searchPage.filters.cult_is_edible ? 'btn-success' : 'btn-outline-secondary'">
+                                                    <input type="checkbox" class="d-none" v-model="searchPage.filters.cult_is_edible" @change="performSearchPageSearch()">
+                                                    <i class="fas fa-utensils me-1"></i>Comestible
+                                                </label>
+                                            </div>
+                                            <div class="col-md-3 col-6">
+                                                <label class="btn btn-sm w-100 text-start" :class="searchPage.filters.cult_is_toxic ? 'btn-danger' : 'btn-outline-secondary'">
+                                                    <input type="checkbox" class="d-none" v-model="searchPage.filters.cult_is_toxic" @change="performSearchPageSearch()">
+                                                    <i class="fas fa-skull-crossbones me-1"></i>Toxique
+                                                </label>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div class="mt-3 d-flex justify-content-between align-items-center">
-                                        <button class="btn btn-sm btn-outline-secondary" @click="resetCultivationFilters(); performSearchPageSearch()" :disabled="!hasActiveCultivationFilters()">
-                                            <i class="fas fa-eraser me-1"></i>Réinitialiser les filtres
-                                        </button>
-                                        <small class="text-muted" v-if="hasActiveCultivationFilters()">
-                                            <i class="fas fa-check-circle text-success me-1"></i>Filtres actifs appliqués automatiquement
-                                        </small>
+
+                                        <!-- Reset -->
+                                        <div v-if="hasActiveCultivationFilters()" class="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
+                                            <button class="btn btn-sm btn-outline-secondary border-0" @click="resetCultivationFilters(); performSearchPageSearch()">
+                                                <i class="fas fa-times me-1"></i>Réinitialiser
+                                            </button>
+                                            <small class="text-success">
+                                                <i class="fas fa-check-circle me-1"></i>Filtres appliqués
+                                            </small>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -5988,6 +6296,156 @@
         <div v-if="showAddPhotoModal" class="modal-backdrop fade show"></div>
         <div v-if="showEditSiteModal" class="modal-backdrop fade show"></div>
         <div v-if="showTestSiteModal" class="modal-backdrop fade show"></div>
+        <div v-if="showTagModal" class="modal-backdrop fade show"></div>
+        <div v-if="actionDetail" class="modal-backdrop fade show"></div>
+
+        <!-- Action Detail Modal -->
+        <div v-if="actionDetail" class="modal fade show" tabindex="-1" @click.self="actionDetail = null" style="display: block;">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg">
+                    <!-- Header with action type color -->
+                    <div class="modal-header border-0 pb-0" :class="actionDetail.action_type?.color || 'bg-secondary'" style="border-radius: 0.5rem 0.5rem 0 0;">
+                        <div class="text-white py-2">
+                            <div class="d-flex align-items-center gap-2 mb-1">
+                                <i v-if="actionDetail.action_type?.icon" :class="'fas ' + actionDetail.action_type.icon + ' fa-lg'"></i>
+                                <h5 class="modal-title mb-0" v-text="actionDetail.action_type?.name || 'Action'"></h5>
+                            </div>
+                            <small class="opacity-75">
+                                <i class="fas fa-calendar-alt me-1"></i>
+                                <span v-text="formatDate(actionDetail.action_date)"></span>
+                            </small>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white align-self-start" @click="actionDetail = null"></button>
+                    </div>
+
+                    <div class="modal-body pt-3">
+                        <!-- Title -->
+                        <div v-if="actionDetail.title" class="mb-3">
+                            <h6 class="fw-bold mb-0" v-text="actionDetail.title"></h6>
+                        </div>
+
+                        <!-- Notes -->
+                        <div v-if="actionDetail.notes" class="mb-3 p-3 bg-light rounded">
+                            <div class="text-muted small mb-1"><i class="fas fa-sticky-note me-1"></i>Notes</div>
+                            <div style="white-space: pre-line;" v-text="actionDetail.notes"></div>
+                        </div>
+
+                        <!-- Info grid -->
+                        <div class="row g-2">
+                            <!-- Product -->
+                            <div v-if="actionDetail.product_name" class="col-sm-6">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small"><i class="fas fa-flask me-1"></i>Produit</div>
+                                    <div class="fw-semibold" v-text="actionDetail.product_name"></div>
+                                </div>
+                            </div>
+
+                            <!-- Quantity -->
+                            <div v-if="actionDetail.quantity" class="col-sm-6">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small"><i class="fas fa-weight me-1"></i>Quantité</div>
+                                    <div class="fw-semibold">
+                                        <span v-text="actionDetail.quantity"></span>
+                                        <span v-if="actionDetail.unit" class="text-muted" v-text="' ' + actionDetail.unit"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Dosage -->
+                            <div v-if="actionDetail.dosage" class="col-sm-6">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small"><i class="fas fa-prescription-bottle me-1"></i>Dosage</div>
+                                    <div class="fw-semibold" v-text="actionDetail.dosage"></div>
+                                </div>
+                            </div>
+
+                            <!-- Method -->
+                            <div v-if="actionDetail.method" class="col-sm-6">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small"><i class="fas fa-cogs me-1"></i>Méthode</div>
+                                    <div class="fw-semibold" v-text="actionDetail.method"></div>
+                                </div>
+                            </div>
+
+                            <!-- Cost -->
+                            <div v-if="actionDetail.cost" class="col-sm-6">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small"><i class="fas fa-euro-sign me-1"></i>Coût</div>
+                                    <div class="fw-semibold"><span v-text="actionDetail.cost"></span> &euro;</div>
+                                </div>
+                            </div>
+
+                            <!-- Weather -->
+                            <div v-if="actionDetail.weather_conditions" class="col-sm-6">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small"><i class="fas fa-cloud-sun me-1"></i>Météo</div>
+                                    <div class="fw-semibold" v-text="actionDetail.weather_conditions"></div>
+                                </div>
+                            </div>
+
+                            <!-- Performer -->
+                            <div v-if="actionDetail.performer?.name || actionDetail.performer_name" class="col-sm-6">
+                                <div class="border rounded p-2 h-100">
+                                    <div class="text-muted small"><i class="fas fa-user me-1"></i>Réalisé par</div>
+                                    <div class="fw-semibold" v-text="actionDetail.performer?.name || actionDetail.performer_name"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer border-0 pt-0">
+                        <button class="btn btn-sm btn-light" @click="actionDetail = null">Fermer</button>
+                        <button v-if="user.isAuthenticated && (user.id === plantDetail.plant?.owner?.id || user.isStaff)"
+                                class="btn btn-sm btn-outline-secondary"
+                                @click="openActionForm(actionDetail); actionDetail = null;">
+                            <i class="fas fa-edit me-1"></i>Modifier
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tag Creation Modal -->
+        <div v-show="showTagModal" class="modal fade show" tabindex="-1" @click.self="showTagModal = false" style="display: block;">
+            <div class="modal-dialog modal-sm">
+                <div class="modal-content">
+                    <div class="modal-header bg-info text-white">
+                        <h5 class="modal-title"><i class="fas fa-tag me-2"></i>Nouveau tag</h5>
+                        <button type="button" class="btn-close btn-close-white" @click="showTagModal = false"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Nom du tag *</label>
+                            <input type="text" class="form-control" v-model="newTagForm.name" maxlength="100" placeholder="ex: à planter à Septème" @keyup.enter="createTag">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Couleur</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button v-for="(label, key) in {primary:'Bleu',success:'Vert',warning:'Jaune',danger:'Rouge',info:'Cyan',secondary:'Gris',dark:'Sombre'}" :key="key"
+                                        class="btn btn-sm" :class="newTagForm.color === key ? 'bg-' + key + ' text-white' : 'btn-outline-' + key"
+                                        @click="newTagForm.color = key" type="button">
+                                    @{{ label }}
+                                </button>
+                            </div>
+                        </div>
+                        <div v-if="user.groups.length" class="mb-3">
+                            <label class="form-label">Partager avec le groupe</label>
+                            <select class="form-select form-select-sm" v-model="newTagForm.group_id">
+                                <option :value="null">Personnel (moi uniquement)</option>
+                                <option v-for="g in user.groups" :key="g.id" :value="g.id" v-text="g.name"></option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary btn-sm" @click="showTagModal = false">Annuler</button>
+                        <button class="btn btn-info btn-sm text-white" @click="createTag" :disabled="!newTagForm.name.trim()">
+                            <i class="fas fa-plus me-1"></i>Créer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Site Map Editor (Full Screen Overlay) -->
         <div v-if="showSiteMapEditorModal" v-cloak
              style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1055; background: #fff; display: flex; flex-direction: column;">
@@ -7431,11 +7889,11 @@
                                                 </div>
                                                 <div class="col-md-6">
                                                     <label class="form-label small">Plantes compagnes (séparer par virgule)</label>
-                                                    <input :value="cultivationForm.companion_plants?.join(', ') || ''" @input="cultivationForm.companion_plants = parseTagList($event.target.value)" type="text" class="form-control form-control-sm" placeholder="ex: Basilic, Œillet d'Inde">
+                                                    <input v-model="cultivationForm.companion_plants" type="text" class="form-control form-control-sm" placeholder="ex: Basilic, Œillet d'Inde">
                                                 </div>
                                                 <div class="col-md-6">
                                                     <label class="form-label small">À éviter à proximité (séparer par virgule)</label>
-                                                    <input :value="cultivationForm.avoid_near?.join(', ') || ''" @input="cultivationForm.avoid_near = parseTagList($event.target.value)" type="text" class="form-control form-control-sm">
+                                                    <input v-model="cultivationForm.avoid_near" type="text" class="form-control form-control-sm" placeholder="ex: Fenouil, Noyer">
                                                 </div>
                                                 <div class="col-md-6">
                                                     <label class="form-label small">Méthodes de propagation</label>
@@ -7723,10 +8181,50 @@
                         <em v-text="plantDetail.plant.taxon?.binomial_name"></em>
                         <span v-if="plantDetail.plant.taxon?.common_name_fr"> • <span v-text="plantDetail.plant.taxon.common_name_fr"></span></span>
                     </p>
+                    <!-- Tags inline -->
+                    <div v-if="user.isAuthenticated" class="d-flex flex-wrap align-items-center gap-1 mt-2">
+                        <span v-for="tag in plantTags" :key="tag.id"
+                              class="badge rounded-pill d-inline-flex align-items-center gap-1 px-2 py-1"
+                              :class="'bg-' + tag.color"
+                              style="font-size: 0.8em; letter-spacing: 0.02em;">
+                            <i class="fas fa-tag" style="font-size: 0.7em;"></i>
+                            @{{ tag.name }}
+                            <small v-if="!tag.is_mine" class="opacity-75" title="Tag de groupe"><i class="fas fa-users" style="font-size: 0.65em;"></i></small>
+                            <i class="fas fa-times ms-1 opacity-75" role="button" style="font-size: 0.7em;"
+                               @click="unassignTag(currentPlant, tag.id)" title="Retirer ce tag"></i>
+                        </span>
+                        <!-- Add tag dropdown -->
+                        <div class="dropdown" v-if="availableTagsForPlant().length || true">
+                            <button class="btn btn-sm border-0 text-muted px-1 py-0" data-bs-toggle="dropdown"
+                                    data-bs-auto-close="true" title="Gérer les tags" style="font-size: 0.85em;">
+                                <i class="fas fa-plus-circle"></i>
+                            </button>
+                            <div class="dropdown-menu dropdown-menu-start shadow-sm p-2" style="min-width: 220px;">
+                                <h6 class="dropdown-header px-1 py-1" style="font-size: 0.75em;">
+                                    <i class="fas fa-tags me-1"></i>AJOUTER UN TAG
+                                </h6>
+                                <div v-if="availableTagsForPlant().length" style="max-height: 180px; overflow-y: auto;">
+                                    <button v-for="tag in availableTagsForPlant()" :key="tag.id"
+                                            class="dropdown-item rounded d-flex align-items-center gap-2 py-1 px-2"
+                                            @click="assignTag(currentPlant, tag.id)">
+                                        <span class="badge rounded-pill px-2 py-1" :class="'bg-' + tag.color"
+                                              style="font-size: 0.75em;" v-text="tag.name"></span>
+                                    </button>
+                                </div>
+                                <div v-else class="text-muted small px-2 py-1">Tous les tags sont assignés</div>
+                                <div class="dropdown-divider my-1"></div>
+                                <button class="dropdown-item rounded d-flex align-items-center gap-2 py-1 px-2 text-primary"
+                                        @click="showTagModal = true">
+                                    <i class="fas fa-plus" style="font-size: 0.75em;"></i>
+                                    <span style="font-size: 0.85em;">Créer un nouveau tag</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="d-flex flex-wrap gap-2">
                     <button class="btn btn-sm btn-outline-secondary" @click="backToPlants">
-                        <i class="fas fa-arrow-left me-1"></i>Retour
+                        <i class="fas fa-arrow-left me-1"></i><span v-text="plantReturnView === 'search' ? 'Retour à la recherche' : 'Retour'"></span>
                     </button>
                     <button class="btn btn-sm btn-success" v-if="plantDetail.plant.coordinates"
                             @click="showSiteMap(plantDetail.plant.site, plantDetail.plant)" title="Voir sur la carte">
@@ -8312,7 +8810,7 @@
                     </div>
 
                     <!-- Quick Actions -->
-                    <div class="card mb-3">
+                    <div class="card mb-3" v-if="user.isAuthenticated">
                         <div class="card-header">
                             <h6 class="card-title mb-0">
                                 <i class="fas fa-tools me-2"></i>Actions rapides
@@ -8417,7 +8915,8 @@
                         <div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;"
                              v-if="filteredPlantActions.length > 0">
                             <div v-for="action in filteredPlantActions" :key="action.id"
-                                 class="list-group-item py-2 px-3">
+                                 class="list-group-item list-group-item-action py-2 px-3" role="button"
+                                 @click="actionDetail = action">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div class="flex-grow-1">
                                         <div class="d-flex align-items-center gap-2 mb-1">
@@ -8441,10 +8940,10 @@
                                     </div>
                                     <div v-if="user.isAuthenticated && (user.id === plantDetail.plant.owner?.id || user.isStaff)"
                                          class="d-flex flex-column gap-1 ms-2">
-                                        <button class="btn btn-sm btn-outline-secondary py-0 px-1" @click="openActionForm(action)" title="Modifier">
+                                        <button class="btn btn-sm btn-outline-secondary py-0 px-1" @click.stop="openActionForm(action)" title="Modifier">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <button class="btn btn-sm btn-outline-danger py-0 px-1" @click="deleteAction(action.id)" title="Supprimer">
+                                        <button class="btn btn-sm btn-outline-danger py-0 px-1" @click.stop="deleteAction(action.id)" title="Supprimer">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>

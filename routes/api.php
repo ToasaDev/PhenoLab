@@ -20,6 +20,8 @@ use App\Http\Controllers\Api\PlantPositionController;
 use App\Http\Controllers\Api\SiteCategoryController;
 use App\Http\Controllers\Api\SiteController;
 use App\Http\Controllers\Api\StatisticsController;
+use App\Http\Controllers\Api\UserGroupController;
+use App\Http\Controllers\Api\UserPlantTagController;
 use App\Http\Controllers\Api\TaxonController;
 use App\Http\Controllers\Api\TelaObservationController;
 use Illuminate\Support\Facades\Route;
@@ -158,6 +160,28 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('observation-photos/{photo}/image', [ObservationPhotoController::class, 'image']);
     Route::apiResource('observation-photos', ObservationPhotoController::class)->only(['index', 'show']);
     Route::apiResource('observation-photos', ObservationPhotoController::class)->only(['store', 'update', 'destroy'])->middleware('auth:sanctum');
+
+    // ── User Groups ─────────────────────────────────────
+    Route::prefix('groups')->middleware('auth:sanctum')->group(function () {
+        Route::get('/', [UserGroupController::class, 'index']);
+        Route::post('/', [UserGroupController::class, 'store']);
+        Route::get('{userGroup}', [UserGroupController::class, 'show']);
+        Route::put('{userGroup}', [UserGroupController::class, 'update']);
+        Route::delete('{userGroup}', [UserGroupController::class, 'destroy']);
+        Route::post('{userGroup}/members', [UserGroupController::class, 'addMember']);
+        Route::delete('{userGroup}/members/{userId}', [UserGroupController::class, 'removeMember']);
+    });
+
+    // ── User Plant Tags ───────────────────────────────────
+    Route::prefix('tags')->middleware('auth:sanctum')->group(function () {
+        Route::get('/', [UserPlantTagController::class, 'index']);
+        Route::post('/', [UserPlantTagController::class, 'store']);
+        Route::put('{userPlantTag}', [UserPlantTagController::class, 'update']);
+        Route::delete('{userPlantTag}', [UserPlantTagController::class, 'destroy']);
+        Route::post('assign', [UserPlantTagController::class, 'assign']);
+        Route::post('unassign', [UserPlantTagController::class, 'unassign']);
+        Route::get('plant/{plantId}', [UserPlantTagController::class, 'forPlant']);
+    });
 
     // ── Admin (staff only) ────────────────────────────────
     Route::prefix('admin')->middleware(['auth:sanctum', 'staff'])->group(function () {

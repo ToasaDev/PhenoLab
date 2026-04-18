@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -40,6 +41,7 @@ class Plant extends Model
         'replaces_id',
         'clone_or_accession',
         'owner_id',
+        'group_id',
         'is_private',
         'latitude',
         'longitude',
@@ -156,6 +158,17 @@ class Plant extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(UserGroup::class, 'group_id');
+    }
+
+    public function userTags(): BelongsToMany
+    {
+        return $this->belongsToMany(UserPlantTag::class, 'plant_tag_assignments', 'plant_id', 'tag_id')
+                    ->withPivot('assigned_by_id', 'created_at');
     }
 
     public function actions(): HasMany

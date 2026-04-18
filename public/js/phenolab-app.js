@@ -21,6 +21,8 @@ createApp({
             // Plant navigation and detail
             currentPlant: null,
             observationReturnView: null,
+            plantReturnView: null,
+            siteReturnView: null,
             plantDetail: {
                 plant: null,
                 loading: false,
@@ -57,7 +59,8 @@ createApp({
                     weather_conditions: '',
                 },
             },
-            
+            actionDetail: null,
+
             // User data
             user: {
                 username: 'Utilisateur',
@@ -65,7 +68,8 @@ createApp({
                 id: null,
                 email: '',
                 isStaff: false,
-                isSuperuser: false
+                isSuperuser: false,
+                groups: []
             },
             
             // Statistics data
@@ -285,8 +289,8 @@ createApp({
                 winter_protection: '',
                 pest_susceptibility: '',
                 disease_susceptibility: '',
-                companion_plants: [],
-                avoid_near: [],
+                companion_plants: '',
+                avoid_near: '',
                 propagation_methods: '',
                 cultivation_difficulty: null,
                 usage_types: [],
@@ -621,7 +625,15 @@ createApp({
                 password: '',
                 error: ''
             },
-            
+
+            // Tags
+            userTags: [],
+            plantTags: [],
+            showTagModal: false,
+            newTagForm: { name: '', color: 'secondary', group_id: null },
+            editingTag: null,
+            tagFilter: '',
+
             // Test site form
             testSiteForm: {
                 name: '',
@@ -795,6 +807,7 @@ createApp({
                     cult_temp_max: '',
                     cult_is_edible: false,
                     cult_is_toxic: false,
+                    tag_id: '',
                 },
                 history: []
             },
@@ -1153,6 +1166,28 @@ createApp({
         console.log('🚀 Vue.js app mounted');
         this.initializeApp();
 
+        // Global axios interceptor for 401/403 responses
+        axios.interceptors.response.use(
+            response => response,
+            error => {
+                if (error.response?.status === 401) {
+                    // Session expired or not authenticated
+                    if (this.user.isAuthenticated) {
+                        this.user.isAuthenticated = false;
+                        this.user.id = null;
+                        this.user.isStaff = false;
+                        this.user.isSuperuser = false;
+                        this.user.groups = [];
+                        this.showAlert('Votre session a expiré. Veuillez vous reconnecter.', 'warning');
+                        this.showLoginModal = true;
+                    }
+                } else if (error.response?.status === 403) {
+                    this.showAlert('Accès refusé — vous n\'avez pas les droits nécessaires.', 'danger');
+                }
+                return Promise.reject(error);
+            }
+        );
+
         // Load search history from localStorage
         this.loadSearchHistory();
 
@@ -1190,6 +1225,7 @@ createApp({
                 publicLoads.push(
                     this.loadStatistics().catch(e => console.warn('Stats load failed:', e)),
                     this.loadRecentActivities().catch(e => console.warn('Activities load failed:', e)),
+                    this.loadUserTags().catch(e => console.warn('Tags load failed:', e)),
                 );
             }
 
@@ -1725,9 +1761,10 @@ createApp({
         async performSearchPageSearch() {
             const query = this.searchPage.query.trim();
             const hasCult = this.hasActiveCultivationFilters();
+            const hasTag = !!this.searchPage.filters.tag_id;
 
-            if (query.length < 2 && !hasCult) {
-                this.showAlert('Entrez au moins 2 caractères ou activez un filtre de culture', 'warning');
+            if (query.length < 2 && !hasCult && !hasTag) {
+                this.showAlert('Entrez au moins 2 caractères ou activez un filtre', 'warning');
                 return;
             }
 
@@ -1770,6 +1807,7 @@ createApp({
                 if (this.searchPage.filters.cult_temp_max !== '') params.cult_temp_max = this.searchPage.filters.cult_temp_max;
                 if (this.searchPage.filters.cult_is_edible) params.cult_is_edible = 1;
                 if (this.searchPage.filters.cult_is_toxic) params.cult_is_toxic = 1;
+                if (this.searchPage.filters.tag_id) params.tag_id = this.searchPage.filters.tag_id;
 
                 const response = await axios.get('/api/v1/search', { params });
                 const data = response.data;
@@ -2028,6 +2066,7 @@ createApp({
         
         async viewSiteDetail(siteId) {
             console.log('🏠 Loading site detail:', siteId);
+            this.siteReturnView = this.currentView;
             this.currentView = 'site-detail';
             this.siteDetail.loading = true;
 
@@ -2851,6 +2890,7 @@ createApp({
                 if (filters.has_observations !== null) params.append('has_observations', filters.has_observations);
                 if (filters.has_photos !== null) params.append('has_photos', filters.has_photos);
                 if (filters.has_actions !== null) params.append('has_actions', filters.has_actions);
+                if (this.tagFilter) params.append('tag_id', this.tagFilter);
                 if (filters.ordering) params.append('ordering', filters.ordering);
                 params.append('page_size', filters.page_size);
                 params.append('page', page);
@@ -2893,6 +2933,7 @@ createApp({
                 ordering: 'name',
                 page_size: 25
             };
+            this.tagFilter = '';
             this.loadPlantsList(1);
         },
 
@@ -3034,7 +3075,10 @@ createApp({
         // ==================== END LIST PAGE CONTRACT METHODS ====================
 
         backToSites() {
-            window.location.hash = '#sites';
+            const returnTo = this.siteReturnView || 'sites';
+            this.siteReturnView = null;
+            window.location.hash = '#' + returnTo;
+            this.currentView = returnTo;
         },
         
         editSiteAction(site) {
@@ -3319,6 +3363,14 @@ createApp({
         
         // Open modal with proper body handling
         openModal(modalType, context = null) {
+            // Auth guard: creation modals require authentication
+            const authRequired = ['site', 'plant', 'observation', 'photo', 'taxon', 'gbifSync', 'gbifImportFamily'];
+            if (authRequired.includes(modalType) && !this.user.isAuthenticated) {
+                this.showLoginModal = true;
+                this.showAlert('Connectez-vous pour effectuer cette action.', 'warning');
+                return;
+            }
+
             // Close all modals first
             this.closeModal();
 
@@ -3670,6 +3722,7 @@ createApp({
                 'showDeletePlantModal', 'showEditPhotoModal', 'showLoginModal', 'showTestSiteModal',
                 'showMarkDeadModal', 'showReplacePlantModal',
                 'showCultivationModal',
+                'showTagModal',
             ];
             for (const flag of modalFlags) {
                 if (this[flag]) this[flag] = false;
@@ -3696,6 +3749,7 @@ createApp({
                     this.user.email = response.data.user.email;
                     this.user.isStaff = response.data.user.is_staff;
                     this.user.isSuperuser = response.data.user.is_superuser;
+                    this.user.groups = response.data.user.groups || [];
 
                     // Refresh CSRF cookie after session regeneration
                     await axios.get('/sanctum/csrf-cookie');
@@ -3732,7 +3786,8 @@ createApp({
                     this.user.email = '';
                     this.user.isStaff = false;
                     this.user.isSuperuser = false;
-                    
+                    this.user.groups = [];
+
                     this.showAlert(response.data.message || 'Déconnexion réussie', 'info');
                 } else {
                     this.showAlert('Erreur lors de la déconnexion', 'warning');
@@ -3746,6 +3801,7 @@ createApp({
                 this.user.email = '';
                 this.user.isStaff = false;
                 this.user.isSuperuser = false;
+                this.user.groups = [];
                 this.showAlert('Déconnexion effectuée', 'info');
             }
         },
@@ -3763,6 +3819,7 @@ createApp({
                     this.user.email = response.data.user.email;
                     this.user.isStaff = response.data.user.is_staff;
                     this.user.isSuperuser = response.data.user.is_superuser;
+                    this.user.groups = response.data.user.groups || [];
                 } else {
                     this.user.isAuthenticated = false;
                     this.user.username = 'Utilisateur';
@@ -3770,6 +3827,7 @@ createApp({
                     this.user.email = '';
                     this.user.isStaff = false;
                     this.user.isSuperuser = false;
+                    this.user.groups = [];
                 }
             } catch (error) {
                 console.error('Auth status check error:', error);
@@ -4024,6 +4082,7 @@ createApp({
         
         // ===== PLANT NAVIGATION AND DETAIL METHODS =====
         async viewPlantDetail(plantId) {
+            this.plantReturnView = this.currentView;
             this.currentView = 'plant-detail';
             this.currentPlant = plantId;
             this.plantDetail.loading = true;
@@ -4066,6 +4125,10 @@ createApp({
                         this.loadPlantActionTypes();
                     }
 
+                    // Load tags for this plant
+                    this.loadPlantTags(plantId);
+                    if (this.userTags.length === 0) this.loadUserTags();
+
                     console.log('🌱 Plant detail loaded:', this.plantDetail.plant);
                 } else {
                     console.error('Plant not found');
@@ -4080,8 +4143,10 @@ createApp({
         },
         
         backToPlants() {
-            window.location.hash = '#plants';
-            this.currentView = 'plants';
+            const returnTo = this.plantReturnView || 'plants';
+            this.plantReturnView = null;
+            window.location.hash = '#' + returnTo;
+            this.currentView = returnTo;
             this.currentPlant = null;
             this.plantDetail.plant = null;
             this.plantDetail.actions = [];
@@ -5053,6 +5118,7 @@ createApp({
             this.observationReturnView = null;
             this.currentObservation = null;
             this.telaComparison = null;
+            window.location.hash = '#' + returnTo;
             this.currentView = returnTo;
         },
 
@@ -6274,8 +6340,8 @@ createApp({
                 winter_protection: existing.winter_protection || '',
                 pest_susceptibility: existing.pest_susceptibility || '',
                 disease_susceptibility: existing.disease_susceptibility || '',
-                companion_plants: Array.isArray(existing.companion_plants) ? existing.companion_plants : [],
-                avoid_near: Array.isArray(existing.avoid_near) ? existing.avoid_near : [],
+                companion_plants: Array.isArray(existing.companion_plants) ? existing.companion_plants.join(', ') : '',
+                avoid_near: Array.isArray(existing.avoid_near) ? existing.avoid_near.join(', ') : '',
                 propagation_methods: existing.propagation_methods || '',
                 cultivation_difficulty: existing.cultivation_difficulty || null,
                 usage_types: Array.isArray(existing.usage_types) ? existing.usage_types : [],
@@ -6294,10 +6360,15 @@ createApp({
                 const payload = { ...this.cultivationForm };
                 delete payload.plantId;
                 delete payload.plantName;
+                // Convert comma-separated strings to arrays
+                payload.companion_plants = this.parseTagList(payload.companion_plants);
+                payload.avoid_near = this.parseTagList(payload.avoid_near);
                 // strip empty strings to allow backend nullable validation
                 Object.keys(payload).forEach(k => {
                     if (payload[k] === '') payload[k] = null;
                 });
+                if (payload.companion_plants && payload.companion_plants.length === 0) payload.companion_plants = null;
+                if (payload.avoid_near && payload.avoid_near.length === 0) payload.avoid_near = null;
                 const response = await axios.put(`/api/v1/plants/${this.cultivationForm.plantId}/cultivation-profile`, payload);
                 if (this.plantDetail.plant && this.plantDetail.plant.id === this.cultivationForm.plantId) {
                     this.plantDetail.plant.cultivation_profile = response.data;
@@ -7834,6 +7905,113 @@ createApp({
                 this.setAdminMessage(e.response?.data?.message || 'Erreur lors de la suppression', 'danger');
             }
             this.admin.loading = false;
+        },
+
+        // ── User Plant Tags ──
+
+        async loadUserTags() {
+            if (!this.user.isAuthenticated) return;
+            try {
+                const { data } = await axios.get('/api/v1/tags');
+                this.userTags = data;
+            } catch (e) {
+                console.error('Error loading tags:', e);
+            }
+        },
+
+        async loadPlantTags(plantId) {
+            if (!this.user.isAuthenticated) { this.plantTags = []; return; }
+            try {
+                const { data } = await axios.get('/api/v1/tags/plant/' + plantId);
+                this.plantTags = data;
+            } catch (e) {
+                this.plantTags = [];
+            }
+        },
+
+        async createTag() {
+            const form = this.newTagForm;
+            if (!form.name.trim()) return;
+            try {
+                await this.ensureCsrf();
+                const { data } = await axios.post('/api/v1/tags', {
+                    name: form.name.trim(),
+                    color: form.color || 'secondary',
+                    group_id: form.group_id || null,
+                });
+                this.userTags.push(data);
+                this.newTagForm = { name: '', color: 'secondary', group_id: null };
+                this.showTagModal = false;
+                this.showAlert('Tag "' + data.name + '" créé.', 'success');
+            } catch (e) {
+                this.showAlert(e.response?.data?.message || 'Erreur création tag', 'danger');
+            }
+        },
+
+        async deleteTag(tag) {
+            if (!confirm('Supprimer le tag "' + tag.name + '" et toutes ses affectations ?')) return;
+            try {
+                await this.ensureCsrf();
+                await axios.delete('/api/v1/tags/' + tag.id);
+                this.userTags = this.userTags.filter(t => t.id !== tag.id);
+                this.plantTags = this.plantTags.filter(t => t.id !== tag.id);
+                this.showAlert('Tag supprimé.', 'info');
+            } catch (e) {
+                this.showAlert(e.response?.data?.message || 'Erreur', 'danger');
+            }
+        },
+
+        startEditTag(tag) {
+            this.editingTag = { id: tag.id, name: tag.name, color: tag.color, group_id: tag.group_id };
+        },
+
+        cancelEditTag() {
+            this.editingTag = null;
+        },
+
+        async updateTag() {
+            if (!this.editingTag || !this.editingTag.name.trim()) return;
+            try {
+                await this.ensureCsrf();
+                const { data } = await axios.put('/api/v1/tags/' + this.editingTag.id, {
+                    name: this.editingTag.name.trim(),
+                    color: this.editingTag.color,
+                    group_id: this.editingTag.group_id || null,
+                });
+                const idx = this.userTags.findIndex(t => t.id === data.id);
+                if (idx !== -1) this.userTags.splice(idx, 1, data);
+                this.editingTag = null;
+                this.showAlert('Tag mis à jour.', 'success');
+            } catch (e) {
+                this.showAlert(e.response?.data?.message || 'Erreur modification tag', 'danger');
+            }
+        },
+
+        async assignTag(plantId, tagId) {
+            try {
+                await this.ensureCsrf();
+                await axios.post('/api/v1/tags/assign', { plant_id: plantId, tag_id: tagId });
+                await this.loadPlantTags(plantId);
+                await this.loadUserTags();
+            } catch (e) {
+                this.showAlert(e.response?.data?.message || 'Erreur', 'danger');
+            }
+        },
+
+        async unassignTag(plantId, tagId) {
+            try {
+                await this.ensureCsrf();
+                await axios.post('/api/v1/tags/unassign', { plant_id: plantId, tag_id: tagId });
+                this.plantTags = this.plantTags.filter(t => t.id !== tagId);
+                await this.loadUserTags();
+            } catch (e) {
+                this.showAlert(e.response?.data?.message || 'Erreur', 'danger');
+            }
+        },
+
+        availableTagsForPlant() {
+            const assignedIds = this.plantTags.map(t => t.id);
+            return this.userTags.filter(t => !assignedIds.includes(t.id));
         },
 
         // ── GBIF Sync ──

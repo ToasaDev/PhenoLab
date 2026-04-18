@@ -33,6 +33,7 @@ class GlobalSearchController extends Controller
             'cult_temp_max'      => ['nullable', 'numeric', 'min:-60', 'max:60'],
             'cult_is_edible'     => ['nullable', 'boolean'],
             'cult_is_toxic'      => ['nullable', 'boolean'],
+            'tag_id'             => ['nullable', 'integer'],
         ]);
 
         $rawQ = trim((string) $request->query('q', ''));
@@ -65,10 +66,12 @@ class GlobalSearchController extends Controller
         if ($request->filled('cult_usda_zone_min')) $cultRanges['usda_zone_min'] = (int) $request->query('cult_usda_zone_min');
         if ($request->filled('cult_usda_zone_max')) $cultRanges['usda_zone_max'] = (int) $request->query('cult_usda_zone_max');
 
+        $tagId = $request->query('tag_id');
+
         $hasCultivationFilter = !empty($cultFilters) || !empty($cultJsonAny) || !empty($cultBool) || !empty($cultRanges);
 
-        // Require either a query or at least one cultivation filter
-        if ($rawQ === '' && !$hasCultivationFilter) {
+        // Require either a query, a cultivation filter, or a tag filter
+        if ($rawQ === '' && !$hasCultivationFilter && !$tagId) {
             return response()->json([
                 'message' => 'Fournir un terme de recherche ou au moins un filtre de culture.',
             ], 422);
@@ -93,11 +96,15 @@ class GlobalSearchController extends Controller
                 });
             }
 
-            // Privacy: exclude private plants unless owner
+            // Privacy: exclude private plants unless owner or group member
             $plantQuery->where(function ($pq) {
                 $pq->where('is_private', false);
                 if (Auth::check()) {
                     $pq->orWhere('owner_id', Auth::id());
+                    $groupIds = Auth::user()->groupIds();
+                    if (!empty($groupIds)) {
+                        $pq->orWhereIn('group_id', $groupIds);
+                    }
                 }
             });
 
@@ -121,27 +128,35 @@ class GlobalSearchController extends Controller
                     foreach ($cultBool as $col => $val) {
                         $cp->where($col, $val);
                     }
-                    // Temperature range: hardiness_min is stored as string (e.g. "-15")
-                    // Cast to numeric for comparison
+                    // Temperature range: hardiness_min stored as string
+                    // Use (col + 0) for safe numeric coercion in SQLite
                     if (isset($cultRanges['temp_min'])) {
                         $cp->whereNotNull('hardiness_min')
-                           ->whereRaw('CAST(hardiness_min AS REAL) >= ?', [$cultRanges['temp_min']]);
+                           ->where('hardiness_min', '!=', '')
+                           ->whereRaw('(hardiness_min + 0) >= ?', [$cultRanges['temp_min']]);
                     }
                     if (isset($cultRanges['temp_max'])) {
                         $cp->whereNotNull('hardiness_min')
-                           ->whereRaw('CAST(hardiness_min AS REAL) <= ?', [$cultRanges['temp_max']]);
+                           ->where('hardiness_min', '!=', '')
+                           ->whereRaw('(hardiness_min + 0) <= ?', [$cultRanges['temp_max']]);
                     }
-                    // USDA zone range: usda_zone stored as string (e.g. "7a", "8", "7-9")
-                    // Extract leading numeric part for comparison
+                    // USDA zone range: usda_zone stored as string (e.g. "7a", "8")
                     if (isset($cultRanges['usda_zone_min'])) {
                         $cp->whereNotNull('usda_zone')
-                           ->whereRaw('CAST(usda_zone AS INTEGER) >= ?', [$cultRanges['usda_zone_min']]);
+                           ->where('usda_zone', '!=', '')
+                           ->whereRaw('(usda_zone + 0) >= ?', [$cultRanges['usda_zone_min']]);
                     }
                     if (isset($cultRanges['usda_zone_max'])) {
                         $cp->whereNotNull('usda_zone')
-                           ->whereRaw('CAST(usda_zone AS INTEGER) <= ?', [$cultRanges['usda_zone_max']]);
+                           ->where('usda_zone', '!=', '')
+                           ->whereRaw('(usda_zone + 0) <= ?', [$cultRanges['usda_zone_max']]);
                     }
                 });
+            }
+
+            // Tag filter
+            if ($tagId) {
+                $plantQuery->whereHas('userTags', fn ($tq) => $tq->where('user_plant_tags.id', $tagId));
             }
 
             $results['plants'] = $plantQuery->limit($limit)->get()->map(fn ($p) => [
@@ -172,11 +187,15 @@ class GlobalSearchController extends Controller
             })
             ->select('id', 'name', 'environment', 'owner_id', 'is_private');
 
-            // Privacy: exclude private sites unless owner
+            // Privacy: exclude private sites unless owner or group member
             $siteQuery->where(function ($sq) {
                 $sq->where('is_private', false);
                 if (Auth::check()) {
                     $sq->orWhere('owner_id', Auth::id());
+                    $groupIds = Auth::user()->groupIds();
+                    if (!empty($groupIds)) {
+                        $sq->orWhereIn('group_id', $groupIds);
+                    }
                 }
             });
 

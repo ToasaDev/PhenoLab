@@ -24,8 +24,13 @@ class PlantController extends Controller
     private function canManagePlant(Plant $plant): bool
     {
         $user = Auth::user();
+        if ($user === null) return false;
+        if ($user->is_staff) return true;
+        if ($plant->owner_id === $user->id) return true;
+        // Group members can manage shared plants
+        if ($plant->group_id && in_array($plant->group_id, $user->groupIds())) return true;
 
-        return $user !== null && ($user->is_staff || $plant->owner_id === $user->id);
+        return false;
     }
 
     private function visiblePlantsQuery(): Builder
@@ -45,6 +50,11 @@ class PlantController extends Controller
 
             if ($user !== null) {
                 $visible->orWhere('owner_id', $user->id);
+                // Include plants shared with user's groups
+                $groupIds = $user->groupIds();
+                if (!empty($groupIds)) {
+                    $visible->orWhereIn('group_id', $groupIds);
+                }
             }
         });
     }
@@ -262,6 +272,16 @@ class PlantController extends Controller
             $query->whereHas('cultivationProfile', fn (Builder $cp) => $cp->where('usage_types', 'like', '%"'.$v.'"%'));
         }
 
+        // --- Tag filter ---
+        if ($tagId = $request->query('tag_id')) {
+            $query->whereHas('userTags', fn (Builder $tq) => $tq->where('user_plant_tags.id', $tagId));
+        }
+
+        // --- Group filter ---
+        if ($groupId = $request->query('group_id')) {
+            $query->where('group_id', $groupId);
+        }
+
         // --- Ordering ---
         [$column, $direction] = $this->parseOrdering(
             $request->query('ordering', 'name'),
@@ -388,10 +408,19 @@ class PlantController extends Controller
             'ecological_notes'     => ['nullable', 'string'],
             'care_notes'           => ['nullable', 'string'],
             'replaces_id'          => ['nullable', 'exists:plants,id'],
+            'group_id'             => ['nullable', 'exists:user_groups,id'],
         ]);
 
         if ($response = $this->authorizePlantRelations($data)) {
             return $response;
+        }
+
+        // Verify user belongs to the group if specified
+        if (!empty($data['group_id'])) {
+            $groupIds = Auth::user()->groupIds();
+            if (!in_array((int) $data['group_id'], $groupIds) && !Auth::user()->is_staff) {
+                return response()->json(['message' => 'Vous ne faites pas partie de ce groupe.'], 403);
+            }
         }
 
         $data['owner_id'] = Auth::id();

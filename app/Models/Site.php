@@ -23,6 +23,7 @@ class Site extends Model
         'site_category_id',
         'is_private',
         'owner_id',
+        'group_id',
         'soil_type',
         'exposure',
         'slope',
@@ -125,6 +126,11 @@ class Site extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(UserGroup::class, 'group_id');
     }
 
     public function siteCategory(): BelongsTo
