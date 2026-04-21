@@ -118,7 +118,7 @@ class ObservationController extends Controller
         );
         $query->orderBy($column, $direction);
 
-        $perPage = min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 100);
+        $perPage = min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 1000);
 
         return response()->json($query->paginate($perPage));
     }
@@ -165,7 +165,7 @@ class ObservationController extends Controller
         }
 
         $data = $request->validate([
-            'observation_date'      => ['required', 'date'],
+            'observation_date'      => ['required', 'date_format:Y-m-d'],
             'plant_id'              => ['required', 'exists:plants,id'],
             'phenological_stage_id' => ['required', 'exists:phenological_stages,id'],
             'intensity'             => ['nullable', 'integer', 'between:1,5'],
@@ -226,7 +226,7 @@ class ObservationController extends Controller
         ])));
 
         $data = $request->validate([
-            'observation_date'      => ['sometimes', 'required', 'date'],
+            'observation_date'      => ['sometimes', 'required', 'date_format:Y-m-d'],
             'plant_id'              => ['sometimes', 'required', 'exists:plants,id'],
             'phenological_stage_id' => ['sometimes', 'required', 'exists:phenological_stages,id'],
             'intensity'             => ['nullable', 'integer', 'between:1,5'],

@@ -33,13 +33,20 @@ class Plant extends Model
         'age_years',
         'height_category',
         'exact_height',
+        'abundance',
+        'initial_abundance',
         'health_status',
+        'identification_certainty',
         'status',
         'death_date',
         'death_cause',
         'death_notes',
         'replaces_id',
         'clone_or_accession',
+        'cultivar',
+        'variety',
+        'cultivar_info',
+        'cultivar_id',
         'owner_id',
         'group_id',
         'is_private',
@@ -68,6 +75,7 @@ class Plant extends Model
             'latitude'        => 'decimal:8',
             'longitude'       => 'decimal:8',
             'gps_accuracy'    => 'float',
+            'cultivar_info'   => 'array',
             'gps_recorded_at' => 'datetime',
             'map_position_x'  => 'float',
             'map_position_y'  => 'float',
@@ -204,6 +212,11 @@ class Plant extends Model
     public function cultivationProfile(): HasOne
     {
         return $this->hasOne(PlantCultivationProfile::class);
+    }
+
+    public function cultivarRef(): BelongsTo
+    {
+        return $this->belongsTo(Cultivar::class, 'cultivar_id');
     }
 
     // ── Scopes ──────────────────────────────────────────────────────

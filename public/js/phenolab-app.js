@@ -196,6 +196,7 @@ createApp({
                 filters: {
                     q: '',
                     site: '',
+                    site_category_id: '',
                     category: '',
                     status: '',
                     health_status: '',
@@ -230,7 +231,7 @@ createApp({
             gbifModal: {
                 loading: false,
                 results: null,
-                sync: { mode: 'backbone_match', query: '', limit: 20, strict: false, fetchVernacular: true },
+                sync: { mode: 'backbone_match', query: '', limit: 20, strict: false, fetchVernacular: true, createPlant: true },
                 importFamily: { family: '', limit: 100, acceptedOnly: true, dryRun: false }
             },
             showAddPlantModal: false,
@@ -400,6 +401,18 @@ createApp({
             },
             
             // Taxon autocomplete state
+            siteAutocomplete: {
+                query: '',
+                showDropdown: false,
+                selectedSite: null,
+            },
+            cultivarSearch: {
+                query: '',
+                results: [],
+                loading: false,
+                showModal: false,
+                target: 'newPlant', // 'newPlant' or 'editPlant'
+            },
             taxonAutocomplete: {
                 query: '',
                 results: [],
@@ -439,8 +452,13 @@ createApp({
                 age_years: null,
                 height_category: '',
                 exact_height: null,
+                abundance: null,
+                initial_abundance: null,
                 health_status: 'good',
+                identification_certainty: 'certain',
                 clone_or_accession: '',
+                cultivar: '',
+                variety: '',
                 is_private: false,
                 notes: '',
                 anecdotes: '',
@@ -469,8 +487,13 @@ createApp({
                 age_years: null,
                 height_category: '',
                 exact_height: null,
+                abundance: null,
+                initial_abundance: null,
                 health_status: 'good',
+                identification_certainty: 'certain',
                 clone_or_accession: '',
+                cultivar: '',
+                variety: '',
                 is_private: false,
                 notes: '',
                 anecdotes: '',
@@ -516,6 +539,16 @@ createApp({
                 _photoPreview: null,
             },
             
+            // Plant picker state (shared by observation & photo modals)
+            plantPicker: {
+                query: '',
+                siteFilter: '',
+                results: [],
+                loading: false,
+                totalCount: 0,
+                debounceTimer: null,
+            },
+
             newPhoto: {
                 plant: null,
                 title: '',
@@ -614,6 +647,11 @@ createApp({
                 format: 'full',
             },
             exportState: {
+                loading: false,
+                success: false,
+                error: '',
+            },
+            hugoExportState: {
                 loading: false,
                 success: false,
                 error: '',
@@ -1191,6 +1229,17 @@ createApp({
         // Load search history from localStorage
         this.loadSearchHistory();
 
+        // Auto-close hamburger menu on link click (mobile)
+        const navbarCollapse = document.getElementById('navbarNav');
+        if (navbarCollapse) {
+            navbarCollapse.addEventListener('click', (e) => {
+                if (e.target.closest('.dropdown-item, .nav-link') && !e.target.closest('.dropdown-toggle')) {
+                    const bsCollapse = bootstrap.Collapse.getInstance(navbarCollapse);
+                    if (bsCollapse) bsCollapse.hide();
+                }
+            });
+        }
+
         // Handle URL hash for direct navigation
         this.handleHashChange();
         window.addEventListener('hashchange', this.handleHashChange);
@@ -1287,14 +1336,39 @@ createApp({
         },
 
         normalizeActivity(activity) {
+            // Icône et couleur selon entity_type + action
+            const iconMap = {
+                plant:       { icon: 'fa-seedling',    color: 'success' },
+                observation: { icon: 'fa-eye',         color: 'info' },
+                photo:       { icon: 'fa-camera',      color: 'purple' },
+                taxon:       { icon: 'fa-dna',         color: 'warning' },
+                site:        { icon: 'fa-map-marker-alt', color: 'primary' },
+                position:    { icon: 'fa-map-pin',     color: 'secondary' },
+                system:      { icon: 'fa-cog',         color: 'secondary' },
+            };
+            const actionOverrides = {
+                created:     { icon: 'fa-plus-circle',      color: null },
+                updated:     { icon: 'fa-pen',              color: null },
+                deleted:     { icon: 'fa-trash',            color: 'danger' },
+                replaced:    { icon: 'fa-exchange-alt',     color: 'warning' },
+                marked_dead: { icon: 'fa-skull-crossbones', color: 'danger' },
+                validated:   { icon: 'fa-check-circle',     color: 'primary' },
+                uploaded:    { icon: 'fa-upload',            color: null },
+                imported:    { icon: 'fa-file-import',       color: 'info' },
+                synced:      { icon: 'fa-sync',              color: 'success' },
+            };
+            const entityStyle = iconMap[activity.entity_type] || { icon: 'fa-clock', color: 'secondary' };
+            const actionStyle = actionOverrides[activity.action] || {};
+            // Pour created/updated/uploaded : on garde l'icône de l'entité, sinon on prend celle de l'action
+            const useEntityIcon = ['created', 'updated', 'uploaded'].includes(activity.action);
             return {
                 ...activity,
                 actor: activity?.actor ? {
                     ...activity.actor,
                     username: activity.actor.username || activity.actor.name || 'Utilisateur'
                 } : null,
-                color: activity?.color || 'secondary',
-                icon: activity?.icon || 'fa-clock',
+                color: actionStyle.color || entityStyle.color,
+                icon: useEntityIcon ? entityStyle.icon : (actionStyle.icon || entityStyle.icon),
                 is_system: Boolean(activity?.is_system || !activity?.actor),
                 timestamp: activity?.timestamp || activity?.created_at || null
             };
@@ -1317,7 +1391,11 @@ createApp({
                     break;
                 case 'sites':
                     console.log('📍 Loading sites view...');
-                    this.loadSites();
+                    this.loadSites().then(() => {
+                        if (this.sitesViewMode === 'map') {
+                            this.$nextTick(() => this.initializeMap());
+                        }
+                    });
                     break;
                 case 'site-map':
                     // Handled by showSiteMap method
@@ -1400,6 +1478,22 @@ createApp({
             }
         },
         
+        // Navigate to the entity of an activity
+        activityNavigate(activity) {
+            if (!activity.entity_id) return;
+            switch (activity.entity_type) {
+                case 'plant':
+                    this.viewPlantDetail(activity.entity_id);
+                    break;
+                case 'observation':
+                    this.viewObservationDetail(activity.entity_id);
+                    break;
+                case 'site':
+                    this.viewSiteDetail(activity.entity_id);
+                    break;
+            }
+        },
+
         // Load recent activities
         async loadRecentActivities() {
             try {
@@ -1988,12 +2082,20 @@ createApp({
         // Initialize map
         initializeMap() {
             if (!document.getElementById('sitesMap')) return;
-            
+
+            // Destroy stale map instance if its container was removed by v-if
             if (this.map) {
-                this.map.invalidateSize();
-                return;
+                const oldContainer = this.map.getContainer();
+                if (!oldContainer || !document.body.contains(oldContainer)) {
+                    this.map.remove();
+                    this.map = null;
+                    this.sitesLayer = null;
+                } else {
+                    this.map.invalidateSize();
+                    return;
+                }
             }
-            
+
             // Initialize Leaflet map
             this.map = L.map('sitesMap').setView([46.2044, 6.1432], 10);
             
@@ -3154,6 +3256,27 @@ createApp({
                 this.gbifModal.results = data;
                 if (data.synced_count > 0) {
                     this.showAlert(`${data.synced_count} taxon(s) synchronise(s) depuis GBIF`, 'success');
+                    // Si "Créer la plante" est coché, ouvrir le formulaire plante avec le taxon pré-rempli
+                    if (this.gbifModal.sync.createPlant && data.synced && data.synced.length > 0) {
+                        const syncedTaxon = data.synced[0];
+                        // Chercher le taxon dans la base par son nom
+                        let taxon = null;
+                        try {
+                            const resp = await axios.get('/api/v1/taxons', { params: { search: syncedTaxon.name, page_size: 5 } });
+                            const results = this.extractCollection(resp.data);
+                            taxon = results.find(t => t.taxon_id === syncedTaxon.taxon_id || t.binomial_name === syncedTaxon.name);
+                        } catch (e) { console.error('Error fetching synced taxon:', e); }
+                        this.closeModal();
+                        this.$nextTick(() => {
+                            this.openModal('plant');
+                            if (taxon) {
+                                this.newPlant.taxon = taxon.id;
+                                this.taxonAutocomplete.selectedTaxon = taxon;
+                                this.taxonAutocomplete.query = taxon.display_name || taxon.binomial_name || '';
+                            }
+                        });
+                        return;
+                    }
                 } else if (data.error_count > 0) {
                     this.showAlert(`Erreurs: ${data.errors[0]}`, 'warning');
                 } else {
@@ -3393,7 +3516,7 @@ createApp({
                     this.showAddTaxonModal = true;
                     break;
                 case 'gbifSync':
-                    this.gbifModal.sync = { mode: 'backbone_match', query: '', limit: 20, strict: false, fetchVernacular: true };
+                    this.gbifModal.sync = { mode: 'backbone_match', query: '', limit: 20, strict: false, fetchVernacular: true, createPlant: true };
                     this.gbifModal.results = null;
                     this.gbifModal.loading = false;
                     this.showGbifSyncModal = true;
@@ -3407,21 +3530,34 @@ createApp({
                 case 'plant':
                     if (context && context.siteId) {
                         this.newPlant.site = context.siteId;
+                        const site = this.sites.find(s => s.id === context.siteId);
+                        if (site) {
+                            this.siteAutocomplete.selectedSite = site;
+                            this.siteAutocomplete.query = site.name;
+                        }
                     }
                     this.showAddPlantModal = true;
                     break;
                 case 'observation':
+                    this.resetPlantPicker();
                     // Pre-fill plant if context provided (from plant detail page)
                     if (context && context.plantId) {
                         this.newObservation.plant = context.plantId;
+                        this.newObservation.plantLocked = true;
                     } else {
                         // Reset plant selection when opening without context
                         this.newObservation.plant = '';
+                        this.newObservation.plantLocked = false;
                     }
+                    // Ensure sites are loaded for the picker filter
+                    if (!this.sites || this.sites.length === 0) this.loadSites();
+                    // Load initial plant list via API
+                    this.searchPlantsForPicker();
                     this.showAddObservationModal = true;
                     break;
                 case 'photo':
                     // Reset for plant photo context
+                    this.resetPlantPicker();
                     this.newPhoto.photo_type = 'general';
                     this.newPhoto.title = '';
                     this.newPhoto.description = '';
@@ -3429,9 +3565,15 @@ createApp({
                     // Pre-fill plant if context provided (from plant detail page)
                     if (context && context.plantId) {
                         this.newPhoto.plant = context.plantId;
+                        this.newPhoto.plantLocked = true;
                     } else {
                         this.newPhoto.plant = '';
+                        this.newPhoto.plantLocked = false;
                     }
+                    // Ensure sites are loaded for the picker filter
+                    if (!this.sites || this.sites.length === 0) this.loadSites();
+                    // Load initial plant list via API
+                    this.searchPlantsForPicker();
                     // Use Bootstrap Modal API for photo modal
                     const photoModalElement = document.getElementById('addPhotoModal');
                     if (photoModalElement) {
@@ -4082,7 +4224,9 @@ createApp({
         
         // ===== PLANT NAVIGATION AND DETAIL METHODS =====
         async viewPlantDetail(plantId) {
-            this.plantReturnView = this.currentView;
+            if (this.currentView !== 'plant-detail') {
+                this.plantReturnView = this.currentView;
+            }
             this.currentView = 'plant-detail';
             this.currentPlant = plantId;
             this.plantDetail.loading = true;
@@ -4145,13 +4289,19 @@ createApp({
         backToPlants() {
             const returnTo = this.plantReturnView || 'plants';
             this.plantReturnView = null;
-            window.location.hash = '#' + returnTo;
-            this.currentView = returnTo;
             this.currentPlant = null;
             this.plantDetail.plant = null;
             this.plantDetail.actions = [];
             this.plantDetail.actionFilterType = '';
             this.plantDetail.actionFilterQ = '';
+
+            if (returnTo === 'site-detail' && this.siteDetail.site) {
+                window.location.hash = '#site/' + this.siteDetail.site.id;
+                this.currentView = 'site-detail';
+            } else {
+                window.location.hash = '#' + returnTo;
+                this.currentView = returnTo;
+            }
         },
         
         // ===== PLANT ACTIONS CRUD =====
@@ -4556,12 +4706,9 @@ createApp({
 
                 // Recharger les listes
                 await this.loadPlants();
-                if (this.currentView === 'plants') {
-                    await this.loadPlantsList();
-                }
-                if (this.siteDetail.site && createdPlant.site_id == this.siteDetail.site.id) {
-                    await this.loadSitePlants(this.siteDetail.site.id);
-                }
+
+                // Naviguer vers la fiche de la plante créée
+                await this.viewPlantDetail(createdPlant.id);
             } catch (error) {
                 console.error('Error adding plant:', error);
                 const status = error.response?.status || 'unknown';
@@ -4584,8 +4731,12 @@ createApp({
                 age_years: null,
                 height_category: '',
                 exact_height: null,
+                abundance: null,
+                initial_abundance: null,
                 health_status: 'good',
                 clone_or_accession: '',
+                cultivar: '',
+                variety: '',
                 is_private: false,
                 notes: '',
                 anecdotes: '',
@@ -4612,6 +4763,9 @@ createApp({
 
             // Reset selected taxon family
             this.selectedTaxonFamily = null;
+
+            // Reset site autocomplete
+            this.siteAutocomplete = { query: '', showDropdown: false, selectedSite: null };
 
             if (this.gpsMap) {
                 this.gpsMap.remove();
@@ -4653,6 +4807,116 @@ createApp({
         },
 
         // ===== TAXON AUTOCOMPLETE METHODS =====
+        // ── Site Autocomplete ───────────────────────────────────────
+        filteredSitesForAutocomplete() {
+            const q = (this.siteAutocomplete.query || '').toLowerCase().trim();
+            if (!q) return this.sites.slice(0, 20);
+            return this.sites.filter(s =>
+                (s.name && s.name.toLowerCase().includes(q)) ||
+                (s.location && s.location.toLowerCase().includes(q))
+            ).slice(0, 20);
+        },
+        selectSite(site) {
+            this.newPlant.site = site.id;
+            this.siteAutocomplete.selectedSite = site;
+            this.siteAutocomplete.query = site.name;
+            this.siteAutocomplete.showDropdown = false;
+        },
+        clearSiteSelection() {
+            this.newPlant.site = null;
+            this.siteAutocomplete.selectedSite = null;
+            this.siteAutocomplete.query = '';
+        },
+        closeSiteDropdown() {
+            setTimeout(() => { this.siteAutocomplete.showDropdown = false; }, 200);
+        },
+
+        // ── Cultivar Search (Wikidata) ────────────────────────────
+        openCultivarSearch(target = 'newPlant') {
+            this.cultivarSearch.target = target;
+            this.cultivarSearch.query = '';
+            this.cultivarSearch.results = [];
+            this.cultivarSearch.loading = false;
+            this.cultivarSearch.showModal = true;
+
+            // Determine the species name for context
+            let speciesName = null;
+            if (target === 'newPlant' && this.taxonAutocomplete.selectedTaxon) {
+                speciesName = this.taxonAutocomplete.selectedTaxon.binomial_name;
+            } else if (target === 'editPlant') {
+                if (this.taxonAutocompleteEdit?.selectedTaxon) {
+                    speciesName = this.taxonAutocompleteEdit.selectedTaxon.binomial_name;
+                } else if (this.plantDetail?.plant?.taxon) {
+                    speciesName = this.plantDetail.plant.taxon.binomial_name;
+                }
+            }
+
+            // Store species for the search
+            this.cultivarSearch.species = speciesName;
+        },
+        async searchCultivars() {
+            const q = this.cultivarSearch.query.trim();
+            if (q.length < 2) return;
+            this.cultivarSearch.loading = true;
+            this.cultivarSearch.results = [];
+            try {
+                const params = { query: q };
+                if (this.cultivarSearch.species) params.species = this.cultivarSearch.species;
+                const { data } = await axios.get('/api/v1/plants/search-cultivars', { params });
+                this.cultivarSearch.results = data.results || [];
+            } catch (e) {
+                console.error('Cultivar search error:', e);
+                this.showAlert('Erreur lors de la recherche de cultivars', 'danger');
+            }
+            this.cultivarSearch.loading = false;
+        },
+        async selectCultivar(result) {
+            const targetKey = this.cultivarSearch.target;
+            const cultivarName = result.cultivar_name || result.name || result.cultivar || result.label || '';
+
+            // For local DB cultivars, link via cultivar_id
+            // For Wikidata, fetch details as before
+            let cultivarInfo = null;
+            let cultivarId = result.cultivar_id || null;
+
+            if (result.source === 'wikidata' && result.wikidata_id) {
+                try {
+                    const { data } = await axios.get('/api/v1/plants/cultivar-details', { params: { wikidata_id: result.wikidata_id } });
+                    cultivarInfo = data;
+                } catch (e) {
+                    console.error('Error fetching cultivar details:', e);
+                }
+            }
+
+            if (targetKey === 'newPlant') {
+                this.newPlant.cultivar = cultivarName;
+                if (cultivarId) this.newPlant.cultivar_id = cultivarId;
+                if (cultivarInfo) this.newPlant.cultivar_info = cultivarInfo;
+                this.cultivarSearch.showModal = false;
+                this.showAlert(`Cultivar "${cultivarName}" sélectionné`, 'success');
+            } else if (targetKey === 'editPlant') {
+                if (this.currentView === 'plant-detail' && this.plantDetail.plant) {
+                    try {
+                        const payload = { cultivar: cultivarName };
+                        if (cultivarId) payload.cultivar_id = cultivarId;
+                        if (cultivarInfo) payload.cultivar_info = cultivarInfo;
+                        await axios.patch(`/api/v1/plants/${this.plantDetail.plant.id}`, payload);
+                        await this.viewPlantDetail(this.plantDetail.plant.id);
+                        this.cultivarSearch.showModal = false;
+                        this.showAlert(`Cultivar "${cultivarName}" enregistré`, 'success');
+                    } catch (e) {
+                        this.showAlert('Erreur: ' + (e.response?.data?.message || e.message), 'danger');
+                    }
+                } else {
+                    this.editPlantData.cultivar = cultivarName;
+                    if (cultivarId) this.editPlantData.cultivar_id = cultivarId;
+                    if (cultivarInfo) this.editPlantData.cultivar_info = cultivarInfo;
+                    this.cultivarSearch.showModal = false;
+                    this.showAlert(`Cultivar "${cultivarName}" sélectionné`, 'success');
+                }
+            }
+        },
+
         async searchTaxons(context = 'newPlant') {
             const autocomplete = context === 'newPlant' ? this.taxonAutocomplete : (context === 'editPlant' ? this.taxonAutocompleteEdit : this.taxonAutocompleteReplace);
             const query = autocomplete.query.trim();
@@ -4852,6 +5116,19 @@ createApp({
             };
         },
 
+        async setIdentificationCertainty(value) {
+            if (!this.user.isAuthenticated || !this.plantDetail.plant) return;
+            try {
+                const response = await axios.patch(`/api/v1/plants/${this.plantDetail.plant.id}`, {
+                    identification_certainty: value
+                });
+                this.plantDetail.plant.identification_certainty = value;
+            } catch (error) {
+                console.error('Error updating certainty:', error);
+                this.showAlert('Erreur lors de la mise à jour de la certitude', 'danger');
+            }
+        },
+
         async replacePlant() {
             if (!this.user.isAuthenticated) {
                 this.showAlert('Vous devez être connecté pour remplacer une plante', 'warning');
@@ -4977,46 +5254,20 @@ createApp({
                             this.showAlert('Observation créée mais erreur lors de l\'upload de la photo.', 'warning');
                         }
                     }
-                    const observedPlantId = payload.plant_id || (this.plantDetail.plant && this.plantDetail.plant.id) || this.currentPlant;
-
-                    // Refresh data FIRST while modal is still open, then close modal once at the end.
-                    try {
-                        if (observedPlantId && this.plantDetail.plant && this.plantDetail.plant.id === observedPlantId) {
-                            const [obsResponse, statsResponse, plantResponse] = await Promise.all([
-                                fetch(`/api/v1/plants/${observedPlantId}/observations`),
-                                fetch(`/api/v1/plants/${observedPlantId}/statistics`),
-                                fetch(`/api/v1/plants/${observedPlantId}`),
-                            ]);
-                            if (obsResponse.ok) {
-                                const obsData = await obsResponse.json();
-                                const list = Array.isArray(obsData) ? obsData : (obsData.observations || obsData.data || []);
-                                this.plantDetail.observations.splice(0, this.plantDetail.observations.length, ...list);
-                            }
-                            if (statsResponse.ok) {
-                                const stats = await statsResponse.json();
-                                Object.assign(this.plantDetail.statistics || (this.plantDetail.statistics = {}), stats);
-                            }
-                            if (plantResponse.ok) {
-                                const fresh = await plantResponse.json();
-                                if (this.plantDetail.plant) {
-                                    this.plantDetail.plant.observations_count = fresh.observations_count;
-                                    this.plantDetail.plant.photos_count = fresh.photos_count;
-                                    this.plantDetail.plant.last_observation = fresh.last_observation;
-                                }
-                            }
-                        }
-                        if (this.currentView === 'observations') {
-                            this.loadObservations();
-                        }
-                    } catch (e) {
-                        console.error('Error refreshing plant detail data:', e);
-                    }
+                    const createdObservationId = response.data.id;
 
                     this.showAddObservationModal = false;
                     this.showAlert('Observation ajoutée avec succès !', 'success');
                     this.$nextTick(() => {
                         this.resetNewObservationForm();
                     });
+
+                    // If coming from plant detail, stay on plant and reload its data
+                    if (this.currentView === 'plant-detail' && this.plantDetail.plant) {
+                        await this.viewPlantDetail(this.plantDetail.plant.id);
+                    } else {
+                        await this.viewObservationDetail(createdObservationId);
+                    }
                 })
                 .catch(error => {
                     console.error('Error adding observation:', error);
@@ -5093,7 +5344,10 @@ createApp({
                 const response = await fetch(`/api/v1/observations/${obsId}`);
                 if (response.ok) {
                     this.currentObservation = await response.json();
-                    this.observationReturnView = this.currentView;
+                    // Only update return view if navigating FROM another view (not refreshing current detail)
+                    if (this.currentView !== 'observation-detail') {
+                        this.observationReturnView = this.currentView;
+                    }
                     this.currentView = 'observation-detail';
                     this.telaComparison = null; // Reset comparison data
 
@@ -5118,8 +5372,14 @@ createApp({
             this.observationReturnView = null;
             this.currentObservation = null;
             this.telaComparison = null;
-            window.location.hash = '#' + returnTo;
-            this.currentView = returnTo;
+
+            if (returnTo === 'plant-detail' && this.plantDetail.plant) {
+                window.location.hash = '#plant/' + this.plantDetail.plant.id;
+                this.currentView = 'plant-detail';
+            } else {
+                window.location.hash = '#' + returnTo;
+                this.currentView = returnTo;
+            }
         },
 
         async loadTelaComparison() {
@@ -6167,6 +6427,41 @@ createApp({
             }
         },
 
+        async launchHugoExport() {
+            this.hugoExportState = { loading: true, success: false, error: '' };
+
+            try {
+                const response = await axios.get('/api/v1/export/hugo', {
+                    responseType: 'blob',
+                    timeout: 600000, // 10 minutes max (full site generation)
+                });
+
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                const disposition = response.headers['content-disposition'];
+                const filename = disposition
+                    ? disposition.split('filename=')[1]?.replace(/"/g, '')
+                    : `phenolab_hugo_${new Date().toISOString().slice(0,16).replace('T','_')}.zip`;
+                link.setAttribute('download', filename);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(url);
+
+                this.hugoExportState.success = true;
+                this.hugoExportState.loading = false;
+            } catch (error) {
+                console.error('Hugo export failed:', error);
+                this.hugoExportState.error = error.response?.status === 403
+                    ? 'Acces reserve aux super-administrateurs.'
+                    : error.response?.status === 401
+                    ? 'Vous devez etre connecte.'
+                    : 'Erreur lors de la generation du site. Veuillez reessayer.';
+                this.hugoExportState.loading = false;
+            }
+        },
+
         // Help alert method (kept for backward compat)
         showHelpAlert() {
             this.currentView = 'help';
@@ -6675,8 +6970,13 @@ createApp({
                 age_years: plant.age_years || null,
                 height_category: plant.height_category || '',
                 exact_height: plant.exact_height || null,
+                abundance: plant.abundance || null,
+                initial_abundance: plant.initial_abundance || null,
                 health_status: plant.health_status || 'good',
+                identification_certainty: plant.identification_certainty || 'certain',
                 clone_or_accession: plant.clone_or_accession || '',
+                cultivar: plant.cultivar || '',
+                variety: plant.variety || '',
                 is_private: plant.is_private || false,
                 notes: plant.notes || '',
                 anecdotes: plant.anecdotes || '',
@@ -6717,8 +7017,13 @@ createApp({
                     age_years: this.editPlantData.age_years ? parseInt(this.editPlantData.age_years) : null,
                     height_category: this.editPlantData.height_category || null,
                     exact_height: this.editPlantData.exact_height ? parseFloat(this.editPlantData.exact_height) : null,
+                    abundance: this.editPlantData.abundance ? parseInt(this.editPlantData.abundance) : null,
+                    initial_abundance: this.editPlantData.initial_abundance ? parseInt(this.editPlantData.initial_abundance) : null,
                     health_status: this.editPlantData.health_status,
+                    identification_certainty: this.editPlantData.identification_certainty || 'certain',
                     clone_or_accession: this.editPlantData.clone_or_accession || null,
+                    cultivar: this.editPlantData.cultivar || null,
+                    variety: this.editPlantData.variety || null,
                     is_private: this.editPlantData.is_private,
                     notes: this.editPlantData.notes || null,
                     anecdotes: this.editPlantData.anecdotes || null,
@@ -6967,6 +7272,25 @@ createApp({
                 // Wait for Vue to render the #generalMap element
                 await this.$nextTick();
 
+                // Ensure the DOM element is actually available (v-if timing)
+                let mapEl = document.getElementById('generalMap');
+                if (!mapEl) {
+                    await new Promise(r => setTimeout(r, 100));
+                    await this.$nextTick();
+                    mapEl = document.getElementById('generalMap');
+                }
+                if (!mapEl) return;
+
+                // Destroy stale map instance if its container was removed by v-if
+                if (this.generalMap) {
+                    const oldContainer = this.generalMap.getContainer();
+                    if (!oldContainer || !document.body.contains(oldContainer)) {
+                        this.generalMap.remove();
+                        this.generalMap = null;
+                        this.mapLayers = { sites: null, plants: null };
+                    }
+                }
+
                 // Initialize map if not already done
                 if (!this.generalMap) {
                     this.generalMap = L.map('generalMap').setView([43.7102, 7.2620], 10);
@@ -6992,6 +7316,8 @@ createApp({
                     });
                 }
 
+                // Force Leaflet to recalculate container size after render
+                this.generalMap.invalidateSize();
                 this.updateMapLayers();
                 this.centerMapOnData();
 
@@ -8014,6 +8340,70 @@ createApp({
             return this.userTags.filter(t => !assignedIds.includes(t.id));
         },
 
+        // Plant picker: API-based search across ALL plants
+        async searchPlantsForPicker() {
+            this.plantPicker.loading = true;
+            try {
+                const params = new URLSearchParams();
+                if (this.plantPicker.query) params.append('search', this.plantPicker.query);
+                if (this.plantPicker.siteFilter) params.append('site', this.plantPicker.siteFilter);
+                params.append('per_page', '40');
+                params.append('ordering', 'name');
+                const response = await axios.get(`/api/v1/plants/?${params.toString()}`);
+                this.plantPicker.results = this.extractCollection(response.data);
+                this.plantPicker.totalCount = response.data.total ?? response.data.count ?? this.plantPicker.results.length;
+            } catch (error) {
+                console.error('Plant picker search error:', error);
+                this.plantPicker.results = [];
+                this.plantPicker.totalCount = 0;
+            } finally {
+                this.plantPicker.loading = false;
+            }
+        },
+
+        // Debounced search triggered on input change
+        onPlantPickerInput() {
+            clearTimeout(this.plantPicker.debounceTimer);
+            this.plantPicker.debounceTimer = setTimeout(() => {
+                this.searchPlantsForPicker();
+            }, 300);
+        },
+
+        // Triggered when site filter changes
+        onPlantPickerSiteChange() {
+            this.searchPlantsForPicker();
+        },
+
+        resetPlantPicker() {
+            this.plantPicker.query = '';
+            this.plantPicker.siteFilter = '';
+            this.plantPicker.results = [];
+            this.plantPicker.totalCount = 0;
+            clearTimeout(this.plantPicker.debounceTimer);
+        },
+
+        selectPlantFromPicker(plant, target) {
+            if (target === 'observation') {
+                this.newObservation.plant = plant.id;
+            } else if (target === 'photo') {
+                this.newPhoto.plant = plant.id;
+            }
+            // Store selected plant in plants array so the display can find it
+            if (!this.plants.find(p => p.id === plant.id)) {
+                this.plants.push(plant);
+            }
+        },
+
+        clearPlantSelection(target) {
+            if (target === 'observation') {
+                this.newObservation.plant = null;
+            } else if (target === 'photo') {
+                this.newPhoto.plant = null;
+            }
+            this.resetPlantPicker();
+            this.searchPlantsForPicker();
+        },
+
         // ── GBIF Sync ──
 
         async syncGbif() {
@@ -8086,10 +8476,17 @@ createApp({
             this.admin.loading = true;
             this.admin.importResult = null;
             const formData = new FormData();
-            formData.append('file', this.admin.importFile);
-            if (this.admin.importClear) formData.append('clear_existing', '1');
 
-            const url = this.admin.importType === 'ods' ? '/api/v1/admin/import-ods' : '/api/v1/admin/import-tela';
+            let url;
+            if (this.admin.importType === 'cultivars') {
+                url = '/api/v1/admin/import-cultivars';
+                formData.append('file', this.admin.importFile);
+                if (this.admin.importClear) formData.append('clear', '1');
+            } else {
+                url = this.admin.importType === 'ods' ? '/api/v1/admin/import-ods' : '/api/v1/admin/import-tela';
+                formData.append('csv_file', this.admin.importFile);
+                if (this.admin.importClear) formData.append('clear', '1');
+            }
             try {
                 await this.ensureCsrf();
                 const { data } = await axios.post(url, formData, {

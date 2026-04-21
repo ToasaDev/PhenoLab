@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cultivar;
 use App\Models\Observation;
 use App\Models\Plant;
 use App\Models\Site;
@@ -83,12 +84,14 @@ class GlobalSearchController extends Controller
         if (in_array($type, ['all', 'plants'])) {
             $plantQuery = Plant::query()
                 ->with('taxon:id,binomial_name,common_name_fr', 'site:id,name', 'cultivationProfile')
-                ->select('id', 'name', 'taxon_id', 'site_id', 'status', 'owner_id', 'is_private');
+                ->select('id', 'name', 'taxon_id', 'site_id', 'status', 'owner_id', 'is_private', 'cultivar', 'variety');
 
             if ($rawQ !== '') {
                 $plantQuery->where(function ($pq) use ($q) {
                     $pq->where('name', 'like', "%{$q}%")
                        ->orWhere('description', 'like', "%{$q}%")
+                       ->orWhere('cultivar', 'like', "%{$q}%")
+                       ->orWhere('variety', 'like', "%{$q}%")
                        ->orWhereHas('taxon', function ($tq) use ($q) {
                            $tq->where('binomial_name', 'like', "%{$q}%")
                               ->orWhere('common_name_fr', 'like', "%{$q}%");
@@ -167,6 +170,8 @@ class GlobalSearchController extends Controller
                 'common_name'   => $p->taxon->common_name_fr ?? null,
                 'site_name'     => $p->site->name ?? null,
                 'status'        => $p->status,
+                'cultivar'      => $p->cultivar,
+                'variety'       => $p->variety,
                 'cultivation'   => $p->cultivationProfile ? [
                     'exposure'      => $p->cultivationProfile->exposure,
                     'watering'      => $p->cultivationProfile->watering_needs,
@@ -247,6 +252,22 @@ class GlobalSearchController extends Controller
             ]);
         }
 
+        // --- Cultivars --- (text search only)
+        if ($rawQ !== '' && in_array($type, ['all', 'cultivars'])) {
+            $cultivarQuery = Cultivar::with('taxon:id,binomial_name,common_name_fr')
+                ->search($rawQ);
+
+            $results['cultivars'] = $cultivarQuery->limit($limit)->get()->map(fn ($c) => [
+                'id'            => $c->id,
+                'type'          => 'cultivar',
+                'name'          => $c->name,
+                'taxon_name'    => $c->taxon?->binomial_name,
+                'common_name'   => $c->taxon?->common_name_fr,
+                'synonyms'      => $c->synonyms,
+                'source'        => $c->source,
+            ]);
+        }
+
         // --- Taxons --- (text search only)
         if ($rawQ !== '' && in_array($type, ['all', 'taxons'])) {
             $taxonQuery = Taxon::where(function ($tq) use ($q) {
@@ -267,6 +288,10 @@ class GlobalSearchController extends Controller
                 'family'        => $t->family,
             ]);
         }
+
+        $results['total_results'] = collect($results)
+            ->filter(fn ($v) => is_countable($v))
+            ->sum(fn ($v) => count($v));
 
         return response()->json($results);
     }

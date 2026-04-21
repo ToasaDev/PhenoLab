@@ -246,6 +246,53 @@
             margin: auto 0.4rem;
         }
 
+        /* Certainty buttons */
+        .certainty-btn-inactive {
+            background: #f5f5f5;
+            color: #9e9e9e;
+            border: 1px solid #e0e0e0;
+        }
+        .certainty-btn-inactive:hover {
+            background: #eeeeee;
+            color: #616161;
+        }
+        .certainty-btn-active-certain {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #a5d6a7;
+            font-weight: 600;
+            box-shadow: 0 0 0 2px rgba(46, 125, 50, 0.15);
+        }
+        .certainty-btn-active-uncertain {
+            background: #fff3e0;
+            color: #e65100;
+            border: 1px solid #ffcc80;
+            font-weight: 600;
+            box-shadow: 0 0 0 2px rgba(230, 81, 0, 0.15);
+        }
+        .certainty-btn-active-undetermined {
+            background: #fce4ec;
+            color: #c62828;
+            border: 1px solid #ef9a9a;
+            font-weight: 600;
+            box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.15);
+        }
+
+        /* Plant picker item hover */
+        .plant-picker-item {
+            background: #fff;
+            border-bottom: 1px solid #f5f5f5 !important;
+            transition: background 0.15s ease, transform 0.1s ease;
+            cursor: pointer;
+        }
+        .plant-picker-item:hover {
+            background: #f1f8e9 !important;
+        }
+        .plant-picker-item:active {
+            background: #e8f5e9 !important;
+            transform: scale(0.995);
+        }
+
         /* Navbar action buttons — clean & uniform */
         .navbar-actions .nav-link {
             display: flex;
@@ -280,6 +327,59 @@
             .nav-action-label { display: inline; }
         }
 
+        /* App footer — data sources */
+        .app-footer {
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            padding: 1rem 0;
+            text-align: center;
+            color: #6c757d;
+            font-size: 0.8rem;
+        }
+        .app-footer .data-sources {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+        .app-footer .data-sources a {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: #6c757d;
+            text-decoration: none;
+            transition: color 0.2s, opacity 0.2s;
+            opacity: 0.7;
+        }
+        .app-footer .data-sources a:hover {
+            opacity: 1;
+            color: #495057;
+        }
+        .app-footer .data-sources img {
+            height: 22px;
+            width: auto;
+        }
+        .app-footer .data-sources .source-label {
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        @media (max-width: 991.98px) {
+            .app-footer {
+                padding: 0.75rem 0;
+                margin-bottom: 60px; /* space for mobile nav bar */
+            }
+            .app-footer .data-sources {
+                gap: 1rem;
+            }
+            .app-footer .data-sources img {
+                height: 18px;
+            }
+            .app-footer .data-sources .source-label {
+                font-size: 0.7rem;
+            }
+        }
+
         /* Phase 7 — Mobile bottom navigation bar */
         .mobile-bottom-nav {
             display: none;
@@ -299,7 +399,8 @@
                 padding: 0.25rem 0;
                 padding-bottom: calc(0.25rem + env(safe-area-inset-bottom, 0px));
             }
-            .mobile-bottom-nav a {
+            .mobile-bottom-nav > a,
+            .mobile-bottom-nav > div {
                 display: flex;
                 flex-direction: column;
                 align-items: center;
@@ -312,16 +413,29 @@
                 min-height: 50px;
                 transition: color 0.15s;
             }
-            .mobile-bottom-nav a i {
+            .mobile-bottom-nav > a > i,
+            .mobile-bottom-nav > div > a > i {
                 font-size: 1.15rem;
                 margin-bottom: 0.15rem;
             }
-            .mobile-bottom-nav a.active {
+            .mobile-bottom-nav > a.active {
                 color: #198754;
                 font-weight: 600;
             }
-            .mobile-bottom-nav a:active {
+            .mobile-bottom-nav > a:active {
                 color: #198754;
+            }
+            .mobile-bottom-nav > div > a {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                color: #6c757d;
+                text-decoration: none;
+                font-size: 0.65rem;
+            }
+            .mobile-bottom-nav .dropup .dropdown-menu {
+                bottom: 100%;
+                top: auto;
             }
             /* Space at bottom so content isn't hidden behind the bar */
             body { padding-bottom: 60px; }
@@ -448,13 +562,23 @@
                                     <li>
                                         <small class="dropdown-item-text text-muted">
                                             <i class="fas fa-info-circle me-1"></i>
-                                            Connectez-vous pour enregistrer vos donnees
+                                            Connectez-vous pour enregistrer vos données
                                         </small>
                                     </li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li>
+                                        <a class="dropdown-item" href="#map" @click.prevent="currentView = 'map'">
+                                            <i class="fas fa-globe me-2 text-success"></i>Carte
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#analysis" @click.prevent="currentView = 'analysis'">
+                                            <i class="fas fa-chart-line me-2 text-warning"></i>Analyses & stats
+                                        </a>
+                                    </li>
+                                    <li>
                                         <a class="dropdown-item" href="/observations-ods" target="_blank">
-                                            <i class="fas fa-database me-2 text-info"></i>Donnees ODS
+                                            <i class="fas fa-database me-2 text-info"></i>Données ODS
                                             <i class="fas fa-external-link-alt ms-1 text-muted" style="font-size: 0.75em;"></i>
                                         </a>
                                     </li>
@@ -497,8 +621,18 @@
                                     <li><hr class="dropdown-divider"></li>
                                     <li><h6 class="dropdown-header">Outils</h6></li>
                                     <li>
+                                        <a class="dropdown-item" href="#map" @click.prevent="currentView = 'map'">
+                                            <i class="fas fa-globe me-2 text-success"></i>Carte
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="#analysis" @click.prevent="currentView = 'analysis'">
+                                            <i class="fas fa-chart-line me-2 text-warning"></i>Analyses & stats
+                                        </a>
+                                    </li>
+                                    <li>
                                         <a class="dropdown-item" href="/observations-ods" target="_blank">
-                                            <i class="fas fa-database me-2 text-info"></i>Donnees ODS
+                                            <i class="fas fa-database me-2 text-info"></i>Données ODS
                                             <i class="fas fa-external-link-alt ms-1 text-muted" style="font-size: 0.75em;"></i>
                                         </a>
                                     </li>
@@ -670,59 +804,51 @@
                 <div class="row" v-if="recentActivities && recentActivities.length > 0">
                     <div class="col-12">
                         <div class="card shadow-sm">
-                            <div class="card-header bg-white border-bottom">
-                                <h5 class="card-title mb-0">
-                                    <i class="fas fa-clock me-2 text-warning"></i>
-                                    Activité récente
-                                </h5>
+                            <div class="card-header bg-white border-bottom py-2">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-clock me-2 text-warning"></i>Activité récente
+                                </h6>
                             </div>
-                            <div class="card-body p-0">
-                                <div class="list-group list-group-flush">
-                                    <div v-for="activity in recentActivities.slice(0, 8)" :key="activity.id"
-                                         class="list-group-item list-group-item-action border-0">
-                                        <div class="d-flex align-items-start">
-                                            <!-- Icon with color -->
-                                            <div class="flex-shrink-0 me-3">
-                                                <i :class="['fas', activity.icon, `text-${activity.color}`]" style="font-size: 1.2rem; width: 24px;"></i>
-                                            </div>
-
-                                            <!-- Activity content -->
-                                            <div class="flex-grow-1 min-width-0">
-                                                <!-- Entity label -->
-                                                <div class="mb-1">
-                                                    <span class="text-dark" v-text="activity.entity_label"></span>
-                                                </div>
-
-                                                <!-- Actor info -->
-                                                <div class="small text-muted">
-                                                    <span v-if="activity.is_system">
-                                                        <i class="fas fa-robot me-1"></i>
-                                                        Système
-                                                    </span>
-                                                    <span v-else-if="activity.actor">
-                                                        <i class="fas fa-user me-1"></i>
-                                                        <span v-text="activity.actor.username"></span>
-                                                    </span>
-                                                    <span class="mx-1">•</span>
-                                                    <span v-text="getRelativeTime(activity.timestamp)"></span>
-                                                </div>
-                                            </div>
-
-                                            <!-- Badge for action type (optional) -->
-                                            <div class="flex-shrink-0 ms-2">
-                                                <span v-if="activity.action === 'validated'" class="badge bg-primary rounded-pill">
-                                                    <i class="fas fa-check-circle"></i>
-                                                </span>
-                                            </div>
+                            <div class="card-body py-2 px-3">
+                                <div v-for="(activity, idx) in recentActivities.slice(0, 8)" :key="activity.id">
+                                    <div class="d-flex align-items-center py-1" style="cursor: pointer;"
+                                         @click="activityNavigate(activity)">
+                                        <div class="flex-shrink-0 me-2">
+                                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle"
+                                                  :class="`bg-${activity.color} bg-opacity-10`"
+                                                  style="width: 28px; height: 28px;">
+                                                <i :class="['fas', activity.icon, `text-${activity.color}`]" style="font-size: 0.75rem;"></i>
+                                            </span>
+                                        </div>
+                                        <div class="flex-grow-1 min-width-0">
+                                            <span class="small text-dark text-truncate d-block" v-text="activity.entity_label"></span>
+                                        </div>
+                                        <div class="flex-shrink-0 ms-2 text-end d-flex align-items-center gap-1">
+                                            <span class="badge rounded-pill" style="font-size: 0.6rem;"
+                                                  :class="{
+                                                      'bg-success bg-opacity-75': activity.action === 'created',
+                                                      'bg-info bg-opacity-75': activity.action === 'updated',
+                                                      'bg-danger bg-opacity-75': activity.action === 'deleted' || activity.action === 'marked_dead',
+                                                      'bg-primary bg-opacity-75': activity.action === 'validated',
+                                                      'bg-warning bg-opacity-75': activity.action === 'replaced' || activity.action === 'synced',
+                                                      'bg-secondary bg-opacity-75': !['created','updated','deleted','marked_dead','validated','replaced','synced'].includes(activity.action)
+                                                  }">
+                                                <span v-if="activity.action === 'created'">Créé</span>
+                                                <span v-else-if="activity.action === 'updated'">Modifié</span>
+                                                <span v-else-if="activity.action === 'deleted'">Supprimé</span>
+                                                <span v-else-if="activity.action === 'replaced'">Remplacé</span>
+                                                <span v-else-if="activity.action === 'marked_dead'">Mort</span>
+                                                <span v-else-if="activity.action === 'validated'">Validé</span>
+                                                <span v-else-if="activity.action === 'uploaded'">Upload</span>
+                                                <span v-else-if="activity.action === 'imported'">Import</span>
+                                                <span v-else-if="activity.action === 'synced'">Sync</span>
+                                                <span v-else v-text="activity.action"></span>
+                                            </span>
+                                            <small class="text-muted" style="font-size: 0.65rem; white-space: nowrap;" v-text="getRelativeTime(activity.timestamp)"></small>
                                         </div>
                                     </div>
+                                    <hr v-if="idx < recentActivities.slice(0, 8).length - 1" class="my-0 opacity-10">
                                 </div>
-                            </div>
-                            <div class="card-footer bg-white text-center border-top" v-if="recentActivities.length > 8">
-                                <a href="#observations" @click="currentView = 'observations'" class="text-primary text-decoration-none small">
-                                    <i class="fas fa-list me-1"></i>
-                                    Voir toutes les activités →
-                                </a>
                             </div>
                         </div>
                     </div>
@@ -732,10 +858,9 @@
                 <div class="row" v-else-if="recentActivities && recentActivities.length === 0">
                     <div class="col-12">
                         <div class="card shadow-sm">
-                            <div class="card-body text-center py-5">
-                                <i class="fas fa-clock fa-3x text-muted mb-3"></i>
-                                <p class="text-muted mb-0">Aucune activité récente</p>
-                                <small class="text-muted">Les nouvelles observations apparaîtront ici</small>
+                            <div class="card-body text-center py-4">
+                                <i class="fas fa-clock fa-2x text-muted mb-2"></i>
+                                <p class="text-muted mb-0 small">Aucune activité récente</p>
                             </div>
                         </div>
                     </div>
@@ -994,15 +1119,29 @@
                                                 <small v-text="formatDate(site.created_at)"></small>
                                             </td>
                                             <td class="text-center" @click.stop>
-                                                <button class="btn btn-sm btn-outline-primary me-1" @click="viewSite(site)" title="Voir">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <button class="btn btn-sm btn-outline-secondary"
-                                                        @click="editSiteAction(site)"
-                                                        v-if="user.isAuthenticated && (user.id === site.owner?.id || user.isStaff)"
-                                                        title="Modifier">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
+                                                <div class="d-none d-md-inline-block">
+                                                    <button class="btn btn-sm btn-outline-primary me-1" @click="viewSite(site)" title="Voir">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-secondary"
+                                                            @click="editSiteAction(site)"
+                                                            v-if="user.isAuthenticated && (user.id === site.owner?.id || user.isStaff)"
+                                                            title="Modifier">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                </div>
+                                                <!-- Mobile: dropdown -->
+                                                <div class="d-md-none dropstart d-inline-block">
+                                                    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false">
+                                                        <i class="fas fa-ellipsis-v"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu">
+                                                        <li><a class="dropdown-item" href="#" @click.prevent="viewSite(site)"><i class="fas fa-eye me-2 text-primary"></i>Voir</a></li>
+                                                        <li v-if="user.isAuthenticated && (user.id === site.owner?.id || user.isStaff)">
+                                                            <a class="dropdown-item" href="#" @click.prevent="editSiteAction(site)"><i class="fas fa-edit me-2 text-warning"></i>Modifier</a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
                                             </td>
                                         </tr>
                                     </tbody>
@@ -1077,19 +1216,29 @@
                             <p class="text-muted mb-0" v-else><em>Aucune description</em></p>
                         </div>
                         <div class="col-md-4">
-                            <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+                            <div class="d-flex flex-wrap gap-2 justify-content-md-end align-items-center">
                                 <button class="btn btn-sm btn-outline-secondary" @click="backToSites">
                                     <i class="fas fa-arrow-left me-1"></i><span v-text="siteReturnView === 'search' ? 'Retour à la recherche' : 'Retour'"></span>
                                 </button>
                                 <button class="btn btn-sm btn-success" @click="showSiteMap(siteDetail.site)" title="Carte détaillée avec GPS des plantes">
-                                    <i class="fas fa-map-marked-alt me-1"></i>Carte GPS
+                                    <i class="fas fa-map-marked-alt me-1"></i><span class="d-none d-sm-inline">Carte GPS</span>
                                 </button>
                                 <button class="btn btn-sm btn-info" @click="openSiteMapEditor(siteDetail.site)" title="Éditeur de plan du site">
-                                    <i class="fas fa-drafting-compass me-1"></i>Plan du site
+                                    <i class="fas fa-drafting-compass me-1"></i><span class="d-none d-sm-inline">Plan</span>
                                 </button>
-                                <button class="btn btn-sm btn-primary" @click="editSiteAction(siteDetail.site)" v-if="user.isAuthenticated && (user.id === siteDetail.site.owner?.id || user.isStaff)">
+                                <!-- Desktop edit/delete buttons -->
+                                <button class="btn btn-sm btn-primary d-none d-md-inline-block" @click="editSiteAction(siteDetail.site)" v-if="user.isAuthenticated && (user.id === siteDetail.site.owner?.id || user.isStaff)">
                                     <i class="fas fa-edit me-1"></i>Modifier
                                 </button>
+                                <!-- Mobile edit dropdown -->
+                                <div class="d-md-none dropstart" v-if="user.isAuthenticated && (user.id === siteDetail.site.owner?.id || user.isStaff)">
+                                    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-ellipsis-v"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="#" @click.prevent="editSiteAction(siteDetail.site)"><i class="fas fa-edit me-2 text-primary"></i>Modifier</a></li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1266,7 +1415,16 @@
                                                 <option value="dead">Morte</option>
                                             </select>
                                         </div>
-                                        <div class="col-md-3 col-12">
+                                        <div class="col-md-1 col-4">
+                                            <select class="form-select form-select-sm" v-model.number="siteDetail.filters.page_size" @change="applySiteDetailFilters">
+                                                <option :value="10">10</option>
+                                                <option :value="25">25</option>
+                                                <option :value="50">50</option>
+                                                <option :value="100">100</option>
+                                                <option :value="1000">Tous</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2 col-8">
                                             <div class="btn-group btn-group-sm w-100" role="group">
                                                 <button type="button" class="btn btn-outline-primary" @click="applySiteDetailFilters">
                                                     <i class="fas fa-filter me-1"></i>Filtrer
@@ -1276,6 +1434,43 @@
                                                 </button>
                                             </div>
                                         </div>
+                                    </div>
+                                </div>
+
+                                <!-- Top Pagination -->
+                                <div v-if="siteDetail.pagination.total_pages > 1" class="card-header bg-light py-2">
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between">
+                                        <p class="mb-0 small text-muted">
+                                            Affichage de <strong v-text="((siteDetail.pagination.current_page - 1) * siteDetail.filters.page_size) + 1"></strong>
+                                            à <strong v-text="Math.min(siteDetail.pagination.current_page * siteDetail.filters.page_size, siteDetail.pagination.count)"></strong>
+                                            sur <strong v-text="siteDetail.pagination.count"></strong> plantes
+                                        </p>
+                                        <nav aria-label="Plants pagination top">
+                                            <ul class="pagination pagination-sm mb-0">
+                                                <li class="page-item" :class="{disabled: !siteDetail.pagination.previous}">
+                                                    <button class="page-link"
+                                                            @click="changeSiteDetailPage(siteDetail.pagination.current_page - 1)"
+                                                            :disabled="!siteDetail.pagination.previous">
+                                                        Précédent
+                                                    </button>
+                                                </li>
+                                                <li class="page-item"
+                                                    v-for="page in Math.min(5, siteDetail.pagination.total_pages)"
+                                                    :key="page"
+                                                    :class="{active: page === siteDetail.pagination.current_page}">
+                                                    <button class="page-link"
+                                                            @click="changeSiteDetailPage(page)"
+                                                            v-text="page"></button>
+                                                </li>
+                                                <li class="page-item" :class="{disabled: !siteDetail.pagination.next}">
+                                                    <button class="page-link"
+                                                            @click="changeSiteDetailPage(siteDetail.pagination.current_page + 1)"
+                                                            :disabled="!siteDetail.pagination.next">
+                                                        Suivant
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                        </nav>
                                     </div>
                                 </div>
 
@@ -1618,10 +1813,12 @@
                             <!-- Page Size -->
                             <div class="col-md-2 col-6">
                                 <label class="form-label">Par page</label>
-                                <select v-model="plantsList.filters.page_size" class="form-select" @change="applyPlantsFilters">
+                                <select v-model.number="plantsList.filters.page_size" class="form-select" @change="applyPlantsFilters">
+                                    <option :value="10">10</option>
                                     <option :value="25">25</option>
                                     <option :value="50">50</option>
                                     <option :value="100">100</option>
+                                    <option :value="1000">Tous</option>
                                 </select>
                             </div>
                         </div>
@@ -1645,6 +1842,24 @@
 
                 <!-- Plants Table -->
                 <div class="card shadow-sm">
+                    <!-- Pagination Top -->
+                    <div class="card-header bg-light py-2" v-if="plantsList.pagination.total_pages > 1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button class="btn btn-outline-secondary btn-sm"
+                                    @click="changePlantsPage(plantsList.pagination.current_page - 1)"
+                                    :disabled="!plantsList.pagination.previous">
+                                <i class="fas fa-chevron-left me-1"></i><span class="d-none d-sm-inline">Précédent</span>
+                            </button>
+                            <span class="text-muted small">
+                                <span v-text="plantsList.pagination.current_page"></span> / <span v-text="plantsList.pagination.total_pages"></span>
+                            </span>
+                            <button class="btn btn-outline-secondary btn-sm"
+                                    @click="changePlantsPage(plantsList.pagination.current_page + 1)"
+                                    :disabled="!plantsList.pagination.next">
+                                <span class="d-none d-sm-inline">Suivant</span><i class="fas fa-chevron-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
                     <div class="card-body p-0">
                         <div class="table-responsive" style="max-height: 75vh; overflow-y: auto;">
                             <table class="table table-sm table-hover align-middle mb-0">
@@ -1795,7 +2010,7 @@
 
                                         <!-- Actions -->
                                         <td class="text-center" @click.stop>
-                                            <div class="btn-group btn-group-sm">
+                                            <div class="d-none d-md-inline-flex btn-group btn-group-sm">
                                                 <button class="btn btn-outline-primary btn-sm" @click="viewPlant(plant)" title="Voir détails">
                                                     <i class="fas fa-eye"></i>
                                                 </button>
@@ -1807,6 +2022,24 @@
                                                         class="btn btn-outline-danger btn-sm" @click="confirmDeletePlant(plant)" title="Supprimer">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
+                                            </div>
+                                            <!-- Mobile: dropdown menu -->
+                                            <div class="d-md-none dropstart d-inline-block">
+                                                <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><a class="dropdown-item" href="#" @click.prevent="viewPlant(plant)"><i class="fas fa-eye me-2 text-primary"></i>Voir</a></li>
+                                                    <li v-if="user.isAuthenticated && (user.id === plant.owner_id || user.isStaff)">
+                                                        <a class="dropdown-item" href="#" @click.prevent="editPlant(plant)"><i class="fas fa-edit me-2 text-warning"></i>Modifier</a>
+                                                    </li>
+                                                    <li v-if="user.isAuthenticated && (user.id === plant.owner_id || user.isStaff)">
+                                                        <hr class="dropdown-divider">
+                                                    </li>
+                                                    <li v-if="user.isAuthenticated && (user.id === plant.owner_id || user.isStaff)">
+                                                        <a class="dropdown-item text-danger" href="#" @click.prevent="confirmDeletePlant(plant)"><i class="fas fa-trash me-2"></i>Supprimer</a>
+                                                    </li>
+                                                </ul>
                                             </div>
                                         </td>
                                     </tr>
@@ -1821,15 +2054,15 @@
                             <button class="btn btn-outline-secondary btn-sm"
                                     @click="changePlantsPage(plantsList.pagination.current_page - 1)"
                                     :disabled="!plantsList.pagination.previous">
-                                <i class="fas fa-chevron-left me-1"></i>Précédent
+                                <i class="fas fa-chevron-left me-1"></i><span class="d-none d-sm-inline">Précédent</span>
                             </button>
-                            <span class="text-muted">
-                                Page <span v-text="plantsList.pagination.current_page"></span> / <span v-text="plantsList.pagination.total_pages"></span>
+                            <span class="text-muted small">
+                                <span v-text="plantsList.pagination.current_page"></span> / <span v-text="plantsList.pagination.total_pages"></span>
                             </span>
                             <button class="btn btn-outline-secondary btn-sm"
                                     @click="changePlantsPage(plantsList.pagination.current_page + 1)"
                                     :disabled="!plantsList.pagination.next">
-                                Suivant<i class="fas fa-chevron-right ms-1"></i>
+                                <span class="d-none d-sm-inline">Suivant</span><i class="fas fa-chevron-right ms-1"></i>
                             </button>
                         </div>
                     </div>
@@ -2096,13 +2329,13 @@
                             <!-- Date From -->
                             <div class="col-md-2 col-6">
                                 <label class="form-label">Date début</label>
-                                <input type="date" v-model="observationsList.filters.date_from" class="form-control" @change="applyObservationsFilters">
+                                <input type="date" onkeydown="return false" v-model="observationsList.filters.date_from" class="form-control" @change="applyObservationsFilters">
                             </div>
 
                             <!-- Date To -->
                             <div class="col-md-2 col-6">
                                 <label class="form-label">Date fin</label>
-                                <input type="date" v-model="observationsList.filters.date_to" class="form-control" @change="applyObservationsFilters">
+                                <input type="date" onkeydown="return false" v-model="observationsList.filters.date_to" class="form-control" @change="applyObservationsFilters">
                             </div>
 
                             <!-- Site Filter -->
@@ -2155,10 +2388,12 @@
                             <!-- Page Size -->
                             <div class="col-md-2 col-6">
                                 <label class="form-label">Par page</label>
-                                <select v-model="observationsList.filters.page_size" class="form-select" @change="applyObservationsFilters">
+                                <select v-model.number="observationsList.filters.page_size" class="form-select" @change="applyObservationsFilters">
+                                    <option :value="10">10</option>
                                     <option :value="25">25</option>
                                     <option :value="50">50</option>
                                     <option :value="100">100</option>
+                                    <option :value="1000">Tous</option>
                                 </select>
                             </div>
                         </div>
@@ -2182,6 +2417,24 @@
 
                 <!-- Observations Table -->
                 <div class="card shadow-sm">
+                    <!-- Pagination Top -->
+                    <div class="card-header bg-light py-2" v-if="observationsList.pagination.total_pages > 1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button class="btn btn-outline-secondary btn-sm"
+                                    @click="changeObservationsPage(observationsList.pagination.current_page - 1)"
+                                    :disabled="!observationsList.pagination.previous">
+                                <i class="fas fa-chevron-left me-1"></i><span class="d-none d-sm-inline">Précédent</span>
+                            </button>
+                            <span class="text-muted small">
+                                <span v-text="observationsList.pagination.current_page"></span> / <span v-text="observationsList.pagination.total_pages"></span>
+                            </span>
+                            <button class="btn btn-outline-secondary btn-sm"
+                                    @click="changeObservationsPage(observationsList.pagination.current_page + 1)"
+                                    :disabled="!observationsList.pagination.next">
+                                <span class="d-none d-sm-inline">Suivant</span><i class="fas fa-chevron-right ms-1"></i>
+                            </button>
+                        </div>
+                    </div>
                     <div class="card-body p-0">
                         <div class="table-responsive" style="max-height: 75vh; overflow-y: auto;">
                             <table class="table table-sm table-hover align-middle mb-0">
@@ -2301,7 +2554,7 @@
 
                                         <!-- Actions -->
                                         <td class="text-center" @click.stop>
-                                            <div class="btn-group btn-group-sm">
+                                            <div class="d-none d-md-inline-flex btn-group btn-group-sm">
                                                 <button class="btn btn-outline-primary btn-sm" @click="viewObservationDetail(obs.id)" title="Voir détails">
                                                     <i class="fas fa-eye"></i>
                                                 </button>
@@ -2313,6 +2566,24 @@
                                                         class="btn btn-outline-danger btn-sm" @click="confirmDeleteObservation(obs)" title="Supprimer">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
+                                            </div>
+                                            <!-- Mobile: dropdown menu -->
+                                            <div class="d-md-none dropstart d-inline-block">
+                                                <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><a class="dropdown-item" href="#" @click.prevent="viewObservationDetail(obs.id)"><i class="fas fa-eye me-2 text-primary"></i>Voir</a></li>
+                                                    <li v-if="user.isAuthenticated && (obs.observer && obs.observer.name === user.username || user.isStaff)">
+                                                        <a class="dropdown-item" href="#" @click.prevent="openEditObservationModal(obs)"><i class="fas fa-edit me-2 text-warning"></i>Modifier</a>
+                                                    </li>
+                                                    <li v-if="user.isAuthenticated && (obs.observer && obs.observer.name === user.username || user.isStaff)">
+                                                        <hr class="dropdown-divider">
+                                                    </li>
+                                                    <li v-if="user.isAuthenticated && (obs.observer && obs.observer.name === user.username || user.isStaff)">
+                                                        <a class="dropdown-item text-danger" href="#" @click.prevent="confirmDeleteObservation(obs)"><i class="fas fa-trash me-2"></i>Supprimer</a>
+                                                    </li>
+                                                </ul>
                                             </div>
                                         </td>
                                     </tr>
@@ -2327,15 +2598,15 @@
                             <button class="btn btn-outline-secondary btn-sm"
                                     @click="changeObservationsPage(observationsList.pagination.current_page - 1)"
                                     :disabled="!observationsList.pagination.previous">
-                                <i class="fas fa-chevron-left me-1"></i>Précédent
+                                <i class="fas fa-chevron-left me-1"></i><span class="d-none d-sm-inline">Précédent</span>
                             </button>
-                            <span class="text-muted">
-                                Page <span v-text="observationsList.pagination.current_page"></span> / <span v-text="observationsList.pagination.total_pages"></span>
+                            <span class="text-muted small">
+                                <span v-text="observationsList.pagination.current_page"></span> / <span v-text="observationsList.pagination.total_pages"></span>
                             </span>
                             <button class="btn btn-outline-secondary btn-sm"
                                     @click="changeObservationsPage(observationsList.pagination.current_page + 1)"
                                     :disabled="!observationsList.pagination.next">
-                                Suivant<i class="fas fa-chevron-right ms-1"></i>
+                                <span class="d-none d-sm-inline">Suivant</span><i class="fas fa-chevron-right ms-1"></i>
                             </button>
                         </div>
                     </div>
@@ -2346,25 +2617,23 @@
             <div v-if="currentView === 'observation-detail' && currentObservation" class="container-fluid py-4">
                 <div class="row mb-4">
                     <div class="col">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <button class="btn btn-outline-secondary btn-sm mb-2" @click="backToObservations()">
-                                    <i class="fas fa-arrow-left me-1"></i>
-                                    <span v-if="observationReturnView === 'search'">Retour à la recherche</span>
-                                    <span v-else-if="observationReturnView === 'plant-detail'">Retour à la plante</span>
-                                    <span v-else>Retour aux observations</span>
-                                </button>
-                                <h2><i class="fas fa-eye me-2 text-info"></i>Détail de l'observation</h2>
-                            </div>
-                            <div>
-                                <button v-if="user.isAuthenticated && user.isStaff && !currentObservation.is_validated" class="btn btn-success me-2" @click="validateObservation(currentObservation.id)">
+                        <button class="btn btn-outline-secondary btn-sm mb-2" @click="backToObservations()">
+                            <i class="fas fa-arrow-left me-1"></i>
+                            <span v-if="observationReturnView === 'search'">Retour à la recherche</span>
+                            <span v-else-if="observationReturnView === 'plant-detail'">Retour à la plante</span>
+                            <span v-else>Retour aux observations</span>
+                        </button>
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                            <h2 class="mb-0"><i class="fas fa-eye me-2 text-info"></i>Détail de l'observation</h2>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button v-if="user.isAuthenticated && user.isStaff && !currentObservation.is_validated" class="btn btn-success btn-sm" @click="validateObservation(currentObservation.id)">
                                     <i class="fas fa-check-circle me-1"></i>Valider
                                 </button>
-                                <button v-if="user.isAuthenticated && currentObservation.observer && (currentObservation.observer.name === user.username || user.isStaff)" class="btn btn-warning me-2" @click="openEditObservationModal(currentObservation)">
-                                    <i class="fas fa-edit me-1"></i>Modifier
+                                <button v-if="user.isAuthenticated && currentObservation.observer && (currentObservation.observer.name === user.username || user.isStaff)" class="btn btn-warning btn-sm" @click="openEditObservationModal(currentObservation)">
+                                    <i class="fas fa-edit me-1"></i><span class="d-none d-sm-inline">Modifier</span>
                                 </button>
-                                <button v-if="user.isAuthenticated && currentObservation.observer && (currentObservation.observer.name === user.username || user.isStaff)" class="btn btn-danger" @click="confirmDeleteObservation(currentObservation)">
-                                    <i class="fas fa-trash me-1"></i>Supprimer
+                                <button v-if="user.isAuthenticated && currentObservation.observer && (currentObservation.observer.name === user.username || user.isStaff)" class="btn btn-danger btn-sm" @click="confirmDeleteObservation(currentObservation)">
+                                    <i class="fas fa-trash me-1"></i><span class="d-none d-sm-inline">Supprimer</span>
                                 </button>
                             </div>
                         </div>
@@ -3003,9 +3272,25 @@
                                     <i class="fas fa-download me-1"></i>Telecharger l'export
                                 </span>
                             </button>
-                            <small class="text-muted" v-if="!exportState.loading">
+                            <button v-if="user.isSuperuser" class="btn btn-outline-success" @click="launchHugoExport()" :disabled="hugoExportState.loading">
+                                <span v-if="hugoExportState.loading">
+                                    <span class="spinner-border spinner-border-sm me-1"></span>Generation du site...
+                                </span>
+                                <span v-else>
+                                    <i class="fas fa-globe me-1"></i>Generer site statique (Hugo)
+                                </span>
+                            </button>
+                            <small class="text-muted" v-if="!exportState.loading && !hugoExportState.loading">
                                 <i class="fas fa-info-circle me-1"></i>L'export peut prendre quelques secondes selon le volume de donnees et photos.
                             </small>
+                        </div>
+
+                        <!-- Hugo export result -->
+                        <div v-if="hugoExportState.success" class="alert alert-success mt-3 mb-0">
+                            <i class="fas fa-check-circle me-1"></i>Site statique Hugo genere avec succes ! Decompressez le ZIP et lancez <code>hugo server</code>.
+                        </div>
+                        <div v-if="hugoExportState.error" class="alert alert-danger mt-3 mb-0">
+                            <i class="fas fa-exclamation-triangle me-1"></i><span v-text="hugoExportState.error"></span>
                         </div>
 
                         <!-- Export result -->
@@ -3324,6 +3609,15 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="mt-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" v-model="gbifModal.sync.createPlant" id="gbifModalCreatePlant">
+                                <label class="form-check-label" for="gbifModalCreatePlant">
+                                    <i class="fas fa-seedling me-1 text-success"></i>Créer une plante avec ce taxon
+                                </label>
+                                <div class="form-text">Si coché, le formulaire de création de plante s'ouvrira avec le taxon pré-rempli.</div>
+                            </div>
+                        </div>
 
                         <!-- Results -->
                         <div v-if="gbifModal.results" class="mt-4">
@@ -3359,6 +3653,70 @@
             </div>
         </div>
         <div v-if="showGbifSyncModal" class="modal-backdrop fade show"></div>
+
+        <!-- Cultivar Search Modal (Local DB + Wikidata) -->
+        <div class="modal fade" :class="{ 'show': cultivarSearch.showModal }" tabindex="-1" v-show="cultivarSearch.showModal" @click.self="cultivarSearch.showModal = false" :style="{ display: cultivarSearch.showModal ? 'block' : 'none' }">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-success text-white py-2">
+                        <h6 class="modal-title mb-0">
+                            <i class="fas fa-search me-2"></i>Rechercher un cultivar / variété
+                        </h6>
+                        <button type="button" class="btn-close btn-close-white" @click="cultivarSearch.showModal = false"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div v-if="cultivarSearch.species" class="alert alert-info py-2 mb-3 small">
+                            <i class="fas fa-dna me-1"></i>
+                            Recherche de cultivars pour : <strong><em v-text="cultivarSearch.species"></em></strong>
+                        </div>
+                        <div class="input-group mb-3">
+                            <input v-model="cultivarSearch.query" type="text" class="form-control"
+                                   :placeholder="cultivarSearch.species ? 'Nom du cultivar (ex: Golden, Fuji, Akane...)' : 'Ex: Golden Delicious, Akane, Granny Smith...'"
+                                   @keydown.enter.prevent="searchCultivars()">
+                            <button class="btn btn-success" @click="searchCultivars()" :disabled="cultivarSearch.loading || cultivarSearch.query.length < 2">
+                                <span v-if="cultivarSearch.loading" class="spinner-border spinner-border-sm me-1"></span>
+                                <i v-else class="fas fa-search me-1"></i>Rechercher
+                            </button>
+                        </div>
+                        <div v-if="cultivarSearch.results.length" class="list-group">
+                            <a v-for="(r, idx) in cultivarSearch.results" :key="(r.cultivar_id || r.wikidata_id || idx)"
+                               href="#" @click.prevent="selectCultivar(r)"
+                               class="list-group-item list-group-item-action">
+                                <div class="d-flex align-items-center">
+                                    <img v-if="r.image_url" :src="r.image_url" class="rounded me-3" style="width: 50px; height: 50px; object-fit: cover;" :alt="r.name || r.label">
+                                    <div class="flex-shrink-0 me-3" v-else>
+                                        <span class="d-inline-flex align-items-center justify-content-center rounded bg-success bg-opacity-10" style="width: 50px; height: 50px;">
+                                            <i class="fas fa-seedling text-success"></i>
+                                        </span>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <strong v-text="r.cultivar_name || r.name || r.label"></strong>
+                                        <span v-if="r.source === 'local'" class="badge bg-primary ms-2" title="Base locale EUPVP">EUPVP</span>
+                                        <span v-else-if="r.source === 'wikidata'" class="badge bg-info ms-2">Wikidata</span>
+                                        <div class="small text-muted" v-if="r.taxon_name || r.common_name">
+                                            <em v-text="r.taxon_name"></em>
+                                            <span v-if="r.common_name"> - <span v-text="r.common_name"></span></span>
+                                        </div>
+                                        <div class="small">
+                                            <span v-if="r.description" class="text-muted" v-text="r.description"></span>
+                                            <span v-if="r.date" class="badge bg-secondary bg-opacity-50 ms-1" v-text="r.date"></span>
+                                            <span v-if="r.origin" class="badge bg-light text-dark ms-1" v-text="r.origin"></span>
+                                        </div>
+                                    </div>
+                                    <div class="flex-shrink-0 ms-2">
+                                        <span class="badge bg-success"><i class="fas fa-plus me-1"></i>Sélectionner</span>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        <div v-else-if="!cultivarSearch.loading && cultivarSearch.query.length >= 2 && cultivarSearch.results.length === 0" class="text-center py-3 text-muted">
+                            <i class="fas fa-info-circle me-1"></i>Aucun cultivar trouvé. Vous pouvez saisir le nom manuellement.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div v-if="cultivarSearch.showModal" class="modal-backdrop fade show"></div>
 
         <!-- GBIF Import Family Modal -->
         <div class="modal fade" :class="{ 'show': showGbifImportFamilyModal }" tabindex="-1" v-show="showGbifImportFamilyModal" @click.self="closeModal()" :style="{ display: showGbifImportFamilyModal ? 'block' : 'none' }">
@@ -3667,15 +4025,15 @@
         <div v-if="currentView === 'settings' && user.isAuthenticated" class="container py-4">
 
             <!-- Header -->
-            <div class="d-flex align-items-center gap-3 mb-4">
-                <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 56px; height: 56px;">
+            <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
+                <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center flex-shrink-0" style="width: 56px; height: 56px;">
                     <i class="fas fa-user-circle fa-2x text-primary"></i>
                 </div>
-                <div>
-                    <h1 class="h3 mb-0"><span v-text="user.username"></span></h1>
-                    <p class="text-muted mb-0"><span v-text="user.email"></span></p>
+                <div class="flex-grow-1">
+                    <h1 class="h4 h3-md mb-0"><span v-text="user.username"></span></h1>
+                    <p class="text-muted mb-0 small"><span v-text="user.email"></span></p>
                 </div>
-                <div class="ms-auto d-flex gap-2">
+                <div class="d-flex gap-2">
                     <span v-if="user.isStaff" class="badge bg-warning text-dark"><i class="fas fa-shield-alt me-1"></i>Staff</span>
                     <span v-if="user.isSuperuser" class="badge bg-danger"><i class="fas fa-crown me-1"></i>Super admin</span>
                 </div>
@@ -3728,7 +4086,8 @@
                                 </button>
                             </div>
 
-                            <div v-else class="table-responsive">
+                            <!-- Desktop table (hidden on mobile) -->
+                            <div v-if="userTags.length" class="d-none d-md-block table-responsive">
                                 <table class="table table-hover align-middle mb-0">
                                     <thead class="table-light">
                                         <tr>
@@ -3740,7 +4099,6 @@
                                     </thead>
                                     <tbody>
                                         <template v-for="tag in userTags" :key="tag.id">
-                                            <!-- Display row -->
                                             <tr v-if="!editingTag || editingTag.id !== tag.id">
                                                 <td>
                                                     <span class="badge rounded-pill px-3 py-2" :class="'bg-' + tag.color"
@@ -3782,7 +4140,6 @@
                                                     </span>
                                                 </td>
                                             </tr>
-                                            <!-- Inline edit row -->
                                             <tr v-else class="table-warning">
                                                 <td colspan="4">
                                                     <div class="d-flex flex-wrap align-items-center gap-2 py-1">
@@ -3818,6 +4175,78 @@
                                         </template>
                                     </tbody>
                                 </table>
+                            </div>
+
+                            <!-- Mobile card list (hidden on desktop) -->
+                            <div v-if="userTags.length" class="d-md-none">
+                                <template v-for="tag in userTags" :key="'m-' + tag.id">
+                                    <!-- Display card -->
+                                    <div v-if="!editingTag || editingTag.id !== tag.id" class="border-bottom px-3 py-3">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <span class="badge rounded-pill px-3 py-2" :class="'bg-' + tag.color" style="font-size: 0.85em;">
+                                                <i class="fas fa-tag me-1" style="font-size: 0.8em;"></i>
+                                                @{{ tag.name }}
+                                            </span>
+                                            <div v-if="tag.is_mine" class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-secondary" @click="startEditTag(tag)" title="Modifier">
+                                                    <i class="fas fa-pen" style="font-size: 0.75em;"></i>
+                                                </button>
+                                                <button class="btn btn-outline-danger" @click="deleteTag(tag)" title="Supprimer">
+                                                    <i class="fas fa-trash" style="font-size: 0.75em;"></i>
+                                                </button>
+                                            </div>
+                                            <span v-else class="text-muted small">
+                                                <i class="fas fa-lock" style="font-size: 0.7em;"></i>
+                                            </span>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-3 small text-muted">
+                                            <span>
+                                                <i class="fas fa-seedling text-success me-1"></i>@{{ tag.plants_count }} plante<span v-if="tag.plants_count > 1">s</span>
+                                            </span>
+                                            <span v-if="tag.group_name">
+                                                <i class="fas fa-users text-info me-1"></i>@{{ tag.group_name }}
+                                            </span>
+                                            <span v-else>
+                                                <i class="fas fa-lock me-1"></i>Personnel
+                                            </span>
+                                            <span v-if="!tag.is_mine" class="text-info">
+                                                <i class="fas fa-share-alt me-1"></i>Partagé
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <!-- Edit card -->
+                                    <div v-else class="border-bottom px-3 py-3 bg-warning bg-opacity-10">
+                                        <div class="mb-2">
+                                            <input type="text" class="form-control form-control-sm"
+                                                   v-model="editingTag.name" maxlength="100"
+                                                   @keyup.enter="updateTag" @keyup.escape="cancelEditTag"
+                                                   placeholder="Nom du tag">
+                                        </div>
+                                        <div class="d-flex gap-1 mb-2">
+                                            <button v-for="(label, key) in {primary:'',success:'',warning:'',danger:'',info:'',secondary:'',dark:''}" :key="key"
+                                                    class="btn btn-sm rounded-circle p-0 border"
+                                                    :class="editingTag.color === key ? 'bg-' + key + ' border-dark' : 'bg-' + key + ' border-0 opacity-50'"
+                                                    @click="editingTag.color = key" type="button"
+                                                    style="width: 28px; height: 28px;"
+                                                    :title="key">
+                                            </button>
+                                        </div>
+                                        <div class="mb-2">
+                                            <select class="form-select form-select-sm" v-model="editingTag.group_id">
+                                                <option :value="null">Personnel</option>
+                                                <option v-for="g in user.groups" :key="g.id" :value="g.id" v-text="g.name"></option>
+                                            </select>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-success btn-sm flex-grow-1" @click="updateTag" :disabled="!editingTag.name.trim()">
+                                                <i class="fas fa-check me-1"></i>Valider
+                                            </button>
+                                            <button class="btn btn-outline-secondary btn-sm" @click="cancelEditTag">
+                                                <i class="fas fa-times me-1"></i>Annuler
+                                            </button>
+                                        </div>
+                                    </div>
+                                </template>
                             </div>
 
                             <!-- Summary footer -->
@@ -3947,11 +4376,11 @@
                                     <template v-if="searchPage.filters.type === 'observations' || searchPage.filters.type === 'all'">
                                         <div class="d-flex align-items-center gap-1">
                                             <i class="fas fa-calendar-alt text-muted" style="font-size: 0.8em;"></i>
-                                            <input type="date" class="form-control form-control-sm border-0 bg-white" style="max-width: 145px;"
+                                            <input type="date" onkeydown="return false" class="form-control form-control-sm border-0 bg-white" style="max-width: 145px;"
                                                    v-model="searchPage.filters.date_from"
                                                    @change="(searchPage.query.trim().length >= 2 || hasActiveCultivationFilters()) && performSearchPageSearch()">
                                             <span class="text-muted small">à</span>
-                                            <input type="date" class="form-control form-control-sm border-0 bg-white" style="max-width: 145px;"
+                                            <input type="date" onkeydown="return false" class="form-control form-control-sm border-0 bg-white" style="max-width: 145px;"
                                                    v-model="searchPage.filters.date_to"
                                                    @change="(searchPage.query.trim().length >= 2 || hasActiveCultivationFilters()) && performSearchPageSearch()">
                                         </div>
@@ -4384,6 +4813,15 @@
                                 <i class="fas fa-database fa-2x text-purple mb-2" style="color: #6f42c1;"></i>
                                 <h3 class="mb-0" v-text="admin.dashboard.tela_observations_count"></h3>
                                 <small class="text-muted">Observations Tela</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 col-lg-3">
+                        <div class="card text-center shadow-sm border-0">
+                            <div class="card-body">
+                                <i class="fas fa-seedling fa-2x text-success mb-2"></i>
+                                <h3 class="mb-0" v-text="admin.dashboard.cultivars_count || 0"></h3>
+                                <small class="text-muted">Cultivars</small>
                             </div>
                         </div>
                     </div>
@@ -5000,12 +5438,19 @@
                                                 <i class="fas fa-database me-1" style="color: #6f42c1;"></i>Tela Botanica
                                             </label>
                                         </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" value="cultivars" v-model="admin.importType" id="importCultivars">
+                                            <label class="form-check-label" for="importCultivars">
+                                                <i class="fas fa-seedling me-1 text-success"></i>Cultivars (EUPVP)
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="mb-3">
-                                    <label class="form-label fw-bold">Fichier CSV</label>
-                                    <input type="file" class="form-control" accept=".csv" @change="onImportFileChange($event)">
-                                    <small class="text-muted">Formats acceptés : CSV (séparateur virgule ou point-virgule)</small>
+                                    <label class="form-label fw-bold">Fichier</label>
+                                    <input type="file" class="form-control" :accept="admin.importType === 'cultivars' ? '.csv,.xlsx,.xls' : '.csv'" @change="onImportFileChange($event)">
+                                    <small class="text-muted" v-if="admin.importType === 'cultivars'">Formats acceptés : CSV ou Excel (EUPVP Official List)</small>
+                                    <small class="text-muted" v-else>Formats acceptés : CSV (séparateur virgule ou point-virgule)</small>
                                 </div>
                                 <div class="mb-3">
                                     <div class="form-check">
@@ -5084,8 +5529,12 @@
                                             <div>
                                                 <h6 class="mb-1" v-text="plant.name"></h6>
                                                 <p class="mb-1 small text-muted">
-                                                    <em v-text="plant.taxon.binomial_name"></em>
-                                                    <span v-if="plant.taxon.common_name_fr"> - <span v-text="plant.taxon.common_name_fr"></span></span>
+                                                    <em v-text="plant.binomial_name"></em>
+                                                    <span v-if="plant.common_name"> - <span v-text="plant.common_name"></span></span>
+                                                </p>
+                                                <p v-if="plant.cultivar || plant.variety" class="mb-1 small">
+                                                    <span v-if="plant.cultivar" class="badge bg-info bg-opacity-25 text-info me-1"><i class="fas fa-tag me-1"></i><span v-text="plant.cultivar"></span></span>
+                                                    <span v-if="plant.variety" class="badge bg-warning bg-opacity-25 text-warning"><i class="fas fa-leaf me-1"></i>var. <span v-text="plant.variety"></span></span>
                                                 </p>
                                                 <p class="mb-0 small">
                                                     <span class="badge bg-secondary me-1" v-text="plant.category.name"></span>
@@ -5156,6 +5605,34 @@
                                             <i class="fas fa-chevron-right text-muted"></i>
                                         </div>
                                     </a>
+                                </div>
+                            </div>
+
+                            <!-- Cultivars Results -->
+                            <div v-if="globalSearch.results.cultivars && globalSearch.results.cultivars.length > 0" class="mb-4">
+                                <h6 class="text-success border-bottom pb-2">
+                                    <i class="fas fa-seedling me-2"></i>Cultivars (<span v-text="globalSearch.results.cultivars.length"></span>)
+                                </h6>
+                                <div class="list-group">
+                                    <div
+                                        v-for="cv in globalSearch.results.cultivars"
+                                        :key="'cultivar-' + cv.id"
+                                        class="list-group-item"
+                                    >
+                                        <div class="d-flex w-100 justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-1" v-text="cv.name"></h6>
+                                                <p class="mb-1 small">
+                                                    <em v-if="cv.taxon_name" class="text-muted" v-text="cv.taxon_name"></em>
+                                                    <span v-if="cv.common_name" class="text-muted"> - <span v-text="cv.common_name"></span></span>
+                                                </p>
+                                                <p v-if="cv.synonyms" class="mb-0 small text-muted">
+                                                    Syn: <span v-text="cv.synonyms"></span>
+                                                </p>
+                                            </div>
+                                            <span class="badge bg-success bg-opacity-75" v-text="cv.source || 'local'"></span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -5287,11 +5764,48 @@
                             </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="plantSite" class="form-label">Site *</label>
-                                    <select v-model="newPlant.site" class="form-select" id="plantSite" required>
-                                        <option value="">Sélectionner un site</option>
-                                        <option v-for="site in sites" :key="site.id" :value="site.id" v-text="site.name ? site.name : 'Unnamed site #' + site.id"></option>
-                                    </select>
+                                    <label for="plantSite" class="form-label">Site <span class="text-danger">*</span></label>
+                                    <div class="position-relative">
+                                        <input
+                                            v-model="siteAutocomplete.query"
+                                            @input="siteAutocomplete.showDropdown = true"
+                                            @focus="siteAutocomplete.showDropdown = true"
+                                            @blur="closeSiteDropdown()"
+                                            type="text"
+                                            class="form-control"
+                                            :class="{'border-success': siteAutocomplete.selectedSite}"
+                                            id="plantSite"
+                                            placeholder="Rechercher un site..."
+                                            autocomplete="off"
+                                        >
+                                        <button
+                                            v-if="siteAutocomplete.selectedSite"
+                                            @click="clearSiteSelection()"
+                                            type="button"
+                                            class="btn btn-sm btn-outline-secondary position-absolute"
+                                            style="right: 5px; top: 5px;"
+                                            title="Effacer la sélection"
+                                        >
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                        <ul
+                                            v-show="siteAutocomplete.showDropdown && filteredSitesForAutocomplete().length > 0"
+                                            class="list-group position-absolute w-100 shadow-sm"
+                                            style="z-index: 1050; max-height: 250px; overflow-y: auto;"
+                                        >
+                                            <li
+                                                v-for="site in filteredSitesForAutocomplete()"
+                                                :key="site.id"
+                                                @mousedown.prevent="selectSite(site)"
+                                                class="list-group-item list-group-item-action py-2"
+                                                style="cursor: pointer;"
+                                            >
+                                                <i class="fas fa-map-marker-alt text-primary me-2"></i>
+                                                <strong v-text="site.name"></strong>
+                                                <span v-if="site.location" class="text-muted small ms-1">— <span v-text="site.location"></span></span>
+                                            </li>
+                                        </ul>
+                                    </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="plantTaxon" class="form-label">Taxon <span class="text-danger">*</span></label>
@@ -5356,7 +5870,7 @@
                             <div class="row">
                                 <div class="col-md-4 mb-3">
                                     <label for="plantDate" class="form-label">Date de plantation</label>
-                                    <input v-model="newPlant.planting_date" type="date" class="form-control" id="plantDate">
+                                    <input v-model="newPlant.planting_date" type="date" onkeydown="return false" class="form-control" id="plantDate" pattern="\d{4}-\d{2}-\d{2}" max="2099-12-31">
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label for="plantHealth" class="form-label">État de santé</label>
@@ -5490,13 +6004,36 @@
                             </div>
                             <!-- Additional plant details -->
                             <div class="row">
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <label for="plantExactHeight" class="form-label">Hauteur exacte (m)</label>
                                     <input v-model="newPlant.exact_height" type="number" step="0.1" min="0" max="100" class="form-control" id="plantExactHeight" placeholder="ex: 2.5">
                                 </div>
-                                <div class="col-md-6 mb-3">
+                                <div class="col-md-4 mb-3">
                                     <label for="plantAge" class="form-label">Âge (années)</label>
                                     <input v-model="newPlant.age_years" type="number" min="0" max="1000" class="form-control" id="plantAge" placeholder="ex: 5">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="plantInitialAbundance" class="form-label">Nb planté</label>
+                                    <input v-model="newPlant.initial_abundance" type="number" min="1" class="form-control" id="plantInitialAbundance" placeholder="Nb initial">
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label for="plantAbundance" class="form-label">Nb vivants</label>
+                                    <input v-model="newPlant.abundance" type="number" min="0" class="form-control" id="plantAbundance" placeholder="Nb actuels">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-5 mb-3">
+                                    <label for="plantCultivar" class="form-label">Cultivar</label>
+                                    <div class="input-group">
+                                        <input v-model="newPlant.cultivar" type="text" class="form-control" id="plantCultivar" placeholder="ex: Golden Delicious">
+                                        <button type="button" class="btn btn-outline-success" @click="openCultivarSearch('newPlant')" title="Rechercher sur Wikidata">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-5 mb-3">
+                                    <label for="plantVariety" class="form-label">Variété</label>
+                                    <input v-model="newPlant.variety" type="text" class="form-control" id="plantVariety" placeholder="ex: sylvestris">
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -5531,7 +6068,7 @@
                         </form>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @click="closeModal()">Annuler</button>
+                        <button type="button" class="btn btn-secondary" @click="closeModal()" :disabled="submitting.plant">Annuler</button>
                         <button type="button" class="btn btn-primary" @click="addPlant" :disabled="submitting.plant">
                             <i class="fas fa-spinner fa-spin me-1" v-if="submitting.plant"></i>
                             <i class="fas fa-save me-1" v-else></i>
@@ -5631,7 +6168,7 @@
                             <div class="row">
                                 <div class="col-md-3 mb-3">
                                     <label for="editPlantDate" class="form-label">Date de plantation</label>
-                                    <input v-model="editPlantData.planting_date" type="date" class="form-control" id="editPlantDate">
+                                    <input v-model="editPlantData.planting_date" type="date" onkeydown="return false" class="form-control" id="editPlantDate" pattern="\d{4}-\d{2}-\d{2}" max="2099-12-31">
                                 </div>
                                 <div class="col-md-3 mb-3">
                                     <label for="editPlantAge" class="form-label">Âge à la plantation (ans)</label>
@@ -5656,6 +6193,14 @@
                                         <option value="mature">Mature (3-10m)</option>
                                         <option value="large">Grand (&gt;10m)</option>
                                     </select>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="editPlantInitialAbundance" class="form-label">Nb planté</label>
+                                    <input v-model="editPlantData.initial_abundance" type="number" min="1" class="form-control" id="editPlantInitialAbundance" placeholder="Nb initial">
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="editPlantAbundance" class="form-label">Nb vivants</label>
+                                    <input v-model="editPlantData.abundance" type="number" min="0" class="form-control" id="editPlantAbundance" placeholder="Nb actuels">
                                 </div>
                             </div>
                             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
@@ -5701,6 +6246,21 @@
                                     </a>
                                 </small>
                             </div>
+                            <div class="row">
+                                <div class="col-md-5 mb-3">
+                                    <label for="editPlantCultivar" class="form-label">Cultivar</label>
+                                    <div class="input-group">
+                                        <input v-model="editPlantData.cultivar" type="text" class="form-control" id="editPlantCultivar" placeholder="ex: Golden Delicious">
+                                        <button type="button" class="btn btn-outline-success" @click="openCultivarSearch('editPlant')" title="Rechercher sur Wikidata">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-5 mb-3">
+                                    <label for="editPlantVariety" class="form-label">Variété</label>
+                                    <input v-model="editPlantData.variety" type="text" class="form-control" id="editPlantVariety" placeholder="ex: sylvestris">
+                                </div>
+                            </div>
                             <div class="mb-3">
                                 <label for="editPlantNotes" class="form-label">Notes techniques</label>
                                 <textarea v-model="editPlantData.notes" class="form-control" id="editPlantNotes" rows="2"></textarea>
@@ -5736,19 +6296,95 @@
                     <div class="modal-body">
                         <form @submit.prevent="addObservation">
                             <div class="row">
+                                <!-- Plant picker with site filter + autocomplete -->
                                 <div class="col-md-6 mb-3" v-if="!newObservation.plant">
-                                    <label for="obsPlant" class="form-label">Plante *</label>
-                                    <select v-model="newObservation.plant" class="form-select" id="obsPlant" required>
-                                        <option value="">Sélectionner une plante</option>
-                                        <option v-for="plant in plants" :key="plant.id" :value="plant.id" v-text="plant.name">
-                                        </option>
+                                    <label class="form-label fw-semibold">
+                                        <i class="fas fa-leaf text-success me-1" style="font-size: 0.85em;"></i>Plante *
+                                    </label>
+                                    <!-- Search input -->
+                                    <div class="position-relative mb-2">
+                                        <input type="text" class="form-control" v-model="plantPicker.query"
+                                               @input="onPlantPickerInput()"
+                                               placeholder="Rechercher une plante..." autocomplete="off"
+                                               style="padding-left: 2.2rem; border-radius: 0.5rem;">
+                                        <i class="fas fa-search position-absolute text-muted" style="left: 0.75rem; top: 50%; transform: translateY(-50%); font-size: 0.85em;"></i>
+                                        <span v-if="plantPicker.loading" class="position-absolute" style="right: 0.75rem; top: 50%; transform: translateY(-50%);">
+                                            <div class="spinner-border spinner-border-sm text-success" role="status" style="width: 1rem; height: 1rem;"></div>
+                                        </span>
+                                    </div>
+                                    <!-- Site filter (compact) -->
+                                    <select v-model="plantPicker.siteFilter" @change="onPlantPickerSiteChange()"
+                                            class="form-select form-select-sm mb-2" style="border-radius: 0.5rem; font-size: 0.8em;">
+                                        <option value="">Tous les sites</option>
+                                        <option v-for="site in sites" :key="site.id" :value="site.id" v-text="site.name"></option>
                                     </select>
+                                    <!-- Results -->
+                                    <div class="rounded-3 overflow-hidden" style="max-height: 240px; overflow-y: auto; border: 1px solid #e9ecef;">
+                                        <div v-if="plantPicker.results.length">
+                                            <button v-for="p in plantPicker.results" :key="p.id" type="button"
+                                                    class="plant-picker-item d-flex align-items-center w-100 border-0 text-start px-3 py-2"
+                                                    @click="selectPlantFromPicker(p, 'observation')">
+                                                <div class="flex-shrink-0 me-3 d-flex align-items-center justify-content-center rounded-circle"
+                                                     style="width: 32px; height: 32px; background: linear-gradient(135deg, #e8f5e9, #c8e6c9);">
+                                                    <i class="fas fa-seedling" style="font-size: 0.8em; color: #388e3c;"></i>
+                                                </div>
+                                                <div class="flex-grow-1 min-w-0">
+                                                    <div class="fw-semibold text-truncate" style="font-size: 0.88em; line-height: 1.2;" v-text="p.name"></div>
+                                                    <div class="text-truncate" style="font-size: 0.75em; line-height: 1.3; color: #78909c;">
+                                                        <em v-if="p.taxon" v-text="p.taxon.binomial_name"></em>
+                                                        <span v-if="p.taxon?.common_name_fr"> · <span v-text="p.taxon.common_name_fr"></span></span>
+                                                    </div>
+                                                </div>
+                                                <span v-if="p.site?.name" class="badge ms-2 flex-shrink-0"
+                                                      style="font-size: 0.65em; background: #f5f5f5; color: #78909c; border: 1px solid #e0e0e0; border-radius: 1rem; padding: 0.25em 0.6em;">
+                                                    <span v-text="p.site.name"></span>
+                                                </span>
+                                            </button>
+                                        </div>
+                                        <!-- Empty states -->
+                                        <div v-else-if="!plantPicker.loading" class="text-center py-4 px-3">
+                                            <div style="font-size: 1.5em; opacity: 0.3; margin-bottom: 0.5rem;">
+                                                <i class="fas fa-seedling"></i>
+                                            </div>
+                                            <div class="text-muted" style="font-size: 0.85em;" v-if="plantPicker.query">
+                                                Aucune plante pour « <strong v-text="plantPicker.query"></strong> »
+                                            </div>
+                                            <div class="text-muted" style="font-size: 0.85em;" v-else>
+                                                Aucune plante disponible
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Count hint -->
+                                    <div v-if="plantPicker.totalCount > plantPicker.results.length && !plantPicker.loading"
+                                         class="text-muted text-center mt-1" style="font-size: 0.72em;">
+                                        <span v-text="plantPicker.results.length"></span>/<span v-text="plantPicker.totalCount"></span> affichées — affinez votre recherche
+                                    </div>
                                 </div>
+                                <!-- Selected plant display -->
                                 <div class="col-md-6 mb-3" v-else>
-                                    <label class="form-label">Plante</label>
-                                    <div class="form-control-plaintext">
-                                        <strong v-text="plants.find(p => p.id === newObservation.plant)?.name || 'Plante sélectionnée'"></strong>
-                                        <small class="text-muted d-block">Observation pour cette plante</small>
+                                    <label class="form-label fw-semibold">
+                                        <i class="fas fa-leaf text-success me-1" style="font-size: 0.85em;"></i>Plante
+                                    </label>
+                                    <div class="d-flex align-items-center gap-2 rounded-3 px-3 py-2"
+                                         style="background: linear-gradient(135deg, #f1f8e9, #e8f5e9); border: 1px solid #c8e6c9;">
+                                        <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle"
+                                             style="width: 32px; height: 32px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                                            <i class="fas fa-leaf" style="font-size: 0.8em; color: #43a047;"></i>
+                                        </div>
+                                        <div class="flex-grow-1 min-w-0">
+                                            <div class="fw-semibold text-dark text-truncate" style="font-size: 0.9em;"
+                                                 v-text="plants.find(p => p.id === newObservation.plant)?.name || 'Plante'"></div>
+                                            <small style="color: #66bb6a;" v-if="plants.find(p => p.id === newObservation.plant)?.taxon">
+                                                <em v-text="plants.find(p => p.id === newObservation.plant)?.taxon?.binomial_name"></em>
+                                            </small>
+                                        </div>
+                                        <button v-if="!newObservation.plantLocked" type="button"
+                                                class="btn btn-sm rounded-circle p-0 flex-shrink-0 d-flex align-items-center justify-content-center"
+                                                style="width: 26px; height: 26px; background: rgba(0,0,0,0.06); border: none; color: #999;"
+                                                @click="clearPlantSelection('observation')" title="Changer de plante">
+                                            <i class="fas fa-times" style="font-size: 0.65em;"></i>
+                                        </button>
+                                        <i v-else class="fas fa-lock flex-shrink-0" style="font-size: 0.7em; color: #a5d6a7;" title="Plante de la fiche en cours"></i>
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
@@ -5762,7 +6398,7 @@
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="obsDate" class="form-label">Date d'observation *</label>
-                                    <input v-model="newObservation.observation_date" type="date" class="form-control" id="obsDate" required>
+                                    <input v-model="newObservation.observation_date" type="date" onkeydown="return false" class="form-control" id="obsDate" required pattern="\d{4}-\d{2}-\d{2}" max="2099-12-31">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="obsIntensity" class="form-label">Intensité (1-5)</label>
@@ -5824,7 +6460,7 @@
                         </form>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" @click="closeModal()">Annuler</button>
+                        <button type="button" class="btn btn-secondary" @click="closeModal()" :disabled="submitting.observation">Annuler</button>
                         <button type="button" class="btn btn-primary" @click="addObservation" :disabled="submitting.observation">
                             <i class="fas fa-spinner fa-spin me-1" v-if="submitting.observation"></i>
                             <i class="fas fa-save me-1" v-else></i>
@@ -6114,12 +6750,24 @@
                         <form @submit.prevent="updateObservation">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="editObsPlant" class="form-label">Plante *</label>
-                                    <select v-model="editObservation.plant" class="form-select" id="editObsPlant" required>
-                                        <option value="">Sélectionner une plante</option>
-                                        <option v-for="plant in plants" :key="plant.id" :value="plant.id" v-text="plant.name">
-                                        </option>
-                                    </select>
+                                    <label class="form-label">
+                                        <i class="fas fa-leaf text-success me-1" style="font-size: 0.85em;"></i>Plante
+                                    </label>
+                                    <div class="d-flex align-items-center gap-2 rounded-3 px-3 py-2"
+                                         style="background: linear-gradient(135deg, #f1f8e9, #e8f5e9); border: 1px solid #c8e6c9;">
+                                        <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle"
+                                             style="width: 32px; height: 32px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                                            <i class="fas fa-leaf" style="font-size: 0.8em; color: #43a047;"></i>
+                                        </div>
+                                        <div class="flex-grow-1 min-w-0">
+                                            <div class="fw-semibold text-dark text-truncate" style="font-size: 0.9em;"
+                                                 v-text="plants.find(p => p.id === editObservation.plant)?.name || 'Plante'"></div>
+                                            <small style="color: #66bb6a;" v-if="plants.find(p => p.id === editObservation.plant)?.taxon">
+                                                <em v-text="plants.find(p => p.id === editObservation.plant)?.taxon?.binomial_name"></em>
+                                            </small>
+                                        </div>
+                                        <i class="fas fa-lock flex-shrink-0" style="font-size: 0.7em; color: #a5d6a7;" title="La plante ne peut pas être modifiée"></i>
+                                    </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="editObsStage" class="form-label">Stade phénologique *</label>
@@ -6132,7 +6780,7 @@
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="editObsDate" class="form-label">Date d'observation *</label>
-                                    <input v-model="editObservation.observation_date" type="date" class="form-control" id="editObsDate" required>
+                                    <input v-model="editObservation.observation_date" type="date" onkeydown="return false" class="form-control" id="editObsDate" required pattern="\d{4}-\d{2}-\d{2}" max="2099-12-31">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="editObsTime" class="form-label">Heure</label>
@@ -6975,7 +7623,7 @@
                             </div>
                             <div class="mb-3">
                                 <label for="layerStartDate" class="form-label">Date de début *</label>
-                                <input type="date"
+                                <input type="date" onkeydown="return false"
                                        class="form-control"
                                        id="layerStartDate"
                                        v-model="siteMapEditor.newLayerData.start_date"
@@ -6983,7 +7631,7 @@
                             </div>
                             <div class="mb-3">
                                 <label for="layerEndDate" class="form-label">Date de fin (optionnel)</label>
-                                <input type="date"
+                                <input type="date" onkeydown="return false"
                                        class="form-control"
                                        id="layerEndDate"
                                        v-model="siteMapEditor.newLayerData.end_date">
@@ -7191,19 +7839,93 @@
                                 <label for="photoFile" class="form-label">Photo *</label>
                                 <input type="file" class="form-control" id="photo-file" accept="image/*" required>
                             </div>
+                            <!-- Plant picker with site filter + autocomplete -->
                             <div class="mb-3" v-if="!newPhoto.plant">
-                                <label for="photoPlant" class="form-label">Plante *</label>
-                                <select v-model="newPhoto.plant" class="form-select" id="photoPlant" required>
-                                    <option value="">Sélectionner une plante</option>
-                                    <option v-for="plant in plants" :key="plant.id" :value="plant.id" v-text="plant.name">
-                                    </option>
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-leaf text-success me-1" style="font-size: 0.85em;"></i>Plante *
+                                </label>
+                                <!-- Search input -->
+                                <div class="position-relative mb-2">
+                                    <input type="text" class="form-control" v-model="plantPicker.query"
+                                           @input="onPlantPickerInput()"
+                                           placeholder="Rechercher une plante..." autocomplete="off"
+                                           style="padding-left: 2.2rem; border-radius: 0.5rem;">
+                                    <i class="fas fa-search position-absolute text-muted" style="left: 0.75rem; top: 50%; transform: translateY(-50%); font-size: 0.85em;"></i>
+                                    <span v-if="plantPicker.loading" class="position-absolute" style="right: 0.75rem; top: 50%; transform: translateY(-50%);">
+                                        <div class="spinner-border spinner-border-sm text-success" role="status" style="width: 1rem; height: 1rem;"></div>
+                                    </span>
+                                </div>
+                                <!-- Site filter (compact) -->
+                                <select v-model="plantPicker.siteFilter" @change="onPlantPickerSiteChange()"
+                                        class="form-select form-select-sm mb-2" style="border-radius: 0.5rem; font-size: 0.8em;">
+                                    <option value="">Tous les sites</option>
+                                    <option v-for="site in sites" :key="site.id" :value="site.id" v-text="site.name"></option>
                                 </select>
+                                <!-- Results -->
+                                <div class="rounded-3 overflow-hidden" style="max-height: 200px; overflow-y: auto; border: 1px solid #e9ecef;">
+                                    <div v-if="plantPicker.results.length">
+                                        <button v-for="p in plantPicker.results" :key="p.id" type="button"
+                                                class="plant-picker-item d-flex align-items-center w-100 border-0 text-start px-3 py-2"
+                                                @click="selectPlantFromPicker(p, 'photo')">
+                                            <div class="flex-shrink-0 me-3 d-flex align-items-center justify-content-center rounded-circle"
+                                                 style="width: 32px; height: 32px; background: linear-gradient(135deg, #e8f5e9, #c8e6c9);">
+                                                <i class="fas fa-seedling" style="font-size: 0.8em; color: #388e3c;"></i>
+                                            </div>
+                                            <div class="flex-grow-1 min-w-0">
+                                                <div class="fw-semibold text-truncate" style="font-size: 0.88em; line-height: 1.2;" v-text="p.name"></div>
+                                                <div class="text-truncate" style="font-size: 0.75em; line-height: 1.3; color: #78909c;">
+                                                    <em v-if="p.taxon" v-text="p.taxon.binomial_name"></em>
+                                                    <span v-if="p.taxon?.common_name_fr"> · <span v-text="p.taxon.common_name_fr"></span></span>
+                                                </div>
+                                            </div>
+                                            <span v-if="p.site?.name" class="badge ms-2 flex-shrink-0"
+                                                  style="font-size: 0.65em; background: #f5f5f5; color: #78909c; border: 1px solid #e0e0e0; border-radius: 1rem; padding: 0.25em 0.6em;">
+                                                <span v-text="p.site.name"></span>
+                                            </span>
+                                        </button>
+                                    </div>
+                                    <div v-else-if="!plantPicker.loading" class="text-center py-4 px-3">
+                                        <div style="font-size: 1.5em; opacity: 0.3; margin-bottom: 0.5rem;">
+                                            <i class="fas fa-seedling"></i>
+                                        </div>
+                                        <div class="text-muted" style="font-size: 0.85em;" v-if="plantPicker.query">
+                                            Aucune plante pour « <strong v-text="plantPicker.query"></strong> »
+                                        </div>
+                                        <div class="text-muted" style="font-size: 0.85em;" v-else>
+                                            Aucune plante disponible
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-if="plantPicker.totalCount > plantPicker.results.length && !plantPicker.loading"
+                                     class="text-muted text-center mt-1" style="font-size: 0.72em;">
+                                    <span v-text="plantPicker.results.length"></span>/<span v-text="plantPicker.totalCount"></span> affichées — affinez votre recherche
+                                </div>
                             </div>
+                            <!-- Selected plant display -->
                             <div class="mb-3" v-else>
-                                <label class="form-label">Plante</label>
-                                <div class="form-control-plaintext">
-                                    <strong v-text="plants.find(p => p.id === newPhoto.plant)?.name || 'Plante sélectionnée'"></strong>
-                                    <small class="text-muted d-block">Photo ajoutée à cette plante</small>
+                                <label class="form-label fw-semibold">
+                                    <i class="fas fa-leaf text-success me-1" style="font-size: 0.85em;"></i>Plante
+                                </label>
+                                <div class="d-flex align-items-center gap-2 rounded-3 px-3 py-2"
+                                     style="background: linear-gradient(135deg, #f1f8e9, #e8f5e9); border: 1px solid #c8e6c9;">
+                                    <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle"
+                                         style="width: 32px; height: 32px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                                        <i class="fas fa-leaf" style="font-size: 0.8em; color: #43a047;"></i>
+                                    </div>
+                                    <div class="flex-grow-1 min-w-0">
+                                        <div class="fw-semibold text-dark text-truncate" style="font-size: 0.9em;"
+                                             v-text="plants.find(p => p.id === newPhoto.plant)?.name || 'Plante'"></div>
+                                        <small style="color: #66bb6a;" v-if="plants.find(p => p.id === newPhoto.plant)?.taxon">
+                                            <em v-text="plants.find(p => p.id === newPhoto.plant)?.taxon?.binomial_name"></em>
+                                        </small>
+                                    </div>
+                                    <button v-if="!newPhoto.plantLocked" type="button"
+                                            class="btn btn-sm rounded-circle p-0 flex-shrink-0 d-flex align-items-center justify-content-center"
+                                            style="width: 26px; height: 26px; background: rgba(0,0,0,0.06); border: none; color: #999;"
+                                            @click="clearPlantSelection('photo')" title="Changer de plante">
+                                        <i class="fas fa-times" style="font-size: 0.65em;"></i>
+                                    </button>
+                                    <i v-else class="fas fa-lock flex-shrink-0" style="font-size: 0.7em; color: #a5d6a7;" title="Plante de la fiche en cours"></i>
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -7529,7 +8251,7 @@
                         <form @submit.prevent="markPlantAsDead">
                             <div class="mb-3">
                                 <label for="deathDate" class="form-label">Date de mort *</label>
-                                <input v-model="markDeadForm.death_date" type="date" class="form-control" id="deathDate" required>
+                                <input v-model="markDeadForm.death_date" type="date" onkeydown="return false" class="form-control" id="deathDate" required>
                             </div>
                             <div class="mb-3">
                                 <label for="deathCause" class="form-label">Cause de mort</label>
@@ -7653,7 +8375,7 @@
 
                             <div class="mb-3">
                                 <label for="newPlantPlantingDate" class="form-label">Date de plantation *</label>
-                                <input v-model="replacePlantForm.new_plant.planting_date" type="date" class="form-control" id="newPlantPlantingDate" required>
+                                <input v-model="replacePlantForm.new_plant.planting_date" type="date" onkeydown="return false" class="form-control" id="newPlantPlantingDate" required pattern="\d{4}-\d{2}-\d{2}" max="2099-12-31">
                             </div>
 
                             <div class="mb-3">
@@ -8173,9 +8895,28 @@
         <div v-if="currentView === 'plant-detail' && plantDetail.plant" class="container-fluid px-4">
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
                 <div class="mb-2 mb-md-0">
-                    <h1 class="h3 mb-0">
+                    <h1 class="h3 mb-0 d-flex align-items-center flex-wrap gap-2">
                         <i :class="[getCategoryIcon(plantDetail.plant), getCategoryColor(plantDetail.plant)]"></i>
                         <span v-text="plantDetail.plant.name"></span>
+                        <!-- Identification certainty icon -->
+                        <span v-if="plantDetail.plant.identification_certainty === 'certain'"
+                              class="badge rounded-pill d-inline-flex align-items-center gap-1"
+                              style="font-size: 0.45em; background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; vertical-align: middle;"
+                              title="Identification certaine">
+                            <i class="fas fa-check-circle"></i> Certaine
+                        </span>
+                        <span v-else-if="plantDetail.plant.identification_certainty === 'uncertain'"
+                              class="badge rounded-pill d-inline-flex align-items-center gap-1"
+                              style="font-size: 0.45em; background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; vertical-align: middle;"
+                              title="Identification douteuse">
+                            <i class="fas fa-question-circle"></i> Douteuse
+                        </span>
+                        <span v-else-if="plantDetail.plant.identification_certainty === 'undetermined'"
+                              class="badge rounded-pill d-inline-flex align-items-center gap-1"
+                              style="font-size: 0.45em; background: #fce4ec; color: #c62828; border: 1px solid #f8bbd0; vertical-align: middle;"
+                              title="Identification à déterminer">
+                            <i class="fas fa-exclamation-circle"></i> À déterminer
+                        </span>
                     </h1>
                     <p class="text-muted mb-0">
                         <em v-text="plantDetail.plant.taxon?.binomial_name"></em>
@@ -8222,31 +8963,96 @@
                         </div>
                     </div>
                 </div>
-                <div class="d-flex flex-wrap gap-2">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
                     <button class="btn btn-sm btn-outline-secondary" @click="backToPlants">
-                        <i class="fas fa-arrow-left me-1"></i><span v-text="plantReturnView === 'search' ? 'Retour à la recherche' : 'Retour'"></span>
+                        <i class="fas fa-arrow-left me-1"></i><span v-text="plantReturnView === 'search' ? 'Retour à la recherche' : plantReturnView === 'site-detail' ? 'Retour au site' : 'Retour'"></span>
                     </button>
                     <button class="btn btn-sm btn-success" v-if="plantDetail.plant.coordinates"
                             @click="showSiteMap(plantDetail.plant.site, plantDetail.plant)" title="Voir sur la carte">
-                        <i class="fas fa-map-marked-alt me-1"></i>Carte
+                        <i class="fas fa-map-marked-alt me-1"></i><span class="d-none d-sm-inline">Carte</span>
                     </button>
-                    <button class="btn btn-sm btn-primary" @click="editPlant(plantDetail.plant)"
-                            v-if="user.isAuthenticated && (user.id === plantDetail.plant.owner?.id || user.isStaff)">
-                        <i class="fas fa-edit me-1"></i>Modifier
+                    <!-- Desktop action buttons -->
+                    <div class="d-none d-md-flex gap-2" v-if="user.isAuthenticated && (user.id === plantDetail.plant.owner?.id || user.isStaff)">
+                        <button class="btn btn-sm btn-primary" @click="editPlant(plantDetail.plant)">
+                            <i class="fas fa-edit me-1"></i>Modifier
+                        </button>
+                        <button class="btn btn-sm btn-warning" @click="openMarkDeadModal(plantDetail.plant)"
+                                v-if="plantDetail.plant.status === 'alive'" title="Marquer comme mort">
+                            <i class="fas fa-skull me-1"></i>Mort
+                        </button>
+                        <button class="btn btn-sm btn-info" @click="openReplacePlantModal(plantDetail.plant)"
+                                v-if="plantDetail.plant.status === 'dead' || plantDetail.plant.status === 'alive'"
+                                title="Remplacer cette plante">
+                            <i class="fas fa-exchange-alt me-1"></i>Remplacer
+                        </button>
+                        <button class="btn btn-sm btn-danger" @click="confirmDeletePlant(plantDetail.plant)">
+                            <i class="fas fa-trash-alt me-1"></i>Supprimer
+                        </button>
+                    </div>
+                    <!-- Mobile action buttons (icon-only row) -->
+                    <div class="d-md-none d-flex gap-1" v-if="user.isAuthenticated && (user.id === plantDetail.plant.owner?.id || user.isStaff)">
+                        <button class="btn btn-sm btn-primary" @click="editPlant(plantDetail.plant)" title="Modifier">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-warning" @click="openMarkDeadModal(plantDetail.plant)"
+                                v-if="plantDetail.plant.status === 'alive'" title="Marquer comme mort">
+                            <i class="fas fa-skull"></i>
+                        </button>
+                        <button class="btn btn-sm btn-info" @click="openReplacePlantModal(plantDetail.plant)"
+                                v-if="plantDetail.plant.status === 'dead' || plantDetail.plant.status === 'alive'"
+                                title="Remplacer">
+                            <i class="fas fa-exchange-alt"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" @click="confirmDeletePlant(plantDetail.plant)" title="Supprimer">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile: Identification + Quick Actions (shown only on mobile) -->
+            <div class="d-lg-none mb-3" v-if="user.isAuthenticated">
+                <small class="text-muted text-uppercase fw-semibold d-block mb-2" style="font-size: 0.7em; letter-spacing: 0.08em;">
+                    <i class="fas fa-fingerprint me-1"></i>Identification
+                </small>
+                <div class="d-flex gap-1 mb-3">
+                    <button class="btn btn-sm flex-fill"
+                            :class="plantDetail.plant.identification_certainty === 'certain' ? 'btn-outline-success active' : 'btn-outline-secondary'"
+                            @click="setIdentificationCertainty('certain')">
+                        <i class="fas fa-check-circle me-1"></i>Certaine
                     </button>
-                    <button class="btn btn-sm btn-warning" @click="openMarkDeadModal(plantDetail.plant)"
-                            v-if="user.isAuthenticated && plantDetail.plant.status === 'alive' && (user.id === plantDetail.plant.owner?.id || user.isStaff)"
-                            title="Marquer comme mort">
-                        <i class="fas fa-skull me-1"></i>Mort
+                    <button class="btn btn-sm flex-fill"
+                            :class="plantDetail.plant.identification_certainty === 'uncertain' ? 'btn-outline-warning active' : 'btn-outline-secondary'"
+                            @click="setIdentificationCertainty('uncertain')">
+                        <i class="fas fa-question-circle me-1"></i>Douteuse
                     </button>
-                    <button class="btn btn-sm btn-info" @click="openReplacePlantModal(plantDetail.plant)"
-                            v-if="user.isAuthenticated && (plantDetail.plant.status === 'dead' || plantDetail.plant.status === 'alive') && (user.id === plantDetail.plant.owner?.id || user.isStaff)"
-                            title="Remplacer cette plante">
-                        <i class="fas fa-exchange-alt me-1"></i>Remplacer
+                    <button class="btn btn-sm flex-fill"
+                            :class="plantDetail.plant.identification_certainty === 'undetermined' ? 'btn-outline-danger active' : 'btn-outline-secondary'"
+                            @click="setIdentificationCertainty('undetermined')">
+                        <i class="fas fa-exclamation-circle me-1"></i>À dét.
                     </button>
-                    <button class="btn btn-sm btn-danger" @click="confirmDeletePlant(plantDetail.plant)"
-                            v-if="user.isAuthenticated && (user.id === plantDetail.plant.owner?.id || user.isStaff)">
-                        <i class="fas fa-trash-alt me-1"></i>Supprimer
+                </div>
+                <small class="text-muted text-uppercase fw-semibold d-block mb-2" style="font-size: 0.7em; letter-spacing: 0.08em;">
+                    <i class="fas fa-bolt me-1"></i>Actions rapides
+                </small>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-primary btn-sm rounded-pill px-3 shadow-sm" @click="openModal('observation', { plantId: currentPlant })">
+                        <i class="fas fa-plus me-1"></i>Observation
+                    </button>
+                    <button class="btn btn-outline-info btn-sm rounded-pill px-3" @click="openActionForm()">
+                        <i class="fas fa-tools me-1"></i>Action
+                    </button>
+                    <button class="btn btn-success btn-sm rounded-pill px-3 shadow-sm" @click="openModal('photo', { plantId: currentPlant })">
+                        <i class="fas fa-camera me-1"></i>Photo
+                    </button>
+                    <button class="btn btn-info btn-sm rounded-pill px-3 shadow-sm text-white" @click="openUpdateGpsModal()">
+                        <i class="fas fa-map-marked-alt me-1"></i>GPS
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" @click="openStatsModal()">
+                        <i class="fas fa-chart-line me-1"></i>Stats
+                    </button>
+                    <button class="btn btn-outline-success btn-sm rounded-pill px-3" @click="openCultivarSearch('editPlant')">
+                        <i class="fas fa-leaf me-1"></i>Variété
                     </button>
                 </div>
             </div>
@@ -8327,6 +9133,32 @@
                                         <div class="col-4"><strong>Clone/Accession:</strong></div>
                                         <div class="col-8" v-text="plantDetail.plant.clone_or_accession"></div>
                                     </div>
+                                    <div class="row mb-2" v-if="plantDetail.plant.abundance || plantDetail.plant.initial_abundance">
+                                        <div class="col-4"><strong>Abondance:</strong></div>
+                                        <div class="col-8">
+                                            <span v-if="plantDetail.plant.abundance" class="badge bg-success bg-opacity-75 me-1">
+                                                <i class="fas fa-seedling me-1"></i><span v-text="plantDetail.plant.abundance"></span> vivant<span v-if="plantDetail.plant.abundance > 1">s</span>
+                                            </span>
+                                            <span v-if="plantDetail.plant.initial_abundance" class="badge bg-secondary bg-opacity-75 me-1">
+                                                <i class="fas fa-layer-group me-1"></i><span v-text="plantDetail.plant.initial_abundance"></span> planté<span v-if="plantDetail.plant.initial_abundance > 1">s</span>
+                                            </span>
+                                            <span v-if="plantDetail.plant.initial_abundance && plantDetail.plant.abundance && plantDetail.plant.initial_abundance > plantDetail.plant.abundance" class="badge bg-danger bg-opacity-75">
+                                                <i class="fas fa-skull-crossbones me-1"></i><span v-text="plantDetail.plant.initial_abundance - plantDetail.plant.abundance"></span> mort<span v-if="(plantDetail.plant.initial_abundance - plantDetail.plant.abundance) > 1">s</span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="row mb-2" v-if="plantDetail.plant.cultivar || plantDetail.plant.taxon?.cultivar">
+                                        <div class="col-4"><strong>Cultivar:</strong></div>
+                                        <div class="col-8">'<span v-text="plantDetail.plant.cultivar || plantDetail.plant.taxon.cultivar"></span>'</div>
+                                    </div>
+                                    <div class="row mb-2" v-if="plantDetail.plant.variety || plantDetail.plant.taxon?.variety">
+                                        <div class="col-4"><strong>Variété:</strong></div>
+                                        <div class="col-8">var. <em v-text="plantDetail.plant.variety || plantDetail.plant.taxon.variety"></em></div>
+                                    </div>
+                                    <div class="row mb-2" v-if="plantDetail.plant.taxon?.subspecies">
+                                        <div class="col-4"><strong>Sous-espèce:</strong></div>
+                                        <div class="col-8">subsp. <em v-text="plantDetail.plant.taxon.subspecies"></em></div>
+                                    </div>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <div class="row mb-2" v-if="plantDetail.plant.planting_date">
@@ -8388,12 +9220,81 @@
                         </div>
                     </div>
 
+                    <!-- Cultivar Info Card (from Wikidata) -->
+                    <div class="card mb-4" v-if="plantDetail.plant.cultivar_info">
+                        <div class="card-header bg-light">
+                            <h6 class="card-title mb-0">
+                                <i class="fas fa-leaf me-2 text-success"></i>Fiche cultivar
+                                <span class="badge bg-light text-dark border ms-2" v-if="plantDetail.plant.cultivar">
+                                    '<span v-text="plantDetail.plant.cultivar"></span>'
+                                </span>
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <!-- Image -->
+                                <div class="col-md-4 mb-3" v-if="plantDetail.plant.cultivar_info.image_url">
+                                    <img :src="plantDetail.plant.cultivar_info.image_url" class="img-fluid rounded shadow-sm" :alt="plantDetail.plant.cultivar" style="max-height: 200px; object-fit: cover; width: 100%;">
+                                </div>
+                                <div :class="plantDetail.plant.cultivar_info.image_url ? 'col-md-8' : 'col-12'">
+                                    <!-- Origin & date -->
+                                    <div class="mb-2" v-if="plantDetail.plant.cultivar_info.origin || plantDetail.plant.cultivar_info.date_discovered">
+                                        <span v-if="plantDetail.plant.cultivar_info.origin" class="me-3">
+                                            <i class="fas fa-globe-europe text-primary me-1"></i>
+                                            <span v-text="plantDetail.plant.cultivar_info.origin"></span>
+                                        </span>
+                                        <span v-if="plantDetail.plant.cultivar_info.date_discovered">
+                                            <i class="fas fa-calendar text-muted me-1"></i>
+                                            <span v-text="plantDetail.plant.cultivar_info.date_discovered"></span>
+                                        </span>
+                                    </div>
+                                    <!-- Taxon name -->
+                                    <div class="mb-2" v-if="plantDetail.plant.cultivar_info.taxon_name">
+                                        <small class="text-muted">Nom taxonomique:</small>
+                                        <em v-text="plantDetail.plant.cultivar_info.taxon_name"></em>
+                                    </div>
+                                    <!-- Characteristics -->
+                                    <div class="mb-2" v-if="plantDetail.plant.cultivar_info.characteristics && plantDetail.plant.cultivar_info.characteristics.length">
+                                        <small class="text-muted">Caractéristiques:</small>
+                                        <span v-for="c in plantDetail.plant.cultivar_info.characteristics" :key="c" class="badge bg-light text-dark border me-1" v-text="c"></span>
+                                    </div>
+                                    <!-- Fruit colors -->
+                                    <div class="mb-2" v-if="plantDetail.plant.cultivar_info.fruit_colors && plantDetail.plant.cultivar_info.fruit_colors.length">
+                                        <small class="text-muted">Couleur:</small>
+                                        <span v-for="c in plantDetail.plant.cultivar_info.fruit_colors" :key="c" class="badge bg-warning bg-opacity-25 text-dark me-1" v-text="c"></span>
+                                    </div>
+                                    <!-- Mass -->
+                                    <div class="mb-2" v-if="plantDetail.plant.cultivar_info.mass_grams">
+                                        <small class="text-muted">Poids moyen:</small>
+                                        <span v-text="plantDetail.plant.cultivar_info.mass_grams"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Parents -->
+                            <div class="mt-2" v-if="plantDetail.plant.cultivar_info.parents && plantDetail.plant.cultivar_info.parents.length">
+                                <small class="text-muted d-block mb-1"><i class="fas fa-code-branch me-1"></i>Parents hybrides:</small>
+                                <span v-for="p in plantDetail.plant.cultivar_info.parents" :key="p" class="badge bg-secondary bg-opacity-25 text-dark me-1 mb-1" v-text="p"></span>
+                            </div>
+                            <!-- Children -->
+                            <div class="mt-2" v-if="plantDetail.plant.cultivar_info.children && plantDetail.plant.cultivar_info.children.length">
+                                <small class="text-muted d-block mb-1"><i class="fas fa-seedling me-1"></i>Cultivars enfants:</small>
+                                <span v-for="c in plantDetail.plant.cultivar_info.children" :key="c" class="badge bg-light text-dark border me-1 mb-1" v-text="c"></span>
+                            </div>
+                            <!-- Wikidata source -->
+                            <div class="mt-3 text-end">
+                                <a :href="'https://www.wikidata.org/wiki/' + plantDetail.plant.cultivar_info.wikidata_id" target="_blank" class="text-muted small text-decoration-none">
+                                    <i class="fas fa-external-link-alt me-1"></i>Wikidata
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Cultivation Profile Card -->
                     <div class="card mb-4" v-if="plantDetail.plant.cultivation_profile || (user.isAuthenticated && (user.id === plantDetail.plant.owner?.id || user.isStaff))">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
                             <h5 class="card-title mb-0">
                                 <i class="fas fa-seedling me-2"></i>Conditions de culture
-                                <span class="badge bg-info text-dark ms-2" title="Recommandations horticoles, indépendantes des observations">
+                                <span class="badge bg-info text-dark ms-2 d-none d-sm-inline" title="Recommandations horticoles, indépendantes des observations">
                                     Recommandations horticoles
                                 </span>
                             </h5>
@@ -8809,8 +9710,39 @@
                         </div>
                     </div>
 
-                    <!-- Quick Actions -->
+                    <!-- Identification certainty -->
                     <div class="card mb-3" v-if="user.isAuthenticated">
+                        <div class="card-header py-2">
+                            <h6 class="card-title mb-0" style="font-size: 0.85em;">
+                                <i class="fas fa-fingerprint me-2"></i>Identification
+                            </h6>
+                        </div>
+                        <div class="card-body py-2">
+                            <div class="d-grid gap-1">
+                                <button class="btn btn-sm d-flex align-items-center gap-2"
+                                        :class="plantDetail.plant.identification_certainty === 'certain' ? 'btn-outline-success active' : 'btn-outline-secondary'"
+                                        @click="setIdentificationCertainty('certain')">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>Certaine</span>
+                                </button>
+                                <button class="btn btn-sm d-flex align-items-center gap-2"
+                                        :class="plantDetail.plant.identification_certainty === 'uncertain' ? 'btn-outline-warning active' : 'btn-outline-secondary'"
+                                        @click="setIdentificationCertainty('uncertain')">
+                                    <i class="fas fa-question-circle"></i>
+                                    <span>Douteuse</span>
+                                </button>
+                                <button class="btn btn-sm d-flex align-items-center gap-2"
+                                        :class="plantDetail.plant.identification_certainty === 'undetermined' ? 'btn-outline-danger active' : 'btn-outline-secondary'"
+                                        @click="setIdentificationCertainty('undetermined')">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    <span>À déterminer</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions (hidden on mobile — shown at top of page instead) -->
+                    <div class="card mb-3 d-none d-lg-block" v-if="user.isAuthenticated">
                         <div class="card-header">
                             <h6 class="card-title mb-0">
                                 <i class="fas fa-tools me-2"></i>Actions rapides
@@ -8818,20 +9750,23 @@
                         </div>
                         <div class="card-body">
                             <div class="d-grid gap-2">
-                                <button class="btn btn-primary" @click="openModal('observation', { plantId: currentPlant })">
-                                    <i class="fas fa-plus me-2"></i>Nouvelle observation
+                                <button class="btn btn-primary btn-sm" @click="openModal('observation', { plantId: currentPlant })">
+                                    <i class="fas fa-plus me-1"></i>Nouvelle Observation
                                 </button>
-                                <button class="btn btn-outline-info" @click="openActionForm()">
-                                    <i class="fas fa-tools me-2"></i>Nouvelle action
+                                <button class="btn btn-outline-info btn-sm" @click="openActionForm()">
+                                    <i class="fas fa-tools me-1"></i>Nouvelle Action
                                 </button>
-                                <button class="btn btn-success" @click="openModal('photo', { plantId: currentPlant })">
-                                    <i class="fas fa-camera me-2"></i>Ajouter photo
+                                <button class="btn btn-success btn-sm" @click="openModal('photo', { plantId: currentPlant })">
+                                    <i class="fas fa-camera me-1"></i>Ajouter photo
                                 </button>
-                                <button class="btn btn-info" @click="openUpdateGpsModal()">
-                                    <i class="fas fa-map-marked-alt me-2"></i>Mettre à jour GPS
+                                <button class="btn btn-info btn-sm" @click="openUpdateGpsModal()">
+                                    <i class="fas fa-map-marked-alt me-1"></i>Mettre à jour GPS
                                 </button>
-                                <button class="btn btn-outline-secondary" @click="openStatsModal()">
-                                    <i class="fas fa-chart-line me-2"></i>Voir statistiques
+                                <button class="btn btn-outline-secondary btn-sm" @click="openStatsModal()">
+                                    <i class="fas fa-chart-line me-1"></i>Voir statistiques
+                                </button>
+                                <button class="btn btn-outline-success btn-sm" @click="openCultivarSearch('editPlant')">
+                                    <i class="fas fa-leaf me-1"></i>Définir variété / cultivar
                                 </button>
                             </div>
                         </div>
@@ -8988,7 +9923,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Date <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" v-model="actionForm.data.action_date" required>
+                                <input type="date" onkeydown="return false" class="form-control" v-model="actionForm.data.action_date" required>
                             </div>
                             <div class="col-12">
                                 <label class="form-label">Titre (optionnel)</label>
@@ -9064,6 +9999,63 @@
             </div>
         </div>
 
+        <!-- App Footer — Data Sources -->
+        <footer class="app-footer">
+            <div class="container">
+                <div class="mb-2 small text-muted">Sources de données</div>
+                <div class="data-sources">
+                    <a href="https://www.gbif.org" target="_blank" rel="noopener" title="Global Biodiversity Information Facility">
+                        <svg viewBox="0 0 256 256" width="22" height="22" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="256" height="256" rx="32" fill="#4B9E46"/>
+                            <g transform="translate(40, 30)">
+                                <circle cx="88" cy="20" r="18" fill="#fff"/>
+                                <path d="M88 50 C88 50, 88 170, 88 170 C88 185, 75 196, 60 196 L30 196" stroke="#fff" stroke-width="18" fill="none" stroke-linecap="round"/>
+                                <circle cx="88" cy="20" r="18" fill="#fff" transform="translate(0, 0)"/>
+                                <path d="M88 50 C88 50, 88 100, 88 100" stroke="#fff" stroke-width="18" fill="none" stroke-linecap="round" transform="translate(0, 0)"/>
+                            </g>
+                        </svg>
+                        <span class="source-label">GBIF</span>
+                    </a>
+                    <a href="https://www.wikidata.org" target="_blank" rel="noopener" title="Wikidata — Base de connaissances libre">
+                        <svg viewBox="0 0 1050 590" width="32" height="18" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="2" y="2" width="84" height="586" rx="8" fill="#990000"/>
+                            <rect x="118" y="2" width="84" height="586" rx="8" fill="#339966"/>
+                            <rect x="234" y="2" width="84" height="586" rx="8" fill="#339966"/>
+                            <rect x="350" y="2" width="84" height="586" rx="8" fill="#006699"/>
+                            <rect x="466" y="2" width="84" height="586" rx="8" fill="#006699"/>
+                            <rect x="582" y="2" width="84" height="586" rx="8" fill="#006699"/>
+                            <rect x="698" y="2" width="84" height="586" rx="8" fill="#339966"/>
+                            <rect x="814" y="2" width="84" height="586" rx="8" fill="#339966"/>
+                            <rect x="930" y="2" width="84" height="586" rx="8" fill="#990000"/>
+                        </svg>
+                        <span class="source-label">Wikidata</span>
+                    </a>
+                    <a href="https://cpvo.europa.eu/en/applications-and-examinations/community-plant-variety-office-databases" target="_blank" rel="noopener" title="EU Plant Variety Portal — Office communautaire des variétés végétales">
+                        <svg viewBox="0 0 200 140" width="28" height="20" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="200" height="140" rx="8" fill="#003399"/>
+                            <g transform="translate(100,70)">
+                                <g id="eupvp-star">
+                                    <polygon points="0,-35 8,-11 33,-11 13,4 20,28 0,14 -20,28 -13,4 -33,-11 -8,-11" fill="#FFCC00" transform="rotate(0) translate(0,-30) scale(0.35)"/>
+                                    <polygon points="0,-35 8,-11 33,-11 13,4 20,28 0,14 -20,28 -13,4 -33,-11 -8,-11" fill="#FFCC00" transform="rotate(30) translate(0,-30) scale(0.35)"/>
+                                    <polygon points="0,-35 8,-11 33,-11 13,4 20,28 0,14 -20,28 -13,4 -33,-11 -8,-11" fill="#FFCC00" transform="rotate(60) translate(0,-30) scale(0.35)"/>
+                                    <polygon points="0,-35 8,-11 33,-11 13,4 20,28 0,14 -20,28 -13,4 -33,-11 -8,-11" fill="#FFCC00" transform="rotate(90) translate(0,-30) scale(0.35)"/>
+                                    <polygon points="0,-35 8,-11 33,-11 13,4 20,28 0,14 -20,28 -13,4 -33,-11 -8,-11" fill="#FFCC00" transform="rotate(120) translate(0,-30) scale(0.35)"/>
+                                    <polygon points="0,-35 8,-11 33,-11 13,4 20,28 0,14 -20,28 -13,4 -33,-11 -8,-11" fill="#FFCC00" transform="rotate(150) translate(0,-30) scale(0.35)"/>
+                                    <polygon points="0,-35 8,-11 33,-11 13,4 20,28 0,14 -20,28 -13,4 -33,-11 -8,-11" fill="#FFCC00" transform="rotate(180) translate(0,-30) scale(0.35)"/>
+                                    <polygon points="0,-35 8,-11 33,-11 13,4 20,28 0,14 -20,28 -13,4 -33,-11 -8,-11" fill="#FFCC00" transform="rotate(210) translate(0,-30) scale(0.35)"/>
+                                    <polygon points="0,-35 8,-11 33,-11 13,4 20,28 0,14 -20,28 -13,4 -33,-11 -8,-11" fill="#FFCC00" transform="rotate(240) translate(0,-30) scale(0.35)"/>
+                                    <polygon points="0,-35 8,-11 33,-11 13,4 20,28 0,14 -20,28 -13,4 -33,-11 -8,-11" fill="#FFCC00" transform="rotate(270) translate(0,-30) scale(0.35)"/>
+                                    <polygon points="0,-35 8,-11 33,-11 13,4 20,28 0,14 -20,28 -13,4 -33,-11 -8,-11" fill="#FFCC00" transform="rotate(300) translate(0,-30) scale(0.35)"/>
+                                    <polygon points="0,-35 8,-11 33,-11 13,4 20,28 0,14 -20,28 -13,4 -33,-11 -8,-11" fill="#FFCC00" transform="rotate(330) translate(0,-30) scale(0.35)"/>
+                                </g>
+                            </g>
+                        </svg>
+                        <span class="source-label">EUPVP</span>
+                    </a>
+                </div>
+            </div>
+        </footer>
+
         <!-- Mobile Bottom Navigation Bar -->
         <nav class="mobile-bottom-nav" aria-label="Navigation mobile">
             <a href="#dashboard" @click.prevent="currentView = 'dashboard'" :class="{active: currentView === 'dashboard'}">
@@ -9082,14 +10074,30 @@
                 <i class="fas fa-eye"></i>
                 <span>Obs.</span>
             </a>
-            <a href="#map" @click.prevent="currentView = 'map'" :class="{active: currentView === 'map'}">
-                <i class="fas fa-globe"></i>
-                <span>Carte</span>
+            <a href="#search" @click.prevent="currentView = 'search'" :class="{active: currentView === 'search'}">
+                <i class="fas fa-search"></i>
+                <span>Recherche</span>
             </a>
-            <a href="#analysis" @click.prevent="currentView = 'analysis'" :class="{active: currentView === 'analysis'}">
-                <i class="fas fa-chart-line"></i>
-                <span>Stats</span>
-            </a>
+            <div v-if="user.isAuthenticated" class="dropup">
+                <a href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Créer</span>
+                </a>
+                <ul class="dropdown-menu">
+                    <li><h6 class="dropdown-header">Créer</h6></li>
+                    <li><a class="dropdown-item" href="#" @click.prevent="openModal('site')"><i class="fas fa-map-marker-alt me-2 text-primary"></i>Site</a></li>
+                    <li><a class="dropdown-item" href="#" @click.prevent="openModal('plant')"><i class="fas fa-leaf me-2 text-success"></i>Plante</a></li>
+                    <li><a class="dropdown-item" href="#" @click.prevent="openModal('observation')"><i class="fas fa-eye me-2 text-info"></i>Observation</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" @click.prevent="openModal('photo')"><i class="fas fa-camera me-2 text-warning"></i>Photo</a></li>
+                    <template v-if="user.isStaff || user.isSuperuser">
+                        <li><hr class="dropdown-divider"></li>
+                        <li><h6 class="dropdown-header">Taxons</h6></li>
+                        <li><a class="dropdown-item" href="#" @click.prevent="openModal('gbifSync')"><i class="fas fa-sync me-2 text-success"></i>Synchroniser depuis GBIF</a></li>
+                        <li><a class="dropdown-item" href="#" @click.prevent="openModal('gbifImportFamily')"><i class="fas fa-sitemap me-2 text-primary"></i>Importer une famille GBIF</a></li>
+                    </template>
+                </ul>
+            </div>
         </nav>
     </div>
 

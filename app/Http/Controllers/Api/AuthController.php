@@ -164,17 +164,28 @@ class AuthController extends Controller
      */
     public function logout(Request $request): JsonResponse
     {
-        Auth::logout();
+        // Revoke current Sanctum token if using token-based auth
+        if ($request->user()?->currentAccessToken() && method_exists($request->user()->currentAccessToken(), 'delete')) {
+            $request->user()->currentAccessToken()->delete();
+        }
 
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
+        // Logout from the web (session) guard explicitly
+        Auth::guard('web')->logout();
+
+        if ($request->hasSession()) {
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
+
+        // Expire the session cookie so the browser drops it on reload
+        $sessionCookie = cookie()->forget(config('session.cookie'));
 
         return response()->json([
             'success' => true,
             'authenticated' => false,
             'isAuthenticated' => false,
             'message' => 'Déconnexion réussie.',
-        ]);
+        ])->withCookie($sessionCookie);
     }
 
     /**

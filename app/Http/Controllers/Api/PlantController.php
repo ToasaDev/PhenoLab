@@ -388,13 +388,19 @@ class PlantController extends Controller
             'category_id'          => ['required', 'exists:categories,id'],
             'site_id'              => ['required', 'exists:sites,id'],
             'position_id'          => ['nullable', 'exists:plant_positions,id'],
-            'planting_date'        => ['nullable', 'date'],
+            'planting_date'        => ['nullable', 'date_format:Y-m-d'],
             'age_years'            => ['nullable', 'integer', 'min:0'],
             'height_category'      => ['nullable', 'string', 'in:seedling,young,medium,mature,large'],
             'exact_height'         => ['nullable', 'numeric'],
-            'health_status'        => ['nullable', 'string', 'in:excellent,good,fair,poor,dead'],
+            'abundance'            => ['nullable', 'integer', 'min:1'],
+            'initial_abundance'    => ['nullable', 'integer', 'min:1'],
+            'health_status'             => ['nullable', 'string', 'in:excellent,good,fair,poor,dead'],
+            'identification_certainty'  => ['nullable', 'string', 'in:certain,uncertain,undetermined'],
             'status'               => ['nullable', 'string', 'in:alive,dead,replaced,removed'],
             'clone_or_accession'   => ['nullable', 'string', 'max:100'],
+            'cultivar'             => ['nullable', 'string', 'max:100'],
+            'variety'              => ['nullable', 'string', 'max:100'],
+            'cultivar_info'        => ['nullable', 'array'],
             'is_private'           => ['nullable', 'boolean'],
             'latitude'             => ['nullable', 'numeric', 'between:-90,90'],
             'longitude'            => ['nullable', 'numeric', 'between:-180,180'],
@@ -455,13 +461,19 @@ class PlantController extends Controller
             'category_id'          => ['sometimes', 'required', 'exists:categories,id'],
             'site_id'              => ['sometimes', 'required', 'exists:sites,id'],
             'position_id'          => ['nullable', 'exists:plant_positions,id'],
-            'planting_date'        => ['nullable', 'date'],
+            'planting_date'        => ['nullable', 'date_format:Y-m-d'],
             'age_years'            => ['nullable', 'integer', 'min:0'],
             'height_category'      => ['nullable', 'string', 'in:seedling,young,medium,mature,large'],
             'exact_height'         => ['nullable', 'numeric'],
-            'health_status'        => ['nullable', 'string', 'in:excellent,good,fair,poor,dead'],
+            'abundance'            => ['nullable', 'integer', 'min:1'],
+            'initial_abundance'    => ['nullable', 'integer', 'min:1'],
+            'health_status'             => ['nullable', 'string', 'in:excellent,good,fair,poor,dead'],
+            'identification_certainty'  => ['nullable', 'string', 'in:certain,uncertain,undetermined'],
             'status'               => ['nullable', 'string', 'in:alive,dead,replaced,removed'],
             'clone_or_accession'   => ['nullable', 'string', 'max:100'],
+            'cultivar'             => ['nullable', 'string', 'max:100'],
+            'variety'              => ['nullable', 'string', 'max:100'],
+            'cultivar_info'        => ['nullable', 'array'],
             'is_private'           => ['nullable', 'boolean'],
             'latitude'             => ['nullable', 'numeric', 'between:-90,90'],
             'longitude'            => ['nullable', 'numeric', 'between:-180,180'],
@@ -874,7 +886,7 @@ class PlantController extends Controller
         $request->merge(array_map(fn ($v) => $v === '' ? null : $v, $request->all()));
 
         $data = $request->validate([
-            'death_date'  => ['required', 'date'],
+            'death_date'  => ['required', 'date_format:Y-m-d'],
             'death_cause' => ['nullable', 'string', 'in:disease,pests,frost,drought,flooding,wind,age,accident,human,unknown,other'],
             'death_notes' => ['nullable', 'string'],
         ]);
@@ -1112,5 +1124,389 @@ class PlantController extends Controller
             'detail' => 'Positions mises a jour.',
             'updated_count' => $count,
         ]);
+    }
+
+    /**
+     * Search Wikidata for cultivar/variety information.
+     * Uses SPARQL for broad search linked to a species, with entity API fallback.
+     */
+    public function searchCultivars(Request $request): JsonResponse
+    {
+        $request->validate([
+            'query' => ['required', 'string', 'min:2', 'max:100'],
+            'species' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $query = $request->input('query');
+        $species = $request->input('species');
+
+        // 1. Local DB search (EUPVP + manual entries)
+        $localQuery = \App\Models\Cultivar::with('taxon:id,binomial_name,common_name_fr')
+            ->search($query);
+
+        if ($species) {
+            $localQuery->whereHas('taxon', function ($tq) use ($species) {
+                $escaped = str_replace(['%', '_'], ['\\%', '\\_'], $species);
+                $tq->where('binomial_name', 'like', "%{$escaped}%");
+            });
+        }
+
+        $localResults = $localQuery->limit(15)->get()->map(fn (\App\Models\Cultivar $c) => [
+            'name'            => $c->name,
+            'cultivar_name'   => $c->name,
+            'taxon_name'      => $c->taxon?->binomial_name,
+            'common_name'     => $c->taxon?->common_name_fr,
+            'description'     => $c->synonyms ? "Syn: {$c->synonyms}" : null,
+            'image_url'       => $c->image_url,
+            'origin'          => $c->origin_country,
+            'date'            => $c->registration_date?->format('Y'),
+            'wikidata_id'     => $c->wikidata_id,
+            'cultivar_id'     => $c->id,
+            'source'          => 'local',
+        ])->toArray();
+
+        // 2. Wikidata search (complementary)
+        $wikidataResults = [];
+        $ua = 'PhenoLab/1.0 (botanical garden app; contact@phenolab.org)';
+
+        try {
+            $sparqlResults = $this->searchCultivarsSparql($query, $species, $ua);
+            if (! empty($sparqlResults)) {
+                $wikidataResults = $sparqlResults;
+            }
+
+            if (empty($wikidataResults)) {
+                $wikidataResults = $this->searchCultivarsEntityApi($query, $species, $ua);
+            }
+
+            // Mark Wikidata results with source
+            foreach ($wikidataResults as &$r) {
+                $r['source'] = 'wikidata';
+                $r['cultivar_id'] = null;
+            }
+            unset($r);
+        } catch (\Exception $e) {
+            // Wikidata failure is not critical — we still have local results
+        }
+
+        // 3. Merge: local first, then Wikidata (deduplicate by name)
+        $seenNames = collect($localResults)->pluck('name')->map(fn ($n) => strtolower($n))->toArray();
+        $filtered = array_filter($wikidataResults, function ($r) use ($seenNames) {
+            $name = strtolower($r['cultivar_name'] ?? $r['name'] ?? '');
+            return ! in_array($name, $seenNames);
+        });
+
+        $results = array_merge($localResults, array_values($filtered));
+
+        return response()->json(['results' => array_slice($results, 0, 30)]);
+    }
+
+    /**
+     * SPARQL-based cultivar search — works with partial names and species filter.
+     */
+    private function searchCultivarsSparql(string $query, ?string $species, string $ua): array
+    {
+        $queryLower = strtolower($query);
+
+        $sparql = <<<SPARQL
+SELECT DISTINCT ?item ?itemLabel ?taxonName ?image ?desc ?originLabel ?date WHERE {
+  { ?item wdt:P31 wd:Q4886. } UNION { ?item wdt:P31 wd:Q15731356. }
+  OPTIONAL { ?item wdt:P225 ?taxonName. }
+  OPTIONAL { ?item wdt:P18 ?image. }
+  OPTIONAL { ?item schema:description ?desc. FILTER(LANG(?desc) = 'fr') }
+  OPTIONAL { ?item wdt:P495 ?origin. }
+  OPTIONAL { ?item wdt:P575 ?date. }
+  FILTER(
+    CONTAINS(LCASE(?itemLabel), '{$queryLower}')
+    || CONTAINS(LCASE(COALESCE(?taxonName, '')), '{$queryLower}')
+  )
+  SERVICE wikibase:label { bd:serviceParam wikibase:language 'fr,en'. }
+}
+LIMIT 30
+SPARQL;
+
+        $response = \Illuminate\Support\Facades\Http::timeout(15)
+            ->withUserAgent($ua)
+            ->get('https://query.wikidata.org/sparql', [
+                'format' => 'json',
+                'query'  => $sparql,
+            ]);
+
+        $results = [];
+        $seen = [];
+        foreach ($response->json('results.bindings', []) as $r) {
+            $wikidataId = basename($r['item']['value'] ?? '');
+            if (isset($seen[$wikidataId])) {
+                continue;
+            }
+            $seen[$wikidataId] = true;
+
+            $label = $r['itemLabel']['value'] ?? '?';
+            $taxonName = $r['taxonName']['value'] ?? null;
+            $desc = $r['desc']['value'] ?? '';
+
+            // Filter by species: check taxon_name, description, or common species words
+            if ($species) {
+                $speciesLower = strtolower($species);
+                // Extract genus (first word) for broader matching
+                $genus = explode(' ', $speciesLower)[0];
+                // Extract common name from description (e.g. "variété de pomme" -> pomme)
+                $speciesKeywords = $this->getSpeciesKeywords($species);
+
+                $allText = strtolower(($taxonName ?? '') . ' ' . $desc . ' ' . $label);
+                $matchesTaxon = str_contains($allText, $speciesLower);
+                $matchesGenus = $taxonName && str_contains(strtolower($taxonName), $genus);
+                $matchesKeywords = false;
+                foreach ($speciesKeywords as $kw) {
+                    if (str_contains($allText, $kw)) {
+                        $matchesKeywords = true;
+                        break;
+                    }
+                }
+                if (! $matchesTaxon && ! $matchesGenus && ! $matchesKeywords) {
+                    continue;
+                }
+            }
+
+            $image = $r['image']['value'] ?? null;
+            $imageUrl = $image ? $image . '?width=200' : null;
+            if ($imageUrl && ! str_contains($imageUrl, 'Special:FilePath')) {
+                $filename = basename(parse_url($image, PHP_URL_PATH));
+                $imageUrl = 'https://commons.wikimedia.org/wiki/Special:FilePath/' . rawurlencode($filename) . '?width=200';
+            }
+
+            $cultivarName = null;
+            $varietyName = null;
+            if ($taxonName && preg_match("/['\x{2018}\x{2019}](.+?)['\x{2018}\x{2019}]/u", $taxonName, $m)) {
+                $cultivarName = $m[1];
+            } elseif ($taxonName && preg_match('/var\.\s*(\S+)/i', $taxonName, $m)) {
+                $varietyName = $m[1];
+            }
+
+            $date = $r['date']['value'] ?? null;
+            if ($date) {
+                $date = preg_replace('/^\+/', '', explode('T', $date)[0]);
+            }
+
+            $results[] = [
+                'wikidata_id' => $wikidataId,
+                'label'       => $label,
+                'description' => $r['desc']['value'] ?? $r['originLabel']['value'] ?? '',
+                'taxon_name'  => $taxonName,
+                'cultivar'    => $cultivarName ?? $label,
+                'variety'     => $varietyName,
+                'image_url'   => $imageUrl,
+                'origin'      => $r['originLabel']['value'] ?? null,
+                'date'        => $date,
+            ];
+        }
+
+        return $results;
+    }
+
+    /**
+     * Get common keywords for a species to help filter cultivar results.
+     */
+    private function getSpeciesKeywords(string $species): array
+    {
+        $map = [
+            'malus domestica' => ['pomme', 'apple', 'pommier'],
+            'malus'           => ['pomme', 'apple', 'pommier'],
+            'prunus avium'    => ['cerise', 'cherry', 'cerisier'],
+            'prunus domestica' => ['prune', 'plum', 'prunier'],
+            'prunus persica'  => ['pêche', 'peach', 'pêcher'],
+            'prunus cerasus'  => ['cerise', 'cherry', 'griotte'],
+            'pyrus communis'  => ['poire', 'pear', 'poirier'],
+            'vitis vinifera'  => ['raisin', 'grape', 'vigne'],
+            'citrus sinensis' => ['orange', 'oranger'],
+            'citrus limon'    => ['citron', 'lemon', 'citronnier'],
+            'fragaria'        => ['fraise', 'strawberry', 'fraisier'],
+            'rosa'            => ['rose', 'rosier'],
+            'solanum lycopersicum' => ['tomate', 'tomato'],
+        ];
+
+        $speciesLower = strtolower($species);
+        foreach ($map as $key => $keywords) {
+            if (str_contains($speciesLower, $key)) {
+                return $keywords;
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Entity API fallback — works when user types exact cultivar name.
+     */
+    private function searchCultivarsEntityApi(string $query, ?string $species, string $ua): array
+    {
+        $searchResponse = \Illuminate\Support\Facades\Http::timeout(10)
+            ->withUserAgent($ua)
+            ->get('https://www.wikidata.org/w/api.php', [
+                'action'   => 'wbsearchentities',
+                'search'   => $query,
+                'language' => 'en',
+                'format'   => 'json',
+                'limit'    => 15,
+            ]);
+
+        $candidates = collect($searchResponse->json('search', []))
+            ->filter(fn ($r) => str_contains(strtolower($r['description'] ?? ''), 'cultivar')
+                || str_contains(strtolower($r['description'] ?? ''), 'variety')
+                || str_contains(strtolower($r['description'] ?? ''), 'variété')
+            );
+
+        if ($candidates->isEmpty()) {
+            return [];
+        }
+
+        $ids = $candidates->pluck('id')->implode('|');
+        $detailResponse = \Illuminate\Support\Facades\Http::timeout(10)
+            ->withUserAgent($ua)
+            ->get('https://www.wikidata.org/w/api.php', [
+                'action'    => 'wbgetentities',
+                'ids'       => $ids,
+                'languages' => 'fr|en',
+                'format'    => 'json',
+                'props'     => 'labels|descriptions|claims',
+            ]);
+
+        $results = [];
+        foreach ($detailResponse->json('entities', []) as $id => $entity) {
+            $claims = $entity['claims'] ?? [];
+            $taxonName = $claims['P225'][0]['mainsnak']['datavalue']['value'] ?? null;
+
+            $image = $claims['P18'][0]['mainsnak']['datavalue']['value'] ?? null;
+            $imageUrl = $image
+                ? 'https://commons.wikimedia.org/wiki/Special:FilePath/' . rawurlencode(str_replace(' ', '_', $image)) . '?width=200'
+                : null;
+
+            $date = $claims['P575'][0]['mainsnak']['datavalue']['value']['time']
+                ?? $claims['P580'][0]['mainsnak']['datavalue']['value']['time']
+                ?? null;
+            if ($date) {
+                $date = preg_replace('/^\+/', '', explode('T', $date)[0]);
+            }
+
+            $cultivarName = null;
+            $varietyName = null;
+            if ($taxonName && preg_match("/['\x{2018}\x{2019}](.+?)['\x{2018}\x{2019}]/u", $taxonName, $m)) {
+                $cultivarName = $m[1];
+            } elseif ($taxonName && preg_match('/var\.\s*(\S+)/i', $taxonName, $m)) {
+                $varietyName = $m[1];
+            }
+
+            $label = $entity['labels']['fr']['value'] ?? $entity['labels']['en']['value'] ?? $id;
+            $desc = $entity['descriptions']['fr']['value'] ?? $entity['descriptions']['en']['value'] ?? '';
+
+            if ($species && $taxonName && ! str_contains(strtolower($taxonName), strtolower($species))) {
+                continue;
+            }
+
+            $results[] = [
+                'wikidata_id' => $id,
+                'label'       => $label,
+                'description' => $desc,
+                'taxon_name'  => $taxonName,
+                'cultivar'    => $cultivarName ?? $label,
+                'variety'     => $varietyName,
+                'image_url'   => $imageUrl,
+                'origin'      => $claims['P495'][0]['mainsnak']['datavalue']['value']['id'] ?? null,
+                'date'        => $date,
+            ];
+        }
+
+        return $results;
+    }
+
+    /**
+     * Get full cultivar details from Wikidata by ID.
+     */
+    public function cultivarDetails(Request $request): JsonResponse
+    {
+        $request->validate([
+            'wikidata_id' => ['required', 'string', 'regex:/^Q\d+$/'],
+        ]);
+
+        $wikidataId = $request->input('wikidata_id');
+        $ua = 'PhenoLab/1.0 (botanical garden app; contact@phenolab.org)';
+
+        try {
+            $sparql = <<<SPARQL
+SELECT ?prop ?propLabel ?value ?valueLabel WHERE {
+  wd:{$wikidataId} ?p ?value.
+  ?prop wikibase:directClaim ?p.
+  SERVICE wikibase:label { bd:serviceParam wikibase:language 'fr,en'. }
+}
+LIMIT 200
+SPARQL;
+
+            $response = \Illuminate\Support\Facades\Http::timeout(15)
+                ->withUserAgent($ua)
+                ->get('https://query.wikidata.org/sparql', [
+                    'format' => 'json',
+                    'query'  => $sparql,
+                ]);
+
+            $raw = $response->json('results.bindings', []);
+
+            // Organize by property
+            $props = [];
+            foreach ($raw as $r) {
+                $propLabel = $r['propLabel']['value'] ?? '';
+                $valueLabel = $r['valueLabel']['value'] ?? '';
+                $propId = basename($r['prop']['value'] ?? '');
+                if (! isset($props[$propId])) {
+                    $props[$propId] = ['label' => $propLabel, 'values' => []];
+                }
+                $props[$propId]['values'][] = $valueLabel;
+            }
+
+            // Extract structured info for PhenoLab
+            $get = fn (string $pid) => $props[$pid]['values'] ?? [];
+            $getFirst = fn (string $pid) => ($props[$pid]['values'] ?? [null])[0];
+
+            $image = $getFirst('P18');
+            $imageUrl = null;
+            if ($image) {
+                // Image value from SPARQL is a full URL like http://commons.wikimedia.org/wiki/Special:FilePath/Golden%20Delicious%20apples.jpg
+                if (str_starts_with($image, 'http')) {
+                    $imageUrl = $image . (str_contains($image, '?') ? '&' : '?') . 'width=400';
+                } else {
+                    $imageUrl = 'https://commons.wikimedia.org/wiki/Special:FilePath/' . rawurlencode(str_replace(' ', '_', $image)) . '?width=400';
+                }
+            }
+
+            // Date formatting
+            $date = $getFirst('P575') ?? $getFirst('P580');
+            if ($date && preg_match('/(\d{4})/', $date, $m)) {
+                $date = $m[1];
+            }
+
+            $info = [
+                'wikidata_id'     => $wikidataId,
+                'taxon_name'      => $getFirst('P225'),
+                'image_url'       => $imageUrl,
+                'origin'          => $getFirst('P495'),
+                'date_discovered' => $date,
+                'parents'         => $get('P1531') ?: $get('P3373'),   // P1531 = parent hybrides, P3373 alternative
+                'children'        => $get('P40'),
+                'characteristics' => $get('P1552'),
+                'fruit_colors'    => $get('P462') ?: $get('P4743'),
+                'mass_grams'      => $getFirst('P2067'),
+                'usage'           => $get('P366'),
+                'plu_codes'       => $get('P4288'),
+                'commons_category' => $getFirst('P373'),
+            ];
+
+            // Clean: remove nulls and empty arrays
+            $info = array_filter($info, fn ($v) => $v !== null && $v !== [] && $v !== '');
+
+            return response()->json($info);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Erreur Wikidata: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

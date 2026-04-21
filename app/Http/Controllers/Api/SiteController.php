@@ -338,7 +338,7 @@ class SiteController extends Controller
             });
         }
 
-        if ($search = $request->query('search')) {
+        if ($search = $request->query('search') ?? $request->query('q')) {
             $search = $this->escapeLike($search);
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
@@ -362,11 +362,42 @@ class SiteController extends Controller
             $query->where('health_status', $health);
         }
 
-        $sortBy = $request->query('sort_by', 'name');
-        $sortDir = $request->query('sort_dir', 'asc');
-        $query->orderBy($sortBy, $sortDir);
+        if ($request->has('has_observations')) {
+            $request->boolean('has_observations')
+                ? $query->has('observations')
+                : $query->doesntHave('observations');
+        }
+        if ($request->has('has_photos')) {
+            $request->boolean('has_photos')
+                ? $query->has('photos')
+                : $query->doesntHave('photos');
+        }
+        if ($request->has('has_actions')) {
+            $request->boolean('has_actions')
+                ? $query->has('actions')
+                : $query->doesntHave('actions');
+        }
 
-        $perPage = min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 100);
+        // Support both sort_by/sort_dir and ordering param
+        if ($ordering = $request->query('ordering')) {
+            $dir = 'asc';
+            if (str_starts_with($ordering, '-')) {
+                $dir = 'desc';
+                $ordering = substr($ordering, 1);
+            }
+            $allowed = ['name', 'status', 'health_status', 'planting_date', 'category', 'observations_count', 'photos_count', 'created_at'];
+            if (in_array($ordering, $allowed)) {
+                $query->orderBy($ordering, $dir);
+            } else {
+                $query->orderBy('name', 'asc');
+            }
+        } else {
+            $sortBy = $request->query('sort_by', 'name');
+            $sortDir = $request->query('sort_dir', 'asc');
+            $query->orderBy($sortBy, $sortDir);
+        }
+
+        $perPage = min((int) ($request->query('per_page') ?? $request->query('page_size') ?? 20), 1000);
 
         return response()->json($query->paginate($perPage));
     }

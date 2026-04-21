@@ -242,6 +242,8 @@ class ExportService
             'mainPhoto:id,plant_id,image,is_main_photo',
             'photos:id,plant_id,image,title,photo_type,is_main_photo',
             'cultivationProfile',
+            'cultivarRef:id,name,upov_code',
+            'userTags:user_plant_tags.id,name,color',
         ])->withCount('observations', 'photos');
 
         // Visibility
@@ -401,7 +403,9 @@ class ExportService
     {
         $headers = [
             'plante_id', 'nom', 'nom_scientifique', 'nom_commun', 'famille', 'categorie',
-            'site', 'statut', 'sante', 'date_plantation', 'hauteur',
+            'site', 'statut', 'sante', 'identification', 'date_plantation', 'hauteur',
+            'cultivar', 'variete', 'cultivar_ref', 'abondance', 'abondance_initiale',
+            'tags',
             'date_mort', 'cause_mort', 'nb_observations', 'nb_photos', 'nb_actions',
             'derniere_action_date', 'dernier_type_action',
             'latitude', 'longitude', 'proprietaire', 'prive',
@@ -422,8 +426,11 @@ class ExportService
             return [
             $p->id, $p->name, $p->taxon?->binomial_name, $p->taxon?->common_name_fr,
             $p->taxon?->family, $p->category?->name,
-            $p->site?->name, $p->status, $p->health_status,
+            $p->site?->name, $p->status, $p->health_status, $p->identification_certainty,
             $p->planting_date?->format('Y-m-d'), $p->height_category,
+            $p->cultivar, $p->variety, $p->cultivarRef?->name,
+            $p->abundance, $p->initial_abundance,
+            $p->userTags->pluck('name')->implode('; '),
             $p->death_date?->format('Y-m-d'), $p->death_cause,
             $p->observations_count, $p->photos_count, $p->actions()->count(),
             $lastAction?->action_date?->format('Y-m-d'),
@@ -611,8 +618,15 @@ class ExportService
             'site_id' => $p->site_id,
             'status' => $p->status,
             'health_status' => $p->health_status,
+            'identification_certainty' => $p->identification_certainty,
             'planting_date' => $p->planting_date?->format('Y-m-d'),
             'height_category' => $p->height_category,
+            'cultivar' => $p->cultivar,
+            'variety' => $p->variety,
+            'cultivar_ref' => $p->cultivarRef?->name,
+            'abundance' => $p->abundance,
+            'initial_abundance' => $p->initial_abundance,
+            'tags' => $p->userTags->map(fn ($t) => ['name' => $t->name, 'color' => $t->color])->values(),
             'death_date' => $p->death_date?->format('Y-m-d'),
             'death_cause' => $p->death_cause,
             'latitude' => $p->latitude,

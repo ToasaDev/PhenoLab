@@ -70,6 +70,11 @@ class Taxon extends Model
         return $this->hasMany(CommonName::class);
     }
 
+    public function cultivars(): HasMany
+    {
+        return $this->hasMany(Cultivar::class);
+    }
+
     // ── Accessors ───────────────────────────────────────────────────
 
     /**

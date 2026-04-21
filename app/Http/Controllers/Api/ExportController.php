@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\ExportService;
+use App\Services\HugoExportService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -55,6 +56,28 @@ class ExportController extends Controller
         $zipPath = $service->export($format);
 
         $filename = 'phenolab_export_' . now()->format('Y-m-d_H-i') . '.zip';
+
+        return response()
+            ->download($zipPath, $filename, [
+                'Content-Type' => 'application/zip',
+            ])
+            ->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Generate and download a Hugo static site archive.
+     * Restricted to superusers only.
+     */
+    public function hugo(Request $request): BinaryFileResponse
+    {
+        if (! $request->user()?->is_superuser) {
+            abort(403, 'Acces reserve aux super-administrateurs.');
+        }
+
+        $service = new HugoExportService();
+        $zipPath = $service->export();
+
+        $filename = 'phenolab_hugo_' . now()->format('Y-m-d_H-i') . '.zip';
 
         return response()
             ->download($zipPath, $filename, [

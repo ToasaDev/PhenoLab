@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\SiteController;
 use App\Http\Controllers\Api\StatisticsController;
 use App\Http\Controllers\Api\UserGroupController;
 use App\Http\Controllers\Api\UserPlantTagController;
+use App\Http\Controllers\Api\CultivarController;
 use App\Http\Controllers\Api\TaxonController;
 use App\Http\Controllers\Api\TelaObservationController;
 use Illuminate\Support\Facades\Route;
@@ -32,7 +33,7 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::get('csrf-token', [AuthController::class, 'csrfToken']);
         Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login');
-        Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+        Route::post('logout', [AuthController::class, 'logout']);
         Route::get('status', [AuthController::class, 'status']);
     });
 
@@ -75,12 +76,20 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::apiResource('taxons', TaxonController::class)->only(['index', 'show']);
     Route::apiResource('taxons', TaxonController::class)->only(['store', 'update', 'destroy'])->middleware(['auth:sanctum', 'staff']);
 
+    // ── Cultivars ────────────────────────────────────────
+    Route::get('cultivars/search', [CultivarController::class, 'search']);
+    Route::get('cultivars/stats', [CultivarController::class, 'stats']);
+    Route::apiResource('cultivars', CultivarController::class)->only(['index', 'show']);
+    Route::apiResource('cultivars', CultivarController::class)->only(['store', 'update', 'destroy'])->middleware(['auth:sanctum', 'staff']);
+
     // ── Plant Positions ──────────────────────────────────
     Route::get('plant-positions/{position}/succession', [PlantPositionController::class, 'succession']);
     Route::apiResource('plant-positions', PlantPositionController::class)->only(['index', 'show']);
     Route::apiResource('plant-positions', PlantPositionController::class)->only(['store', 'update', 'destroy'])->middleware('auth:sanctum');
 
     // ── Plants ───────────────────────────────────────────
+    Route::get('plants/search-cultivars', [PlantController::class, 'searchCultivars']);
+    Route::get('plants/cultivar-details', [PlantController::class, 'cultivarDetails']);
     Route::get('plants/my-plants', [PlantController::class, 'myPlants'])->middleware('auth:sanctum');
     Route::get('plants/by-category', [PlantController::class, 'byCategory']);
     Route::get('plants/by-site', [PlantController::class, 'bySite']);
@@ -191,10 +200,12 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::post('seed-stages', [AdminController::class, 'seedPhenologicalStages']);
         Route::post('seed-categories', [AdminController::class, 'seedCategories']);
         Route::post('seed-action-types', [AdminController::class, 'seedActionTypes']);
+        Route::post('import-cultivars', [AdminController::class, 'importCultivars']);
     });
 
     // ── Export ───────────────────────────────────────────
     Route::get('export', [ExportController::class, 'download'])->middleware('auth:sanctum');
+    Route::get('export/hugo', [ExportController::class, 'hugo'])->middleware('auth:sanctum');
 
     // ── Activity Log (authenticated users only) ──────────
     Route::get('activity', [ActivityLogController::class, 'index'])->middleware('auth:sanctum');

@@ -27,7 +27,7 @@ class AdminController extends Controller
 
         $file = $request->file('csv_file');
         $path = $file->storeAs('imports', 'ods_import_' . now()->format('Ymd_His') . '.csv');
-        $fullPath = storage_path('app/' . $path);
+        $fullPath = \Illuminate\Support\Facades\Storage::path($path);
 
         try {
             if ($request->boolean('clear')) {
@@ -75,7 +75,7 @@ class AdminController extends Controller
 
         $file = $request->file('csv_file');
         $path = $file->storeAs('imports', 'tela_import_' . now()->format('Ymd_His') . '.csv');
-        $fullPath = storage_path('app/' . $path);
+        $fullPath = \Illuminate\Support\Facades\Storage::path($path);
 
         try {
             $exitCode = Artisan::call('tela:import', [
@@ -210,6 +210,64 @@ class AdminController extends Controller
             'users_count'              => DB::table('users')->count(),
             'plants_count'             => DB::table('plants')->count(),
             'observations_count'       => DB::table('observations')->count(),
+            'cultivars_count'          => DB::table('cultivars')->count(),
+        ]);
+    }
+
+    /**
+     * Import cultivars from EUPVP CSV/Excel file.
+     */
+    public function importCultivars(Request $request): JsonResponse
+    {
+        if (! Auth::user()->is_staff) {
+            return response()->json(['detail' => 'Acces reserve au personnel.'], 403);
+        }
+
+        $request->validate([
+            'file'     => ['required', 'file', 'max:102400'],
+            'subtypes' => ['nullable', 'string'],
+            'status'   => ['nullable', 'string'],
+            'clear'    => ['nullable', 'boolean'],
+        ]);
+
+        set_time_limit(300); // 5 minutes for large imports
+
+        $file = $request->file('file');
+        $path = $file->storeAs('imports', 'cultivars_' . now()->format('Ymd_His') . '.' . $file->getClientOriginalExtension());
+        $fullPath = \Illuminate\Support\Facades\Storage::path($path);
+
+        if (! file_exists($fullPath)) {
+            return response()->json([
+                'success' => false,
+                'message' => "Fichier non trouvé après upload: {$fullPath}",
+            ], 500);
+        }
+
+        $subtypes = $request->input('subtypes', 'FRU');
+        $status = $request->input('status', 'Registered');
+        $clear = $request->boolean('clear', false);
+
+        $args = ['file' => $fullPath, '--subtypes' => $subtypes, '--status' => $status];
+        if ($clear) {
+            $args['--clear'] = true;
+        }
+
+        try {
+            Artisan::call('cultivars:import', $args);
+            $output = Artisan::output();
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur import: ' . $e->getMessage(),
+                'file_path' => $fullPath,
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Import des cultivars terminé.',
+            'output'  => $output,
+            'total'   => DB::table('cultivars')->count(),
         ]);
     }
 }
