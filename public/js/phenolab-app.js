@@ -1105,13 +1105,17 @@ createApp({
                     this.initGeneralMap();
                 });
             } else if (newView === 'plants') {
-                // Load plants list when switching to plants view
-                this.loadPlantsList();
+                // Load plants list when switching to plants view, preserving the
+                // current page when returning from a detail view.
+                const plantsPage = this.plantsList.pagination.current_page || 1;
+                this.loadPlantsList(plantsPage);
             } else if (newView === 'observations') {
-                // Load observations when switching to observations view
+                // Load observations when switching to observations view, preserving
+                // the current page when returning from a detail view.
                 this.loadObservations();
                 this.loadObservationsYears();
-                this.loadObservationsList();
+                const obsPage = this.observationsList.pagination.current_page || 1;
+                this.loadObservationsList(obsPage);
             } else if (newView === 'analysis') {
                 // Load available years and analysis data when switching to analysis view
                 this.loadAvailableYears();
@@ -2169,6 +2173,14 @@ createApp({
         async viewSiteDetail(siteId) {
             console.log('🏠 Loading site detail:', siteId);
             this.siteReturnView = this.currentView;
+            // Preserve the site plants pagination when returning to the same
+            // site (e.g. from a plant detail view); reset otherwise.
+            const previousSiteId = this.siteDetail.site && this.siteDetail.site.id;
+            const sitePlantsPage = (previousSiteId === siteId
+                && this.siteDetail.pagination
+                && this.siteDetail.pagination.current_page)
+                ? this.siteDetail.pagination.current_page
+                : 1;
             this.currentView = 'site-detail';
             this.siteDetail.loading = true;
 
@@ -2182,8 +2194,8 @@ createApp({
                 this.siteDetail.plantsCount = statsResponse.data.plants_count || 0;
                 this.siteDetail.totalObservations = statsResponse.data.observations_count || 0;
 
-                // Load plants table data
-                await this.loadSitePlants(siteId);
+                // Load plants table data using preserved page when relevant.
+                await this.loadSitePlants(siteId, sitePlantsPage);
 
                 console.log('✅ Site detail loaded:', this.siteDetail.site.name);
             } catch (error) {
